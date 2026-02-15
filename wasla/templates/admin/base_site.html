@@ -1,0 +1,52 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    #header #branding #site-name {
+      margin: 0;
+      padding: 0;
+    }
+
+    #header #branding #site-name a.wasla-admin-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    #header #branding img.wasla-admin-logo {
+      height: 34px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    #header #branding .wasla-admin-brand__text {
+      display: inline-block;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      #header #branding .wasla-admin-brand__text {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block branding %}
+  <div id="site-name">
+    <a class="wasla-admin-brand" href="{% url 'admin:index' %}">
+      <img class="wasla-admin-logo" src="{% static 'img/logo.png' %}" alt="{% trans 'Wasla' %}" />
+      <span class="wasla-admin-brand__text">{{ site_header|default:_("Django administration") }}</span>
+    </a>
+  </div>
+  {% if user.is_anonymous %}
+    {% include "admin/color_theme_toggle.html" %}
+  {% endif %}
+{% endblock %}
