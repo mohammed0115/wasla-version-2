@@ -312,15 +312,15 @@ STATIC_URL = "/static/"
 # STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# MEDIA_URL = "/media/"
-# MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # STATIC_URL = "/static/"
 # STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles")))
 # STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
+# MEDIA_URL = "/media/"
+# MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
 
 # --- AI / Visual Search (V1-P3) ---
 AI_USE_CLIP_EMBEDDINGS = bool(int(os.environ.get('AI_USE_CLIP_EMBEDDINGS', '0')))
