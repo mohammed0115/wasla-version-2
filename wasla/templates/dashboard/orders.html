@@ -1,0 +1,53 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Orders" %}{% endblock %}
+{% block page_subtitle %}{% trans "Review and manage your recent orders." %}{% endblock %}
+
+{% block content %}
+  <div class="card" style="padding:16px;">
+    <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+      <div class="muted">{% trans "This is a placeholder UI. Connect to real order data in Phase 1." %}</div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="input" style="max-width:260px" type="search" placeholder="{% trans 'Search by order # or customer' %}">
+        <select class="select">
+          <option>{% trans "All statuses" %}</option>
+          <option>{% trans "Pending" %}</option>
+          <option>{% trans "Paid" %}</option>
+          <option>{% trans "Shipped" %}</option>
+          <option>{% trans "Completed" %}</option>
+          <option>{% trans "Cancelled" %}</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div style="overflow:auto; border:1px solid var(--line); border-radius:12px;">
+      <table style="width:100%; border-collapse:collapse; min-width:760px;">
+        <thead>
+          <tr style="background:var(--soft);">
+            <th style="text-align:start; padding:12px; border-bottom:1px solid var(--line);">{% trans "Order" %}</th>
+            <th style="text-align:start; padding:12px; border-bottom:1px solid var(--line);">{% trans "Customer" %}</th>
+            <th style="text-align:start; padding:12px; border-bottom:1px solid var(--line);">{% trans "Total" %}</th>
+            <th style="text-align:start; padding:12px; border-bottom:1px solid var(--line);">{% trans "Status" %}</th>
+            <th style="text-align:start; padding:12px; border-bottom:1px solid var(--line);">{% trans "Created" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in "12345" %}
+            <tr>
+              <td style="padding:12px; border-bottom:1px solid rgba(229,231,235,.7)">#10{{ forloop.counter0 }}{{ forloop.counter }}</td>
+              <td style="padding:12px; border-bottom:1px solid rgba(229,231,235,.7)">{% trans "Customer" %} {{ forloop.counter }}</td>
+              <td style="padding:12px; border-bottom:1px solid rgba(229,231,235,.7)">—</td>
+              <td style="padding:12px; border-bottom:1px solid rgba(229,231,235,.7)">
+                <span class="chip">{% trans "Pending" %}</span>
+              </td>
+              <td style="padding:12px; border-bottom:1px solid rgba(229,231,235,.7)">—</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

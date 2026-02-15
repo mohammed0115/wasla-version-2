@@ -1,0 +1,96 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Overview" %}{% endblock %}
+{% block page_subtitle %}{% trans "Your store performance (real data)." %}{% endblock %}
+
+{% block content %}
+
+<section class="dash__grid">
+  <div class="card kpi">
+    <div class="kpi__label">{% trans "Sales today" %}</div>
+    <div class="kpi__value">{{ metrics.sales_today }} {{ tenant.currency|default:"SAR" }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__label">{% trans "Orders today" %}</div>
+    <div class="kpi__value">{{ metrics.orders_today }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__label">{% trans "Revenue (7 days)" %}</div>
+    <div class="kpi__value">{{ metrics.revenue_7d }} {{ tenant.currency|default:"SAR" }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__label">{% trans "Visitors (7 days)" %}</div>
+    <div class="kpi__value">{{ metrics.visitors_7d|default:0 }}</div>
+    <div class="muted" style="margin-top:6px;">{% trans "If analytics are not configured yet, this stays 0." %}</div>
+  </div>
+</section>
+
+<div style="height:16px"></div>
+
+<section class="card" style="padding:16px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div>
+      <div style="font-weight:900;">{% trans "Recent orders" %}</div>
+      <div class="muted">{% trans "Last 10 orders for this store." %}</div>
+    </div>
+    <a class="btn btn-soft" href="{% url 'tenants:dashboard_orders' %}">{% trans "View all" %}</a>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div style="overflow:auto;">
+    <table class="dash__table" style="min-width:680px;">
+      <thead>
+        <tr>
+          <th>{% trans "Order" %}</th>
+          <th>{% trans "Customer" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th style="text-align:end;">{% trans "Total" %}</th>
+          <th>{% trans "Created" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if metrics.recent_orders %}
+          {% for o in metrics.recent_orders %}
+            <tr>
+              <td>#{{ o.id }}</td>
+              <td>{{ o.customer_name|default:"—" }}</td>
+              <td><span class="chip">{{ o.status }}</span></td>
+              <td style="text-align:end; font-weight:800;">{{ o.total }} {{ tenant.currency|default:"SAR" }}</td>
+              <td>{{ o.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="muted" style="padding:18px;">{% trans "No orders yet." %}</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div style="height:16px"></div>
+
+{% if metrics.low_stock %}
+  <section class="card" style="padding:16px;">
+    <div style="font-weight:900;">{% trans "Low stock" %}</div>
+    <div class="muted">{% trans "Products that may need restocking." %}</div>
+
+    <div style="height:12px"></div>
+    <div style="display:grid; gap:10px;">
+      {% for p in metrics.low_stock %}
+        <div class="card" style="padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:900;">{{ p.name }}</div>
+            <div class="muted">SKU: {{ p.sku }}</div>
+          </div>
+          <div class="chip">{% trans "Qty" %}: {{ p.quantity }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% endblock %}

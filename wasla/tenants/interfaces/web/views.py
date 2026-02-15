@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 
@@ -45,6 +46,10 @@ from tenants.application.use_cases.update_store_settings import (
     UpdateStoreSettingsCommand,
     UpdateStoreSettingsUseCase,
 )
+from tenants.application.use_cases.get_merchant_dashboard_metrics import (
+    GetMerchantDashboardMetricsCommand,
+    GetMerchantDashboardMetricsUseCase,
+)
 from tenants.domain.errors import (
     StoreAccessDeniedError,
     StoreDomainError,
@@ -66,17 +71,6 @@ from .forms import (
 
 
 @login_required
-def dashboard_home(request: HttpRequest) -> HttpResponse:
-    # Simple dashboard landing page: send user to the next meaningful step
-    # If tenant is resolved, go to store settings
-    tenant = getattr(request, "tenant", None)
-    if tenant:
-        return redirect("tenants:store_settings_update")
-    # Otherwise go to store setup start
-    return redirect("tenants:store_setup_start")
-
-
-@login_required
 @require_http_methods(["GET", "POST"])
 def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
     existing = resolve_tenant_for_request(request)
@@ -90,7 +84,7 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
                 return redirect("tenants:dashboard_setup_shipping")
             if not profile.is_setup_complete and state.current_step == StoreSetupWizardUseCase.STEP_FIRST_PRODUCT:
                 return redirect("tenants:dashboard_setup_activate")
-        return redirect("tenants:store_settings_update")
+        return redirect("tenants:dashboard_home")
 
     # If the merchant has not finished the persona/onboarding flow, send them there.
     # (The onboarding flow lives in the accounts app in this codebase.)
@@ -165,7 +159,7 @@ def store_setup_start(request: HttpRequest) -> HttpResponse:
         return redirect("tenants:dashboard_setup_shipping")
     if not profile.is_setup_complete and state.current_step == StoreSetupWizardUseCase.STEP_FIRST_PRODUCT:
         return redirect("tenants:dashboard_setup_activate")
-    return redirect("tenants:store_settings_update")
+    return redirect("tenants:dashboard_home")
 
 
 @login_required
@@ -480,54 +474,20 @@ def store_setup_step4(request: HttpRequest) -> HttpResponse:
     # Wizard alias for activation
     return dashboard_setup_activate(request)
 
+
 @login_required
 @tenant_access_required
-@require_http_methods(["GET", "POST"])
+@require_POST
 def store_settings_update(request: HttpRequest) -> HttpResponse:
     tenant = request.tenant
-
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
         raise PermissionDenied(str(exc)) from exc
-
-    # ===== GET: عرض صفحة الإعدادات =====
-    if request.method == "GET":
-        initial = {
-            "name": tenant.name,
-            "slug": tenant.slug,
-            "currency": tenant.currency,
-            "language": tenant.language,
-            "primary_color": tenant.primary_color,
-            "secondary_color": tenant.secondary_color,
-        }
-
-        form = StoreSettingsForm(initial=initial)
-
-        return render(
-            request,
-            "web/store/setup_step1.html",  # استخدمنا نفس تمبلت الخطوة الأولى لتجنب TemplateNotFound
-            {
-                "form": form,
-                "tenant": tenant,
-                "step": 1,
-            },
-        )
-
-    # ===== POST: حفظ التعديلات =====
     form = StoreSettingsForm(request.POST, request.FILES or None)
-
     if not form.is_valid():
         messages.error(request, "Invalid store settings.")
-        return render(
-            request,
-            "web/store/setup_step1.html",
-            {
-                "form": form,
-                "tenant": tenant,
-                "step": 1,
-            },
-        )
+        return redirect("tenants:store_settings_update")
 
     try:
         UpdateStoreSettingsUseCase.execute(
@@ -546,9 +506,10 @@ def store_settings_update(request: HttpRequest) -> HttpResponse:
     except StoreSlugAlreadyTakenError as exc:
         messages.error(request, str(exc))
     else:
-        messages.success(request, "Store settings updated successfully.")
+        messages.success(request, "Store settings updated.")
 
     return redirect("tenants:store_settings_update")
+
 
 @require_GET
 def custom_domain_verification(request: HttpRequest, token: str) -> HttpResponse:
@@ -632,4 +593,46 @@ def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
     else:
         messages.success(request, "Domain disabled.")
 
-    return redirect("web:store_settings_update")
+    return redirect("tenants:store_settings_update")
+
+
+@login_required
+@tenant_access_required
+@require_GET
+def dashboard_home(request):
+    """Minimal dashboard landing page.
+
+    - Requires login and tenant access
+    - Keeps view thin; KPI widgets can be added later
+    """
+    tenant = request.tenant
+    metrics = GetMerchantDashboardMetricsUseCase.execute(
+        GetMerchantDashboardMetricsCommand(
+            user_id=request.user.id,
+            tenant_id=tenant.id,
+            currency=getattr(tenant, "currency", "SAR") or "SAR",
+            timezone=str(timezone.get_current_timezone()),
+        )
+    )
+
+    return render(
+        request,
+        "dashboard/pages/overview.html",
+        {
+            "tenant": tenant,
+            "metrics": metrics,
+        },
+    )
+
+
+@login_required
+@tenant_access_required
+@require_GET
+def dashboard_orders(request: HttpRequest) -> HttpResponse:
+    """Merchant orders list (placeholder).
+
+    The Orders domain in this repo is currently API-first.
+    This screen provides the merchant-facing UI shell and can be wired to real
+    order queries later via an application-level read use-case.
+    """
+    return render(request, "dashboard/orders.html", {"tenant": request.tenant})

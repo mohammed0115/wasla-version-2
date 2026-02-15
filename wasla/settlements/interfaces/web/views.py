@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpRequest, HttpResponse
@@ -45,6 +46,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+@login_required
 @tenant_access_required
 def balance_view(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -53,6 +55,7 @@ def balance_view(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/balance.html", context)
 
 
+@login_required
 @tenant_access_required
 def settlement_list(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -61,6 +64,7 @@ def settlement_list(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/settlements/list.html", context)
 
 
+@login_required
 @tenant_access_required
 def settlement_detail(request: HttpRequest, settlement_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -70,7 +74,7 @@ def settlement_detail(request: HttpRequest, settlement_id: int) -> HttpResponse:
         )
     except SettlementNotFoundError:
         messages.error(request, "Settlement not found.")
-        return redirect("web:dashboard_settlements")
+        return redirect("settlements_web:dashboard_settlements_list")
     context = {"detail": detail, "tenant": request.tenant}
     return render(request, "dashboard/settlements/detail.html", context)
 

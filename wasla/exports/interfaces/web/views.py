@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
@@ -30,12 +31,14 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def exports_index(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/exports/index.html")
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def export_orders_csv(request: HttpRequest) -> StreamingHttpResponse:
@@ -54,6 +57,7 @@ def export_orders_csv(request: HttpRequest) -> StreamingHttpResponse:
     return response
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def export_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
