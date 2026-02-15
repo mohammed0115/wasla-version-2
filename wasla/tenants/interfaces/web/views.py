@@ -46,8 +46,8 @@ from tenants.application.use_cases.update_store_settings import (
     UpdateStoreSettingsCommand,
     UpdateStoreSettingsUseCase,
 )
+from tenants.application.dto.merchant_dashboard_metrics import GetMerchantDashboardMetricsQuery
 from tenants.application.use_cases.get_merchant_dashboard_metrics import (
-    GetMerchantDashboardMetricsCommand,
     GetMerchantDashboardMetricsUseCase,
 )
 from tenants.domain.errors import (
@@ -60,6 +60,8 @@ from tenants.interfaces.web.decorators import resolve_tenant_for_request, tenant
 from tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings
 from tenants.tasks import enqueue_verify_domain
 from tenants.domain.tenant_context import TenantContext
+from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
+from tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
 
 from .forms import (
     CustomDomainForm,
@@ -599,16 +601,23 @@ def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
 @login_required
 @tenant_access_required
 @require_GET
-def dashboard_home(request):
+def dashboard_home(request: HttpRequest) -> HttpResponse:
     """Minimal dashboard landing page.
 
     - Requires login and tenant access
     - Keeps view thin; KPI widgets can be added later
     """
-    tenant = request.tenant
-    metrics = GetMerchantDashboardMetricsUseCase.execute(
-        GetMerchantDashboardMetricsCommand(
-            user_id=request.user.id,
+    tenant = getattr(request, "tenant", None)
+    if tenant is None:
+        return redirect("tenants:dashboard_setup_store")
+
+    use_case = GetMerchantDashboardMetricsUseCase(
+        order_repository=DjangoOrderRepository(),
+        visitor_repository=DjangoVisitorRepository(),
+    )
+    metrics = use_case.execute(
+        GetMerchantDashboardMetricsQuery(
+            actor_user_id=request.user.id,
             tenant_id=tenant.id,
             currency=getattr(tenant, "currency", "SAR") or "SAR",
             timezone=str(timezone.get_current_timezone()),

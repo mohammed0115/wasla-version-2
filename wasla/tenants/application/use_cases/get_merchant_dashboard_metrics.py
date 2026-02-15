@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
-from django.utils import timezone
-
-from analytics.models import Event
-from catalog.models import Inventory
-from orders.models import Order
+from tenants.application.dto.merchant_dashboard_metrics import (
+    GetMerchantDashboardMetricsQuery,
+    MerchantDashboardMetricsDTO,
+)
+from tenants.application.interfaces.order_repository_port import OrderRepositoryPort
+from tenants.application.interfaces.visitor_repository_port import VisitorRepositoryPort
+from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
+from tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
 
 
 @dataclass(frozen=True)
@@ -20,91 +21,62 @@ class GetMerchantDashboardMetricsCommand:
     timezone: str = "UTC"
 
 
-@dataclass(frozen=True)
-class MerchantDashboardMetrics:
-    sales_today: Decimal
-    orders_today: int
-    revenue_7d: Decimal
-    visitors_7d: int
-    recent_orders: list[dict]
-    low_stock: list[dict]
+MerchantDashboardMetrics = MerchantDashboardMetricsDTO
 
 
 class GetMerchantDashboardMetricsUseCase:
-    LOW_STOCK_THRESHOLD = 5
+    def __init__(
+        self,
+        order_repository: OrderRepositoryPort | None = None,
+        visitor_repository: VisitorRepositoryPort | None = None,
+    ) -> None:
+        self._order_repository = order_repository or DjangoOrderRepository()
+        self._visitor_repository = visitor_repository or DjangoVisitorRepository()
 
-    @staticmethod
-    def execute(cmd: GetMerchantDashboardMetricsCommand) -> MerchantDashboardMetrics:
-        now = timezone.now()
-        start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_7d = now - timedelta(days=7)
+    def execute(
+        self,
+        query: GetMerchantDashboardMetricsQuery | GetMerchantDashboardMetricsCommand,
+    ) -> MerchantDashboardMetricsDTO:
+        normalized_query = self._normalize_query(query)
 
-        sales_today = (
-            Order.objects.filter(
-                store_id=cmd.tenant_id,
-                created_at__gte=start_today,
-            )
-            .exclude(status="cancelled")
-            .aggregate(total=Sum("total_amount"))
-            .get("total")
-            or Decimal("0.00")
+        sales_today = self._order_repository.sum_sales_today(normalized_query.tenant_id)
+        orders_today = self._order_repository.count_orders_today(normalized_query.tenant_id)
+        revenue_7d = self._order_repository.sum_revenue_last_7_days(normalized_query.tenant_id)
+        visitors_7d = self._visitor_repository.count_visitors_last_7_days(normalized_query.tenant_id)
+        recent_orders = self._order_repository.recent_orders(normalized_query.tenant_id, limit=10)
+
+        conversion_7d = (
+            Decimal("0")
+            if visitors_7d == 0
+            else Decimal(orders_today) / Decimal(visitors_7d)
         )
 
-        orders_today = (
-            Order.objects.filter(
-                store_id=cmd.tenant_id,
-                created_at__gte=start_today,
-            )
-            .exclude(status="cancelled")
-            .count()
-        )
-
-        revenue_7d = (
-            Order.objects.filter(
-                store_id=cmd.tenant_id,
-                created_at__gte=start_7d,
-            )
-            .exclude(status="cancelled")
-            .aggregate(total=Sum("total_amount"))
-            .get("total")
-            or Decimal("0.00")
-        )
-
-        visitors_7d = Event.objects.filter(tenant_id=cmd.tenant_id, occurred_at__gte=start_7d).count()
-
-        recent_orders = [
-            {
-                "id": row["id"],
-                "customer_name": row["customer_name"],
-                "status": row["status"],
-                "total": row["total_amount"],
-                "created_at": row["created_at"],
-            }
-            for row in Order.objects.filter(store_id=cmd.tenant_id)
-            .order_by("-created_at")[:10]
-            .values("id", "customer_name", "status", "total_amount", "created_at")
-        ]
-
-        low_stock = [
-            {
-                "name": row["product__name"],
-                "sku": row["product__sku"],
-                "quantity": row["quantity"],
-            }
-            for row in Inventory.objects.filter(
-                product__store_id=cmd.tenant_id,
-                product__is_active=True,
-                quantity__lte=GetMerchantDashboardMetricsUseCase.LOW_STOCK_THRESHOLD,
-            )
-            .order_by("quantity", "product__name")[:10]
-            .values("product__name", "product__sku", "quantity")
-        ]
-
-        return MerchantDashboardMetrics(
+        return MerchantDashboardMetricsDTO(
             sales_today=sales_today,
             orders_today=orders_today,
             revenue_7d=revenue_7d,
             visitors_7d=visitors_7d,
+            conversion_7d=conversion_7d,
             recent_orders=recent_orders,
-            low_stock=low_stock,
+        )
+
+    @classmethod
+    def execute_default(
+        cls,
+        query: GetMerchantDashboardMetricsQuery | GetMerchantDashboardMetricsCommand,
+    ) -> MerchantDashboardMetricsDTO:
+        return cls().execute(query)
+
+    @staticmethod
+    def _normalize_query(
+        query: GetMerchantDashboardMetricsQuery | GetMerchantDashboardMetricsCommand,
+    ) -> GetMerchantDashboardMetricsQuery:
+        if isinstance(query, GetMerchantDashboardMetricsQuery):
+            return query
+
+        return GetMerchantDashboardMetricsQuery(
+            actor_user_id=query.user_id,
+            tenant_id=query.tenant_id,
+            currency=query.currency,
+            timezone=query.timezone,
         )

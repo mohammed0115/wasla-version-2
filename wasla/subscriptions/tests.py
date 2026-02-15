@@ -10,8 +10,10 @@ from orders.services.order_service import OrderService
 from subscriptions.models import StoreSubscription, SubscriptionPlan
 from subscriptions.services.exceptions import (
     NoActiveSubscriptionError,
+    SubscriptionFeatureNotAllowedError,
     SubscriptionLimitExceededError,
 )
+from subscriptions.services.entitlement_service import SubscriptionEntitlementService
 from tenants.models import Tenant
 
 
@@ -96,3 +98,33 @@ class SubscriptionLimitEnforcementTests(TestCase):
                 price=Decimal("1.00"),
                 quantity=1,
             )
+
+
+class FeatureGatingTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            slug=f"ft-{uuid.uuid4().hex[:8]}",
+            name="Feature Tenant",
+            is_active=True,
+        )
+        self.plan = SubscriptionPlan.objects.create(
+            name=f"FeaturePlan-{uuid.uuid4().hex[:8]}",
+            price=0,
+            billing_cycle="monthly",
+            features=["ai_tools"],
+            is_active=True,
+        )
+        StoreSubscription.objects.create(
+            store_id=self.tenant.id,
+            plan=self.plan,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=30),
+            status="active",
+        )
+
+    def test_feature_gate_allows_enabled_feature(self):
+        SubscriptionEntitlementService.assert_feature_enabled(self.tenant.id, "ai_tools")
+
+    def test_feature_gate_blocks_missing_feature(self):
+        with self.assertRaises(SubscriptionFeatureNotAllowedError):
+            SubscriptionEntitlementService.assert_feature_enabled(self.tenant.id, "advanced_ai")
