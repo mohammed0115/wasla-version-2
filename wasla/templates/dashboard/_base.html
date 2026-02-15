@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم | وصلة{% endblock %}
+{% block body %}
+<div class="container">
+  <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+    <div>
+      <div class="kicker">Wasla Dashboard</div>
+      <h1 style="margin:6px 0 0;">{% block page_title %}{% endblock %}</h1>
+      <p class="muted" style="margin:6px 0 0;">{% block page_subtitle %}{% endblock %}</p>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-soft" href="/dashboard/ai/tools">أدوات الذكاء الاصطناعي</a>
+      <a class="btn btn-soft" href="/dashboard/settlements">التسويات</a>
+      <a class="btn btn-soft" href="/dashboard/themes">الثيمات</a>
+      <a class="btn btn-soft" href="/dashboard/setup">إعداد المتجر</a>
+    </div>
+  </div>
+  <div style="height:18px"></div>
+  {% if messages %}
+    <div style="display:grid; gap:10px; margin-bottom:14px;">
+      {% for message in messages %}
+        <div class="card" style="padding:12px 14px;">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</div>
+{% endblock %}

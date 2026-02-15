@@ -1,0 +1,141 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="module">
+  <h1 style="margin-bottom: 8px;">QA Dashboard</h1>
+  <p style="margin-top:0; color:#555;">
+    This page helps you verify the end-to-end linkage: <strong>User → Profile → Tenant → Membership → StoreProfile → Subscription → Wizard progress</strong>.
+  </p>
+
+  <div style="display:flex; gap:12px; margin:12px 0; flex-wrap:wrap;">
+    <div class="module" style="padding:10px 12px; min-width:180px;">
+      <div style="font-size:12px; color:#666;">Tenants</div>
+      <div style="font-size:22px; font-weight:600;">{{ stats.tenants }}</div>
+    </div>
+    <div class="module" style="padding:10px 12px; min-width:180px;">
+      <div style="font-size:12px; color:#666;">With Owner</div>
+      <div style="font-size:22px; font-weight:600;">{{ stats.with_owner }}</div>
+    </div>
+    <div class="module" style="padding:10px 12px; min-width:180px;">
+      <div style="font-size:12px; color:#666;">With Subscription</div>
+      <div style="font-size:22px; font-weight:600;">{{ stats.with_subscription }}</div>
+    </div>
+    <div class="module" style="padding:10px 12px; min-width:180px;">
+      <div style="font-size:12px; color:#666;">Setup Completed</div>
+      <div style="font-size:22px; font-weight:600;">{{ stats.setup_completed }}</div>
+    </div>
+  </div>
+
+  <table class="adminlist" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th>Tenant</th>
+        <th>Owner</th>
+        <th>Profile (Persona)</th>
+        <th>Wizard</th>
+        <th>Subscription</th>
+        <th style="width:260px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <div><strong>#{{ r.tenant.id }}</strong> — {{ r.tenant.name }} ({{ r.tenant.slug }})</div>
+          <div style="font-size:12px; color:#666;">setup_step={{ r.tenant.setup_step }} | setup_completed={{ r.tenant.setup_completed }}</div>
+        </td>
+        <td>
+          {% if r.owner %}
+            <div><strong>{{ r.owner.get_username }}</strong></div>
+            <div style="font-size:12px; color:#666;">{{ r.owner.email }}</div>
+          {% else %}
+            <span style="color:#b00;">No owner</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.profile %}
+            <div style="font-size:12px; color:#444;">
+              country=<strong>{{ r.profile.country|default:"-" }}</strong>,
+              legal=<strong>{{ r.profile.legal_entity|default:"-" }}</strong>,
+              existing=<strong>{{ r.profile.has_existing_business|default:"-" }}</strong>,
+              channel=<strong>{{ r.profile.selling_channel|default:"-" }}</strong>
+            </div>
+            <div style="font-size:12px; color:#444;">
+              category=<strong>{{ r.profile.category_main|default:"-" }}</strong> / <strong>{{ r.profile.category_sub|default:"-" }}</strong>
+            </div>
+            <div style="font-size:12px; color:#666;">
+              plan=<strong>{% if r.profile.plan %}{{ r.profile.plan.name }}{% else %}-{% endif %}</strong> | persona_completed={{ r.profile.persona_completed }}
+            </div>
+          {% else %}
+            <span style="color:#b00;">No profile</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.store_profile %}
+            <div>setup_step=<strong>{{ r.store_profile.setup_step }}</strong></div>
+            <div style="font-size:12px; color:#666;">is_setup_complete={{ r.store_profile.is_setup_complete }}</div>
+          {% else %}
+            <span style="color:#b00;">No StoreProfile</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.subscription %}
+            <div><strong>{{ r.subscription.plan.name }}</strong></div>
+            <div style="font-size:12px; color:#666;">{{ r.subscription.status }} | {{ r.subscription.start_date }} → {{ r.subscription.end_date }}</div>
+          {% else %}
+            <span style="color:#b00;">No subscription</span>
+          {% endif %}
+        </td>
+<td>
+  <form method="post" style="margin-bottom:8px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="index_products" />
+    <input type="hidden" name="tenant_id" value="{{ r.tenant.id }}" />
+    <label style="font-size:12px; color:#666;">
+      <input type="checkbox" name="force" value="1" /> force
+    </label>
+    <button type="submit" class="button" style="margin-left:8px;">Build/Update Index</button>
+  </form>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="run_kpi" />
+    <input type="hidden" name="tenant_id" value="{{ r.tenant.id }}" />
+    <label style="font-size:12px; color:#666;">samples</label>
+    <input type="number" name="samples" value="10" min="1" max="200" style="width:70px;" />
+    <label style="font-size:12px; color:#666; margin-left:6px;">top_n</label>
+    <select name="top_n">
+      <option value="12" selected>12</option>
+      <option value="24">24</option>
+    </select>
+    <button type="submit" class="button" style="margin-left:8px;">Run KPI</button>
+  </form>
+
+<form method="post" style="margin-top:8px;">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="seed_demo" />
+  <input type="hidden" name="tenant_id" value="{{ r.tenant.id }}" />
+  <label style="font-size:12px; color:#666; display:inline-block; margin-right:8px;">
+    count <input type="number" name="count" value="24" min="1" max="200" style="width:70px;" />
+  </label>
+  <label style="font-size:12px; color:#666; margin-right:8px;">
+    <input type="checkbox" name="reset" value="1" /> reset
+  </label>
+  <label style="font-size:12px; color:#666;">
+    <input type="checkbox" name="with_inventory" value="1" /> inventory
+  </label>
+  <button type="submit" class="button" style="margin-left:8px;">Seed Demo Products</button>
+</form>
+
+</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:14px; color:#666; font-size:12px;">
+    Tip: build a demo user through <code>/auth/</code> → onboarding → <code>/persona/plans/</code>, then check this page.
+  </div>
+</div>
+{% endblock %}

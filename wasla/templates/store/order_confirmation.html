@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}تأكيد الطلب{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">تم استلام طلبك ✅</h1>
+    <p class="muted">رقم الطلب: {{ order.id }}</p>
+    <a class="btn" href="/">العودة للرئيسية</a>
+  </div>
+</div>
+{% endblock %}

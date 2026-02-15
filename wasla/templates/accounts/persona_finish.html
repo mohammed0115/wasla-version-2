@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Wasla | جاهزين{% endblock %}
+{% block body %}
+<a class="back" href="{% url 'accounts:persona_category_main' %}">السؤال السابق</a>
+
+<div class="question" style="text-align:center;">
+  <div class="q-title">تمام! 🎉</div>
+  <p class="q-sub">نجهّز متجرك الآن… اضغط زر البداية.</p>
+
+  <form method="post" class="footer-btn">
+    {% csrf_token %}
+    <button class="btn primary" type="submit" style="width:520px;">ابدأ تجهيز متجرك</button>
+  </form>
+</div>
+{% endblock %}

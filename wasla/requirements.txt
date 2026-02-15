@@ -1,0 +1,15 @@
+Django>=5.1,<6.0
+djangorestframework>=3.15,<4.0
+djangorestframework-simplejwt>=5.3
+python-dotenv>=1.0,<2.0
+numpy>=1.24
+Pillow>=10.0
+faiss-cpu>=1.7.4
+
+# Optional for CLIP embeddings (V1-P3):
+# torch>=2.1
+# transformers>=4.41
+
+# Testing
+pytest==8.3.3
+pytest-django==4.9.0

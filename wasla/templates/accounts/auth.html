@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% block title %}Wasla | Auth{% endblock %}
+{% block body %}
+<div class="salla-shell">
+  <div class="salla-card">
+    <div class="salla-topbar">
+      <div>
+        <form action="{% url 'set_language' %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <input name="next" type="hidden" value="{{ request.get_full_path }}">
+          {% get_current_language as LANGUAGE_CODE %}
+          {% if LANGUAGE_CODE == 'ar' %}
+            <input type="hidden" name="language" value="en">
+            <button class="salla-lang" type="submit">English</button>
+          {% else %}
+            <input type="hidden" name="language" value="ar">
+            <button class="salla-lang" type="submit">العربية</button>
+          {% endif %}
+        </form>
+      </div>
+      <div class="salla-brand">
+        <img src="{% static 'images/logo.jpeg' %}" alt="Wasla">
+      </div>
+    </div>
+
+    <div class="salla-tabs">
+      <a class="salla-tab {% if active_tab == 'login' %}active{% endif %}" href="?tab=login">{% trans "Sign in" %}</a>
+      <a class="salla-tab {% if active_tab != 'login' %}active{% endif %}" href="?tab=register">{% trans "Create account" %}</a>
+    </div>
+
+    <div class="salla-form">
+      {% if active_tab == "login" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="login">
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Email" %}</div>
+            {{ login_form.email }}
+            {% for e in login_form.email.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Password" %}</div>
+            {{ login_form.password }}
+            {% for e in login_form.password.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+          <button class="salla-submit" type="submit">{% trans "Continue" %}</button>
+        </form>
+      {% else %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="register">
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Full name" %}</div>
+            {{ register_form.full_name }}
+            {% for e in register_form.full_name.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Email" %}</div>
+            {{ register_form.email }}
+            {% for e in register_form.email.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Mobile number" %}</div>
+            <div class="salla-phone">
+              {{ register_form.phone_country }}
+              {{ register_form.phone_number }}
+            </div>
+            {% for e in register_form.phone_number.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+          <div class="salla-field">
+            <div class="salla-label">{% trans "Password" %}</div>
+            {{ register_form.password }}
+            {% for e in register_form.password.errors %}<div class="error">{{e}}</div>{% endfor %}
+          </div>
+
+          <button class="salla-submit" type="submit">{% trans "Continue" %}</button>
+          <div class="salla-hint">{% trans "By signing up you agree to Wasla Terms of Service and Privacy Policy." %}</div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

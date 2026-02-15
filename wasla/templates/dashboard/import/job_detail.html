@@ -1,0 +1,8 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}تفاصيل مهمة الاستيراد{% endblock %}
+{% block content %}
+<div class="card" style="padding:18px;">
+  <h3 style="margin:0 0 10px;">Job #{{ job.id }}</h3>
+  <div class="muted">الحالة: {{ job.status }}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}أدوات الذكاء الاصطناعي{% endblock %}
+{% block page_subtitle %}أنشئ وصفًا للمنتج، صنّف المنتجات، وابحث بالصورة.{% endblock %}
+{% block content %}
+<div class="grid" style="display:grid; gap:14px;">
+  <div class="card" style="padding:16px;">
+    <h3 style="margin:0 0 6px;">🔎 البحث بالصورة</h3>
+    <p class="muted" style="margin:0 0 12px;">ارفع صورة لمنتج وسنبحث عن الأقرب داخل متجرك.</p>
+    <a class="btn" href="/dashboard/ai/visual-search">بدء البحث</a>
+  </div>
+  <div class="card" style="padding:16px;">
+    <h3 style="margin:0 0 6px;">📝 وصف المنتجات</h3>
+    <p class="muted" style="margin:0 0 12px;">اذهب إلى صفحة المنتج واختر “توليد وصف”.</p>
+    <a class="btn btn-soft" href="/">الصفحة الرئيسية</a>
+  </div>
+</div>
+{% endblock %}
