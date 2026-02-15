@@ -1,47 +1,277 @@
-{% extends "base.html" %}
+{% extends "base_bootstrap.html" %}
 {% load i18n static %}
-{% block title %}{% trans "Wasla" %}{% endblock %}
+
+{% block title %}{% trans "Wasla" %} | {% trans "Home" %}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'wasla/css/hero_banner.css' %}" />
+{% endblock %}
 
 {% block body %}
-<div class="hero">
-  <div class="hero__nav">
-    <div class="brand">
-      <img class="brand__logo" src="{% static 'images/logo.jpeg' %}" alt="Wasla">
-      <div class="brand__name">{% trans "Wasla" %}</div>
-    </div>
-    <div class="hero__navActions">
-      <a class="btn btn-soft" href="{% url 'accounts:auth' %}">{% trans "Sign in / Create account" %}</a>
-    </div>
-  </div>
+  {% get_current_language as LANGUAGE_CODE %}
 
-  <div class="hero__grid">
-    <div class="hero__copy">
-      <h1 class="hero__title">{% trans "Build your online store in minutes" %}</h1>
-      <p class="hero__subtitle">
-        {% trans "A store-builder platform designed for Saudi & Gulf merchants." %}
-        {% trans "Beautiful storefronts, subscriptions, and AI tools." %}
-      </p>
-      <div class="hero__cta">
-        <a class="btn primary" href="{% url 'accounts:auth' %}">{% trans "Get started" %}</a>
-        <a class="btn btn-soft" href="{% url 'accounts:auth' %}">{% trans "See plans" %}</a>
-      </div>
+  <nav class="navbar navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'home' %}">
+        <img src="{% static 'images/logo.jpeg' %}" alt="{% trans 'Wasla' %}" class="wasla-logo" />
+        <span>{% trans "Wasla" %}</span>
+      </a>
 
-      <div class="hero__badges">
-        <span class="badge">{% trans "Saudi-ready" %}</span>
-        <span class="badge">{% trans "Custom domains" %}</span>
-        <span class="badge">{% trans "AI Visual Search" %}</span>
-      </div>
+      <form action="{% url 'set_language' %}" method="post" class="d-inline ms-auto">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <select name="language" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="ar" {% if LANGUAGE_CODE == "ar" %}selected{% endif %}>Arabic</option>
+          <option value="en" {% if LANGUAGE_CODE == "en" %}selected{% endif %}>English</option>
+        </select>
+      </form>
     </div>
+  </nav>
 
-    <div class="hero__card">
-      <div class="card">
-        <div class="q-title" style="margin:0 0 8px 0;">{% trans "Start your merchant journey" %}</div>
-        <p class="q-sub">{% trans "Follow the onboarding steps, choose a plan, then launch your store." %}</p>
-        <a class="btn primary" href="{% url 'accounts:auth' %}" style="width:100%;">{% trans "Start now" %}</a>
-        <div style="height:10px"></div>
-	    <a class="btn btn-soft" href="{% url 'ai_web:dashboard_ai_visual_search' %}" style="width:100%;">{% trans "Try AI Visual Search" %}</a>
+  <main class="container py-4 py-md-5">
+    <section id="top" class="wasla-hero" aria-label="{% trans 'Wasla hero banner' %}">
+      <div class="container position-relative">
+        <div class="row align-items-center g-4">
+          <div class="col-12 col-lg-7 text-start">
+            <div class="wasla-hero__eyebrow mb-3">
+              <span aria-hidden="true">●</span>
+              <span>{% trans "Wasla e-commerce platform" %}</span>
+            </div>
+
+            <h1 class="display-5 fw-bold wasla-hero__title mb-3">
+              {% trans "Build your store, organize products, and start selling fast" %}
+            </h1>
+
+            <p class="lead wasla-hero__subtitle mb-0">
+              {% trans "Arabic RTL experience, clear onboarding flows, and a dashboard that helps you launch your store with confidence." %}
+            </p>
+
+            <div class="wasla-hero__chips" aria-label="{% trans 'Key highlights' %}">
+              <span class="wasla-hero__chip"><span class="wasla-hero__chip-dot" aria-hidden="true"></span>{% trans "Precision" %}</span>
+              <span class="wasla-hero__chip"><span class="wasla-hero__chip-dot" aria-hidden="true"></span>{% trans "Speed" %}</span>
+              <span class="wasla-hero__chip"><span class="wasla-hero__chip-dot" aria-hidden="true"></span>{% trans "Simplicity" %}</span>
+            </div>
+
+            <div class="wasla-hero__cta" role="group" aria-label="{% trans 'Hero actions' %}">
+              {% if request.user.is_authenticated %}
+                <a class="btn btn-warning fw-semibold px-4" href="{% url 'tenants:dashboard_home' %}">{% trans "Dashboard" %}</a>
+                {% if request.tenant %}
+                  <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'tenants:storefront_home' %}">{% trans "Browse products" %}</a>
+                  <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'cart_web:cart_view' %}">{% trans "Cart" %}</a>
+                {% endif %}
+                <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'accounts:logout' %}">{% trans "Logout" %}</a>
+              {% else %}
+                <a class="btn btn-warning fw-semibold px-4" href="{% url 'accounts:auth' %}">{% trans "Start now" %}</a>
+                <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'accounts:auth' %}?tab=login">{% trans "Sign in" %}</a>
+                {% if request.tenant %}
+                  <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'tenants:storefront_home' %}">{% trans "Browse products" %}</a>
+                  <a class="btn btn-outline-light fw-semibold px-4" href="{% url 'cart_web:cart_view' %}">{% trans "Cart" %}</a>
+                {% endif %}
+              {% endif %}
+
+              <a class="btn btn-link text-white text-decoration-none fw-semibold px-3" href="#wasla-how-it-works">
+                {% trans "How does it work?" %}
+              </a>
+            </div>
+
+            <div class="wasla-hero__cards" aria-label="{% trans 'Feature cards' %}">
+              <div class="wasla-hero__feature">
+                <p class="wasla-hero__feature-title">{% trans "Mobile-first experience" %}</p>
+                <p class="wasla-hero__feature-desc">{% trans "Responsive RTL design that works smoothly on every screen." %}</p>
+              </div>
+              <div class="wasla-hero__feature">
+                <p class="wasla-hero__feature-title">{% trans "Clear flows" %}</p>
+                <p class="wasla-hero__feature-desc">{% trans "From account creation to store setup step-by-step." %}</p>
+              </div>
+              <div class="wasla-hero__feature">
+                <p class="wasla-hero__feature-title">{% trans "Real links" %}</p>
+                <p class="wasla-hero__feature-desc">{% trans "Buttons wired to real Django routes inside the system." %}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-5">
+            <div class="wasla-phone" aria-label="{% trans 'Phone mockup' %}">
+              <div class="wasla-phone__inner">
+                <div class="wasla-phone__header">
+                  <div class="wasla-phone__brand">
+                    <img class="wasla-logo" src="{% static 'images/logo.jpeg' %}" alt="{% trans 'Wasla logo' %}" />
+                    <span>{% trans "Wasla" %}</span>
+                  </div>
+                  <span class="wasla-phone__badge">{% trans "Live" %}</span>
+                </div>
+
+                <ul class="wasla-phone__list">
+                  <li class="wasla-phone__item">
+                    <span class="wasla-phone__item-icon" aria-hidden="true">1</span>
+                    <div>
+                      <p class="wasla-phone__item-title">{% trans "Create an account" %}</p>
+                      <p class="wasla-phone__item-desc">{% trans "Name, phone, email, password." %}</p>
+                    </div>
+                  </li>
+                  <li class="wasla-phone__item">
+                    <span class="wasla-phone__item-icon" aria-hidden="true">2</span>
+                    <div>
+                      <p class="wasla-phone__item-title">{% trans "Choose your country" %}</p>
+                      <p class="wasla-phone__item-desc">{% trans "Saudi Arabia, UAE, or more." %}</p>
+                    </div>
+                  </li>
+                  <li class="wasla-phone__item">
+                    <span class="wasla-phone__item-icon" aria-hidden="true">3</span>
+                    <div>
+                      <p class="wasla-phone__item-title">{% trans "Business category" %}</p>
+                      <p class="wasla-phone__item-desc">{% trans "Choose 1 to 5 categories." %}</p>
+                    </div>
+                  </li>
+                  <li class="wasla-phone__item">
+                    <span class="wasla-phone__item-icon" aria-hidden="true">4</span>
+                    <div>
+                      <p class="wasla-phone__item-title">{% trans "Launch your store" %}</p>
+                      <p class="wasla-phone__item-desc">{% trans "Create the store, then payment, shipping, and activation." %}</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
+
+    <section id="wasla-how-it-works" class="wasla-how" aria-label="{% trans 'How it works' %}">
+      <div class="container py-4 py-lg-5">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <h2 class="h4 wasla-how__title m-0">{% trans "How does Wasla work?" %}</h2>
+          <a class="btn btn-sm btn-outline-primary rounded-pill" href="#top">{% trans "Back to top" %}</a>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <div class="wasla-how__card">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <span class="wasla-how__step" aria-hidden="true">1</span>
+                <span class="fw-bold">{% trans "Account & onboarding" %}</span>
+              </div>
+              <p class="text-muted mb-0">{% trans "Sign up, choose your country, and set your business type in minutes." %}</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="wasla-how__card">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <span class="wasla-how__step" aria-hidden="true">2</span>
+                <span class="fw-bold">{% trans "Create your store" %}</span>
+              </div>
+              <p class="text-muted mb-0">{% trans "Enter your store name, choose the slug, and preview the suggested domain." %}</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="wasla-how__card">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <span class="wasla-how__step" aria-hidden="true">3</span>
+                <span class="fw-bold">{% trans "Products & orders" %}</span>
+              </div>
+              <p class="text-muted mb-0">{% trans "Add products, track orders, and configure payments and shipping." %}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="wasla-marketing" class="wasla-marketing" aria-label="{% trans 'Wasla marketing banner' %}">
+      <div class="container py-4 py-lg-5">
+        <div class="wasla-marketing__header text-center mb-4">
+          <p class="wasla-marketing__eyebrow">{% trans "Why is Wasla different?" %}</p>
+          <h2 class="wasla-marketing__title">{% trans "A commerce platform built for merchants and shoppers" %}</h2>
+        </div>
+
+        <div class="row g-3 g-lg-4 mb-4">
+          <div class="col-12 col-md-4">
+            <div class="wasla-marketing__card">
+              <div class="wasla-marketing__icon" aria-hidden="true">✓</div>
+              <h3 class="h6 fw-bold mb-2">{% trans "Accuracy & trust" %}</h3>
+              <p class="text-muted mb-0">{% trans "Precise results from trusted stores and a stable checkout experience." %}</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="wasla-marketing__card">
+              <div class="wasla-marketing__icon" aria-hidden="true">✓</div>
+              <h3 class="h6 fw-bold mb-2">{% trans "Simplicity without complexity" %}</h3>
+              <p class="text-muted mb-0">{% trans "No extra steps or complicated settings — everything is clear." %}</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="wasla-marketing__card">
+              <div class="wasla-marketing__icon" aria-hidden="true">✓</div>
+              <h3 class="h6 fw-bold mb-2">{% trans "Smart speed" %}</h3>
+              <p class="text-muted mb-0">{% trans "From a single photo, we match you to the product in seconds." %}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="wasla-marketing__header text-center mb-3">
+          <h3 class="wasla-marketing__subtitle">{% trans "How does Wasla work?" %}</h3>
+          <p class="text-muted mb-0">{% trans "A buying experience designed for the speed era" %}</p>
+        </div>
+        <div class="row g-3 g-lg-4 mb-4">
+          <div class="col-12 col-md-6">
+            <div class="wasla-marketing__step">
+              <span class="wasla-marketing__step-num">1</span>
+              <div>
+                <p class="fw-bold mb-1">{% trans "Upload a product image" %}</p>
+                <p class="text-muted mb-0">{% trans "One image is enough to start smart search." %}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="wasla-marketing__step">
+              <span class="wasla-marketing__step-num">2</span>
+              <div>
+                <p class="fw-bold mb-1">{% trans "Wasla analyzes and matches" %}</p>
+                <p class="text-muted mb-0">{% trans "We compare and return the best available products." %}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wasla-marketing__cta text-center mb-4">
+          <p class="wasla-marketing__cta-title">{% trans "Choose and buy instantly" %}</p>
+          <p class="text-muted mb-3">{% trans "Wasla doesn't change how you buy… it shortens it." %}</p>
+          <a class="btn btn-primary px-4" href="{% url 'accounts:auth' %}">{% trans "Get started" %}</a>
+        </div>
+
+        <div class="row g-3 g-lg-4 mb-4">
+          <div class="col-12 col-lg-6">
+            <div class="wasla-marketing__panel">
+              <div class="wasla-marketing__panel-title">{% trans "For shoppers" %}</div>
+              <ul class="wasla-marketing__list">
+                <li>{% trans "Find what you want without long typing" %}</li>
+                <li>{% trans "Faster and clearer choices" %}</li>
+                <li>{% trans "A fun shopping experience" %}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="wasla-marketing__panel">
+              <div class="wasla-marketing__panel-title">{% trans "For merchants" %}</div>
+              <ul class="wasla-marketing__list">
+                <li>{% trans "Purchase-ready traffic" %}</li>
+                <li>{% trans "Higher conversion rate" %}</li>
+                <li>{% trans "Reach new customers" %}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="wasla-marketing__header text-center mb-3">
+          <h3 class="wasla-marketing__subtitle">{% trans "Fits many stores" %}</h3>
+        </div>
+        <div class="wasla-marketing__categories">
+          <span class="wasla-marketing__category">{% trans "Fashion" %}</span>
+          <span class="wasla-marketing__category">{% trans "Electronics" %}</span>
+          <span class="wasla-marketing__category">{% trans "Furniture" %}</span>
+          <span class="wasla-marketing__category">{% trans "Accessories" %}</span>
+        </div>
+      </div>
+    </section>
+  </main>
 {% endblock %}

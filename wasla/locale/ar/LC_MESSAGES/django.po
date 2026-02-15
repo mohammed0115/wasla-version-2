@@ -146,3 +146,216 @@ msgstr "بيسك"
 
 msgid "Feature"
 msgstr "الميزة"
+
+msgid "Home"
+msgstr "الصفحة الرئيسية"
+
+msgid "Wasla hero banner"
+msgstr "بانر وصلة الرئيسي"
+
+msgid "Wasla e-commerce platform"
+msgstr "منصة وصلة للتجارة الإلكترونية"
+
+msgid "Build your store, organize products, and start selling fast"
+msgstr "ابني متجرك، نظّم منتجاتك، وابدأ البيع بسرعة"
+
+msgid "Arabic RTL experience, clear onboarding flows, and a dashboard that helps you launch your store with confidence."
+msgstr "تجربة عربية RTL، تدفقات تسجيل/أونبوردنغ واضحة، ولوحة تحكم تساعدك تطلق متجرك بثقة."
+
+msgid "Key highlights"
+msgstr "أبرز المميزات"
+
+msgid "Precision"
+msgstr "دقّة"
+
+msgid "Speed"
+msgstr "سرعة"
+
+msgid "Simplicity"
+msgstr "سهولة"
+
+msgid "Hero actions"
+msgstr "إجراءات البانر"
+
+msgid "Dashboard"
+msgstr "لوحة التحكم"
+
+msgid "Browse products"
+msgstr "تصفح المنتجات"
+
+msgid "Cart"
+msgstr "السلة"
+
+msgid "Logout"
+msgstr "تسجيل الخروج"
+
+msgid "How does it work?"
+msgstr "كيف تعمل؟"
+
+msgid "Feature cards"
+msgstr "بطاقات المميزات"
+
+msgid "Mobile-first experience"
+msgstr "تجربة جاهزة للجوال"
+
+msgid "Responsive RTL design that works smoothly on every screen."
+msgstr "تصميم متجاوب RTL يشتغل بسلاسة على كل الشاشات."
+
+msgid "Clear flows"
+msgstr "تدفقات واضحة"
+
+msgid "From account creation to store setup step-by-step."
+msgstr "من تسجيل الحساب حتى إعداد المتجر خطوة بخطوة."
+
+msgid "Real links"
+msgstr "روابط حقيقية"
+
+msgid "Buttons wired to real Django routes inside the system."
+msgstr "الأزرار مربوطة بمسارات Django الفعلية داخل النظام."
+
+msgid "Phone mockup"
+msgstr "واجهة هاتف"
+
+msgid "Wasla logo"
+msgstr "شعار وصلة"
+
+msgid "Live"
+msgstr "مباشر"
+
+msgid "Create an account"
+msgstr "إنشاء حساب"
+
+msgid "Name, phone, email, password."
+msgstr "اسم، جوال، بريد، كلمة مرور."
+
+msgid "Choose your country"
+msgstr "اختيار الدولة"
+
+msgid "Saudi Arabia, UAE, or more."
+msgstr "🇸🇦 السعودية أو 🇦🇪 الإمارات أو أخرى."
+
+msgid "Business category"
+msgstr "نوع النشاط"
+
+msgid "Choose 1 to 5 categories."
+msgstr "اختر 1 إلى 5 مجالات."
+
+msgid "Launch your store"
+msgstr "إطلاق المتجر"
+
+msgid "Create the store, then payment, shipping, and activation."
+msgstr "إنشاء المتجر ثم الدفع والشحن والتفعيل."
+
+msgid "How it works"
+msgstr "كيف تعمل"
+
+msgid "How does Wasla work?"
+msgstr "كيف تعمل وصلة؟"
+
+msgid "Back to top"
+msgstr "رجوع للأعلى"
+
+msgid "Account & onboarding"
+msgstr "حساب وأونبوردنغ"
+
+msgid "Sign up, choose your country, and set your business type in minutes."
+msgstr "سجّل، اختر الدولة، وحدد نوع النشاط في دقائق."
+
+msgid "Create your store"
+msgstr "إنشاء المتجر"
+
+msgid "Enter your store name, choose the slug, and preview the suggested domain."
+msgstr "اكتب اسم المتجر واختر الـslug وشاهد الدومين المقترح."
+
+msgid "Products & orders"
+msgstr "منتجات وطلبات"
+
+msgid "Add products, track orders, and configure payments and shipping."
+msgstr "أضف المنتجات، تابع الطلبات، واضبط الدفع والشحن."
+
+msgid "Wasla marketing banner"
+msgstr "بانر تسويق وصلة"
+
+msgid "Why is Wasla different?"
+msgstr "ليش وصلة مختلفة؟"
+
+msgid "A commerce platform built for merchants and shoppers"
+msgstr "منصة تجارة مصممة للتجّار وللمستخدمين"
+
+msgid "Accuracy & trust"
+msgstr "دقّة وثقة"
+
+msgid "Precise results from trusted stores and a stable checkout experience."
+msgstr "نتائج دقيقة من متجر موثوق وتجربة شراء مستقرة."
+
+msgid "Simplicity without complexity"
+msgstr "بساطة بدون تعقيد"
+
+msgid "No extra steps or complicated settings — everything is clear."
+msgstr "لا خطوات كثيرة ولا إعدادات معقدة — كل شيء واضح."
+
+msgid "Smart speed"
+msgstr "سرعة ذكية"
+
+msgid "From a single photo, we match you to the product in seconds."
+msgstr "من صورة واحدة، نوصلك للمنتج خلال ثوانٍ."
+
+msgid "A buying experience designed for the speed era"
+msgstr "تجربة شراء مصممة لعصر السرعة"
+
+msgid "Upload a product image"
+msgstr "ارفع صورة المنتج"
+
+msgid "One image is enough to start smart search."
+msgstr "صورة واحدة تكفي لإطلاق البحث الذكي."
+
+msgid "Wasla analyzes and matches"
+msgstr "وصلة تحلل وتطابق"
+
+msgid "We compare and return the best available products."
+msgstr "نقارن ونرجع لك أفضل المنتجات المتاحة."
+
+msgid "Choose and buy instantly"
+msgstr "اختر واشترِ فورًا"
+
+msgid "Wasla doesn't change how you buy… it shortens it."
+msgstr "وصلة لا تغيّر طريقة الشراء... هي تختصرها."
+
+msgid "For shoppers"
+msgstr "للمستخدم"
+
+msgid "Find what you want without long typing"
+msgstr "توصل لما تريد بدون كتابة طويلة"
+
+msgid "Faster and clearer choices"
+msgstr "اختيارات أسرع وأوضح"
+
+msgid "A fun shopping experience"
+msgstr "تجربة شراء ممتعة"
+
+msgid "For merchants"
+msgstr "للتاجر"
+
+msgid "Purchase-ready traffic"
+msgstr "زيارات جاهزة للشراء"
+
+msgid "Higher conversion rate"
+msgstr "معدل تحويل أعلى"
+
+msgid "Reach new customers"
+msgstr "وصول لعملاء جدد"
+
+msgid "Fits many stores"
+msgstr "تناسب متاجر كثيرة"
+
+msgid "Fashion"
+msgstr "أزياء"
+
+msgid "Electronics"
+msgstr "إلكترونيات"
+
+msgid "Furniture"
+msgstr "أثاث"
+
+msgid "Accessories"
+msgstr "إكسسوارات"

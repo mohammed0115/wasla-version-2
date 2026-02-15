@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 
@@ -31,6 +32,95 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
+
+def _env_bool(name: str, default: str = "0") -> bool:
+    return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _env_list(name: str, default: list[str] | None = None) -> list[str]:
+    raw = os.getenv(name, "")
+    if raw.strip():
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    return list(default or [])
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure--cop!lr6o*&sny4$%3&-=)l18w7-lf+7$a8itl+q%qz!4p1yll",
+)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = _env_bool("DJANGO_DEBUG", "1")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
+TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "12345").strip() or "12345"
+
+WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "w-sala.com").strip().lower() or "w-sala.com"
+
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=[
+        "localhost",
+        "127.0.0.1",
+        "[::1]",
+        WASSLA_BASE_DOMAIN,
+        f"www.{WASSLA_BASE_DOMAIN}",
+        "76.13.143.149",
+    ],
+)
+
+CSRF_TRUSTED_ORIGINS = _env_list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+
+# Custom domains (multi-tenant mapping)
+CUSTOM_DOMAIN_SERVER_IP = os.getenv("CUSTOM_DOMAIN_SERVER_IP", "").strip()
+CUSTOM_DOMAIN_CNAME_TARGET = os.getenv("CUSTOM_DOMAIN_CNAME_TARGET", "").strip()
+CUSTOM_DOMAIN_BLOCKED_DOMAINS = _env_list("CUSTOM_DOMAIN_BLOCKED_DOMAINS", default=[WASSLA_BASE_DOMAIN])
+CUSTOM_DOMAIN_VERIFICATION_PATH_PREFIX = os.getenv(
+    "CUSTOM_DOMAIN_VERIFICATION_PATH_PREFIX",
+    "/.well-known/wassla-domain-verification",
+).strip()
+CUSTOM_DOMAIN_HTTP_TIMEOUT_SECONDS = int(os.getenv("CUSTOM_DOMAIN_HTTP_TIMEOUT_SECONDS", "5") or "5")
+CUSTOM_DOMAIN_VERIFY_MIN_INTERVAL_SECONDS = int(
+    os.getenv("CUSTOM_DOMAIN_VERIFY_MIN_INTERVAL_SECONDS", "30") or "30"
+)
+CUSTOM_DOMAIN_DNS_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_DNS_CACHE_SECONDS", "300") or "300")
+CUSTOM_DOMAIN_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_CACHE_SECONDS", "300") or "300")
+
+# SSL/Certbot
+CUSTOM_DOMAIN_SSL_ENABLED = _env_bool("CUSTOM_DOMAIN_SSL_ENABLED", "0")
+CUSTOM_DOMAIN_CERTBOT_CMD = os.getenv("CUSTOM_DOMAIN_CERTBOT_CMD", "certbot").strip() or "certbot"
+CUSTOM_DOMAIN_CERTBOT_EMAIL = os.getenv("CUSTOM_DOMAIN_CERTBOT_EMAIL", "").strip()
+CUSTOM_DOMAIN_CERTBOT_MODE = os.getenv("CUSTOM_DOMAIN_CERTBOT_MODE", "http-01").strip() or "http-01"
+CUSTOM_DOMAIN_CERTBOT_WEBROOT = os.getenv(
+    "CUSTOM_DOMAIN_CERTBOT_WEBROOT",
+    "/var/www/certbot",
+).strip()
+CUSTOM_DOMAIN_CERTBOT_DNS_AUTH_HOOK = os.getenv("CUSTOM_DOMAIN_CERTBOT_DNS_AUTH_HOOK", "").strip()
+CUSTOM_DOMAIN_CERTBOT_DNS_CLEANUP_HOOK = os.getenv("CUSTOM_DOMAIN_CERTBOT_DNS_CLEANUP_HOOK", "").strip()
+CUSTOM_DOMAIN_CERTS_DIR = os.getenv("CUSTOM_DOMAIN_CERTS_DIR", "/etc/letsencrypt/live").strip()
+
+# Nginx dynamic config
+CUSTOM_DOMAIN_NGINX_ENABLED = _env_bool("CUSTOM_DOMAIN_NGINX_ENABLED", "0")
+CUSTOM_DOMAIN_NGINX_DOMAINS_DIR = os.getenv(
+    "CUSTOM_DOMAIN_NGINX_DOMAINS_DIR",
+    "/etc/nginx/conf.d/wasla_domains",
+).strip()
+CUSTOM_DOMAIN_NGINX_UPSTREAM = os.getenv(
+    "CUSTOM_DOMAIN_NGINX_UPSTREAM",
+    "http://127.0.0.1:8000",
+).strip()
+CUSTOM_DOMAIN_NGINX_TEST_CMD = os.getenv("CUSTOM_DOMAIN_NGINX_TEST_CMD", "nginx -t").strip()
+CUSTOM_DOMAIN_NGINX_RELOAD_CMD = os.getenv("CUSTOM_DOMAIN_NGINX_RELOAD_CMD", "systemctl reload nginx").strip()
+CUSTOM_DOMAIN_FORCE_HTTPS = _env_bool("CUSTOM_DOMAIN_FORCE_HTTPS", "0")
+CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST = _env_bool("CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST", "0")
+DOMAIN_PROVISIONING_MODE = os.getenv("DOMAIN_PROVISIONING_MODE", "manual").strip().lower() or "manual"
+
+NGINX_TEMPLATE_DIR = os.getenv("NGINX_TEMPLATE_DIR", "infrastructure/nginx").strip() or "infrastructure/nginx"
+NGINX_DOMAIN_TEMPLATE = os.getenv("NGINX_DOMAIN_TEMPLATE", "domain.conf.j2").strip() or "domain.conf.j2"
+
 
 
 # Application definition
@@ -79,6 +169,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "tenants.middleware.TenantMiddleware",
+    "tenants.middleware.TenantLocaleMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -111,12 +203,32 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
+DB_ENGINE = os.getenv("DB_ENGINE", os.getenv("DJANGO_DB_ENGINE", "django.db.backends.sqlite3")).strip()
+if DB_ENGINE == "django.db.backends.postgresql":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "wasla")),
+            "USER": os.getenv("DB_USER", os.getenv("POSTGRES_USER", "wasla")),
+            "PASSWORD": os.getenv("DB_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")),
+            "HOST": os.getenv("DB_HOST", os.getenv("POSTGRES_HOST", "127.0.0.1")),
+            "PORT": os.getenv("DB_PORT", os.getenv("POSTGRES_PORT", "5432")),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -196,12 +308,19 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "YazYaz@2030")
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# STATIC_URL = "/static/"
+# STATICFILES_DIRS = [BASE_DIR / "static"]
+# STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# MEDIA_URL = "/media/"
+# MEDIA_ROOT = BASE_DIR / "media"
+
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles")))
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
 
 # --- AI / Visual Search (V1-P3) ---
 AI_USE_CLIP_EMBEDDINGS = bool(int(os.environ.get('AI_USE_CLIP_EMBEDDINGS', '0')))
@@ -221,3 +340,12 @@ AI_VISUAL_SEARCH_MAX_TOP_N = int(os.environ.get('AI_VISUAL_SEARCH_MAX_TOP_N', '2
 AI_FAISS_INDEX_TYPE = os.environ.get('AI_FAISS_INDEX_TYPE', 'flat')  # flat|ivf
 AI_FAISS_NLIST = int(os.environ.get('AI_FAISS_NLIST', '0') or 0)
 AI_FAISS_NPROBE = int(os.environ.get('AI_FAISS_NPROBE', '0') or 0)
+
+
+# +# Reverse proxy / HTTPS (nginx)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
