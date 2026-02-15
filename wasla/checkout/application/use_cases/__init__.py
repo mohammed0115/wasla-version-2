@@ -1,1 +1,0 @@
-"""Checkout use-cases."""

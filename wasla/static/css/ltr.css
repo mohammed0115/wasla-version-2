@@ -1,5 +1,0 @@
-/* LTR overrides (English) */
-html[dir="ltr"] body {
-	direction: ltr;
-	text-align: start;
-}

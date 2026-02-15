@@ -1,1 +1,0 @@
-"""Webhooks infrastructure package."""
