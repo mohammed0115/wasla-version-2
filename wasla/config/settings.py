@@ -53,6 +53,8 @@ SECRET_KEY = os.getenv(
     "django-insecure--cop!lr6o*&sny4$%3&-=)l18w7-lf+7$a8itl+q%qz!4p1yll",
 )
 
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _env_bool("DJANGO_DEBUG", "1")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
