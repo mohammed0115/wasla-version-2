@@ -1,0 +1,66 @@
+:root {
+  --wasla-radius: 0.8rem;
+  --wasla-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --brand-primary: #0d6efd;
+  --brand-secondary: #6c757d;
+  --brand-accent: #20c997;
+  --brand-font: "Cairo", "Tajawal", "Segoe UI", system-ui, sans-serif;
+}
+
+body.wasla-body {
+  font-family: var(--brand-font, "Cairo", "Tajawal", "Segoe UI", system-ui, sans-serif);
+  color: #0f172a;
+  background-color: #f8f9fb;
+}
+
+.card {
+  border-radius: var(--wasla-radius);
+  box-shadow: var(--wasla-shadow);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.btn,
+.form-control,
+.form-select,
+.badge {
+  border-radius: 0.65rem;
+}
+
+.btn {
+  padding: 0.55rem 1rem;
+}
+
+.form-control,
+.form-select {
+  padding: 0.6rem 0.9rem;
+}
+
+.wasla-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.sidebar .nav-link {
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #0f172a;
+}
+
+.sidebar .nav-link.active {
+  background: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+  font-weight: 600;
+}
+
+.wasla-card-button {
+  cursor: pointer;
+}
+
+.brand-navbar {
+  background-color: var(--brand-primary);
+}
+
+.brand-text-primary {
+  color: var(--brand-primary);
+}

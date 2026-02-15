@@ -1,0 +1,3 @@
+/* LTR overrides (English) */
+html[dir="ltr"] body { direction: ltr; text-align: left; }
+html[dir="ltr"] .lang-switcher { right: 16px; left: auto; }
