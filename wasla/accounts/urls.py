@@ -9,7 +9,7 @@ urlpatterns = [
     path("auth/verify/", views.verify_otp, name="verify_otp"),
     path("auth/resend/", views.resend_otp, name="resend_otp"),
     path("logout/", views.do_logout, name="logout"),
-    
+
     path("onboarding/welcome/", views.persona_welcome, name="persona_welcome"),
     path("onboarding/country/", views.persona_country, name="persona_country"),
     path("onboarding/legal/", views.persona_legal, name="persona_legal"),

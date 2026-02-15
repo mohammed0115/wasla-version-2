@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -29,6 +30,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+@login_required
 @tenant_access_required
 @require_http_methods(["GET", "POST"])
 def themes_list(request: HttpRequest) -> HttpResponse:
@@ -49,7 +51,7 @@ def themes_list(request: HttpRequest) -> HttpResponse:
             messages.success(request, "Theme updated.")
         except ValueError as exc:
             messages.error(request, str(exc))
-        return redirect("web:dashboard_themes")
+        return redirect("themes_web:dashboard_themes")
 
     return render(
         request,
@@ -58,6 +60,7 @@ def themes_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 @tenant_access_required
 @require_http_methods(["GET", "POST"])
 def branding_edit(request: HttpRequest) -> HttpResponse:
@@ -87,7 +90,7 @@ def branding_edit(request: HttpRequest) -> HttpResponse:
                 )
             )
             messages.success(request, "Branding updated.")
-            return redirect("web:dashboard_branding")
+            return redirect("themes_web:dashboard_branding")
         except ValueError as exc:
             messages.error(request, str(exc))
 

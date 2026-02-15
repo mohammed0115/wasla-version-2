@@ -32,7 +32,7 @@ def product_detail(request: HttpRequest, store_slug: str, product_id: int) -> Ht
     tenant_ctx = _build_tenant_context(request)
     tenant = getattr(request, "tenant", None)
     if tenant and tenant.slug != store_slug:
-        return redirect("web:storefront_home")
+        return redirect("tenants:storefront_home")
     try:
         product = GetProductUseCase.execute(GetProductCommand(tenant_ctx=tenant_ctx, product_id=product_id))
     except ValueError:
@@ -59,7 +59,7 @@ def cart_add(request: HttpRequest) -> HttpResponse:
     except (TypeError, ValueError):
         quantity = 1
     AddToCartUseCase.execute(AddToCartCommand(tenant_ctx=tenant_ctx, product_id=product_id, quantity=quantity))
-    return redirect("web:cart_view")
+    return redirect("cart_web:cart_view")
 
 
 @require_http_methods(["POST"])
@@ -76,7 +76,7 @@ def cart_update(request: HttpRequest) -> HttpResponse:
     UpdateCartItemUseCase.execute(
         UpdateCartItemCommand(tenant_ctx=tenant_ctx, item_id=item_id, quantity=quantity)
     )
-    return redirect("web:cart_view")
+    return redirect("cart_web:cart_view")
 
 
 @require_http_methods(["POST"])
@@ -87,4 +87,4 @@ def cart_remove(request: HttpRequest) -> HttpResponse:
     except (TypeError, ValueError):
         item_id = 0
     RemoveCartItemUseCase.execute(RemoveCartItemCommand(tenant_ctx=tenant_ctx, item_id=item_id))
-    return redirect("web:cart_view")
+    return redirect("cart_web:cart_view")

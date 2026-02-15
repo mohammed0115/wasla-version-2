@@ -60,7 +60,7 @@ def checkout_address(request: HttpRequest) -> HttpResponse:
     try:
         session = StartCheckoutUseCase.execute(StartCheckoutCommand(tenant_ctx=tenant_ctx))
     except CheckoutError:
-        return redirect("web:cart_view")
+        return redirect("cart_web:cart_view")
     _store_session_id(request, session.id)
 
     if request.method == "POST":
@@ -75,7 +75,7 @@ def checkout_address(request: HttpRequest) -> HttpResponse:
         SaveShippingAddressUseCase.execute(
             SaveShippingAddressCommand(tenant_ctx=tenant_ctx, session_id=session.id, address=address)
         )
-        return redirect("web:checkout_shipping")
+        return redirect("checkout_web:checkout_shipping")
 
     cart = GetCartUseCase.execute(tenant_ctx)
     return render(
@@ -90,7 +90,7 @@ def checkout_shipping(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     session_id = _get_session_id(request)
     if not session_id:
-        return redirect("web:checkout_address")
+        return redirect("checkout_web:checkout_address")
 
     if request.method == "POST":
         method_code = request.POST.get("method_code") or ""
@@ -101,13 +101,13 @@ def checkout_shipping(request: HttpRequest) -> HttpResponse:
                 )
             )
         except CheckoutError:
-            return redirect("web:checkout_address")
-        return redirect("web:checkout_payment")
+            return redirect("checkout_web:checkout_address")
+        return redirect("checkout_web:checkout_payment")
 
     try:
         checkout = GetCheckoutUseCase.execute(GetCheckoutCommand(tenant_ctx=tenant_ctx, session_id=session_id))
     except CheckoutError:
-        return redirect("web:checkout_address")
+        return redirect("checkout_web:checkout_address")
     return render(
         request,
         "store/checkout_shipping.html",
@@ -120,7 +120,7 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     session_id = _get_session_id(request)
     if not session_id:
-        return redirect("web:checkout_address")
+        return redirect("checkout_web:checkout_address")
 
     if request.method == "POST":
         provider_code = request.POST.get("provider_code") or "dummy"
@@ -129,7 +129,7 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
                 CreateOrderFromCheckoutCommand(tenant_ctx=tenant_ctx, session_id=session_id)
             )
         except CheckoutError:
-            return redirect("web:checkout_address")
+            return redirect("checkout_web:checkout_address")
         try:
             result = InitiatePaymentUseCase.execute(
                 InitiatePaymentCommand(
@@ -147,7 +147,7 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
             return render(request, "store/checkout_payment.html", {"providers": providers})
         if result.redirect_url:
             return redirect(result.redirect_url)
-        return redirect("web:order_confirmation", order_number=order.order_number)
+        return redirect("checkout_web:order_confirmation", order_number=order.order_number)
 
     providers = PaymentGatewayFacade.available_providers(tenant_id=tenant_ctx.tenant_id)
     if not providers:

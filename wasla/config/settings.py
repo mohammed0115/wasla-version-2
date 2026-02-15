@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rest_framework",
+     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "accounts.apps.AccountsConfig",
     "sms.apps.SmsConfig",
@@ -148,6 +148,11 @@ REST_FRAMEWORK = {
 }
 
 
+# Auth redirects
+LOGIN_URL = "/auth/"
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/"
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
@@ -169,12 +174,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
-LOGIN_URL = "/auth/"
-LOGIN_REDIRECT_URL = "/dashboard/"
-LOGOUT_REDIRECT_URL = "/"
-
-
 
 
 # Static files (CSS, JavaScript, Images)

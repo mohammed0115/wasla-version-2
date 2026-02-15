@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -38,6 +39,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def import_index(request: HttpRequest) -> HttpResponse:
@@ -47,6 +49,7 @@ def import_index(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/import/index.html", {"form": form, "jobs": jobs})
 
 
+@login_required
 @tenant_access_required
 @require_POST
 def import_start(request: HttpRequest) -> HttpResponse:
@@ -54,7 +57,7 @@ def import_start(request: HttpRequest) -> HttpResponse:
     form = ImportStartForm(request.POST, request.FILES)
     if not form.is_valid():
         messages.error(request, "Invalid import file.")
-        return redirect("web:dashboard_import")
+        return redirect("imports_web:dashboard_import")
 
     try:
         job = CreateImportJobUseCase.execute(
@@ -70,11 +73,12 @@ def import_start(request: HttpRequest) -> HttpResponse:
         messages.success(request, "Import completed.")
     except ImportErrorBase as exc:
         messages.error(request, str(exc))
-        return redirect("web:dashboard_import")
+        return redirect("imports_web:dashboard_import")
 
-    return redirect("web:dashboard_import_detail", job_id=job.id)
+    return redirect("imports_web:dashboard_import_detail", job_id=job.id)
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def import_job_detail(request: HttpRequest, job_id: int) -> HttpResponse:
@@ -85,7 +89,7 @@ def import_job_detail(request: HttpRequest, job_id: int) -> HttpResponse:
         )
     except ImportErrorBase as exc:
         messages.error(request, str(exc))
-        return redirect("web:dashboard_import")
+        return redirect("imports_web:dashboard_import")
 
     errors = ImportRowError.objects.filter(import_job=job).order_by("row_number")[:200]
     return render(

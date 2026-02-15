@@ -1,28 +1,69 @@
 {% extends "base.html" %}
-{% block title %}لوحة التحكم | وصلة{% endblock %}
+{% load i18n static %}
+
+{% block title %}{% trans "Dashboard" %} | {% trans "Wasla" %}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
 {% block body %}
-<div class="container">
-  <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
-    <div>
-      <div class="kicker">Wasla Dashboard</div>
-      <h1 style="margin:6px 0 0;">{% block page_title %}{% endblock %}</h1>
-      <p class="muted" style="margin:6px 0 0;">{% block page_subtitle %}{% endblock %}</p>
+<div class="dash">
+  <aside class="dash__sidebar">
+    <a class="dash__brand" href="{% url 'tenants:dashboard_home' %}">
+      <div>
+        <strong>{% trans "Wasla" %}</strong>
+        <small>{% trans "Merchant Dashboard" %}</small>
+      </div>
+    </a>
+
+    <nav class="dash__nav">
+      <a class="dash__link" href="{% url 'tenants:dashboard_home' %}">{% trans "Overview" %}</a>
+      <a class="dash__link" href="{% url 'tenants:dashboard_orders' %}">{% trans "Orders" %}</a>
+      <a class="dash__link" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
+      <a class="dash__link" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
+      <a class="dash__link" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
+      <a class="dash__link" href="{% url 'tenants:dashboard_setup_store' %}">{% trans "Store Setup" %}</a>
+      <a class="dash__link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store Settings" %}</a>
+    </nav>
+
+    <div style="height:14px"></div>
+    <div class="card" style="padding:12px 12px; background: rgba(255,255,255,.75);">
+      <div class="muted" style="font-weight:800; margin-bottom:8px;">{% trans "Language" %}</div>
+      <form action="{% url 'set_language' %}" method="post" style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button class="btn" type="submit" name="language" value="ar">العربية</button>
+        <button class="btn" type="submit" name="language" value="en">English</button>
+      </form>
+      <div style="height:10px"></div>
+      <a class="btn" href="{% url 'accounts:logout' %}" style="width:100%; text-align:center;">{% trans "Logout" %}</a>
     </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <a class="btn btn-soft" href="/dashboard/ai/tools">أدوات الذكاء الاصطناعي</a>
-      <a class="btn btn-soft" href="/dashboard/settlements">التسويات</a>
-      <a class="btn btn-soft" href="/dashboard/themes">الثيمات</a>
-      <a class="btn btn-soft" href="/dashboard/setup">إعداد المتجر</a>
-    </div>
-  </div>
-  <div style="height:18px"></div>
-  {% if messages %}
-    <div style="display:grid; gap:10px; margin-bottom:14px;">
-      {% for message in messages %}
-        <div class="card" style="padding:12px 14px;">{{ message }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
-  {% block content %}{% endblock %}
+  </aside>
+
+  <main class="dash__content">
+    <header class="dash__topbar">
+      <div>
+        <div class="chip">{{ tenant.slug|default:"—" }}</div>
+        <h1 class="dash__title">{% block page_title %}{% endblock %}</h1>
+        <p class="dash__subtitle">{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      <div class="dash__actions">
+        <a class="btn btn-primary" href="{% url 'tenants:storefront_home' %}">{% trans "View storefront" %}</a>
+      </div>
+    </header>
+
+    <div style="height:16px"></div>
+
+    {% if messages %}
+      <div style="display:grid; gap:10px; margin-bottom:14px;">
+        {% for message in messages %}
+          <div class="card" style="padding:12px 14px;">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
 </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
@@ -24,6 +25,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def analytics_events(request: HttpRequest) -> HttpResponse:
@@ -41,6 +43,7 @@ def analytics_events(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def analytics_experiments(request: HttpRequest) -> HttpResponse:
@@ -49,6 +52,7 @@ def analytics_experiments(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/analytics/experiments.html", {"experiments": experiments})
 
 
+@login_required
 @tenant_access_required
 @require_GET
 def analytics_experiment_detail(request: HttpRequest, key: str) -> HttpResponse:
