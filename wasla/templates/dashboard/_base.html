@@ -9,6 +9,8 @@
   
 {% endblock %}
 
+{% block global_lang_switcher %}{% endblock %}
+
 {% block body %}
 <div class="dash">
   <aside class="dash__sidebar">
@@ -29,43 +31,41 @@
       <a class="dash__link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store Settings" %}</a>
     </nav>
 
-    <div style="height:14px"></div>
-    <div class="card" style="padding:12px 12px; background: rgba(255,255,255,.75);">
-      <div class="muted" style="font-weight:800; margin-bottom:8px;">{% trans "Language" %}</div>
-      <form action="{% url 'set_language' %}" method="post" style="display:flex; gap:8px; flex-wrap:wrap;">
+    <div class="card dash__sidebar-panel">
+      <div class="dash__sidebar-title">{% trans "Language" %}</div>
+      <form action="{% url 'set_language' %}" method="post" class="dash__lang-form">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
-        <button class="btn" type="submit" name="language" value="ar">العربية</button>
-        <button class="btn" type="submit" name="language" value="en">English</button>
+        <button class="btn btn-soft" type="submit" name="language" value="ar">العربية</button>
+        <button class="btn btn-soft" type="submit" name="language" value="en">English</button>
       </form>
-      <div style="height:10px"></div>
-      <a class="btn" href="{% url 'accounts:logout' %}" style="width:100%; text-align:center;">{% trans "Logout" %}</a>
+      <a class="btn btn-soft btn-block dash__logout" href="{% url 'accounts:logout' %}">{% trans "Logout" %}</a>
     </div>
   </aside>
 
-  <main class="dash__content">
+  <main class="dash__main">
     <header class="dash__topbar">
-      <div>
-        <div class="chip">{{ tenant.slug|default:"—" }}</div>
+      <div class="dash__title-wrap">
+        <span class="dash__tenant">{{ tenant.slug|default:"—" }}</span>
         <h1 class="dash__title">{% block page_title %}{% endblock %}</h1>
         <p class="dash__subtitle">{% block page_subtitle %}{% endblock %}</p>
       </div>
-      <div class="dash__actions">
+      <div>
         <a class="btn btn-primary" href="{% url 'tenants:storefront_home' %}">{% trans "View storefront" %}</a>
       </div>
     </header>
 
-    <div style="height:16px"></div>
+    <section class="dash__content">
+      {% if messages %}
+        <div class="dash__messages">
+          {% for message in messages %}
+            <div class="card dash__message">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
-    {% if messages %}
-      <div style="display:grid; gap:10px; margin-bottom:14px;">
-        {% for message in messages %}
-          <div class="card" style="padding:12px 14px;">{{ message }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    {% block content %}{% endblock %}
+      {% block content %}{% endblock %}
+    </section>
   </main>
 </div>
 {% endblock %}

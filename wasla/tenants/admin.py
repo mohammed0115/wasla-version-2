@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 from django.template.response import TemplateResponse
 from django.urls import path
 
@@ -35,6 +36,17 @@ class TenantAdmin(admin.ModelAdmin):
     search_fields = ("slug", "name", "domain", "subdomain")
     ordering = ("id",)
     exclude = ("setup_step", "setup_completed", "setup_completed_at")
+    actions = ("activate_stores", "deactivate_stores")
+
+    @admin.action(description="Activate selected stores")
+    def activate_stores(self, request, queryset):
+        now = timezone.now()
+        queryset.update(is_active=True, activated_at=now, deactivated_at=None)
+
+    @admin.action(description="Deactivate selected stores")
+    def deactivate_stores(self, request, queryset):
+        now = timezone.now()
+        queryset.update(is_active=False, deactivated_at=now)
 
 
 @admin.register(TenantMembership)

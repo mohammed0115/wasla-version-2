@@ -10,6 +10,7 @@ from customers.models import Customer
 from orders.models import Order
 from orders.services.order_lifecycle_service import OrderLifecycleService
 from shipping.models import Shipment
+from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
 from wallet.models import Wallet
 
 
@@ -80,3 +81,47 @@ class OrderLifecycleServiceTests(TestCase):
         OrderLifecycleService.transition(order=order, new_status="completed")
         wallet.refresh_from_db()
         self.assertEqual(str(wallet.balance), "25.00")
+
+
+class OrderRepositoryTenantIsolationTests(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.repo = DjangoOrderRepository()
+        self.store_a = 101
+        self.store_b = 202
+        self.customer_a = Customer.objects.create(
+            store_id=self.store_a,
+            email="a@example.com",
+            full_name="Customer A",
+            group="retail",
+            is_active=True,
+        )
+        self.customer_b = Customer.objects.create(
+            store_id=self.store_b,
+            email="b@example.com",
+            full_name="Customer B",
+            group="retail",
+            is_active=True,
+        )
+
+    def test_metrics_are_scoped_to_tenant_store_id(self):
+        order_a = Order.objects.create(
+            store_id=self.store_a,
+            order_number=str(uuid.uuid4())[:12],
+            customer=self.customer_a,
+            status="paid",
+            total_amount=Decimal("30.00"),
+        )
+        Order.objects.create(
+            store_id=self.store_b,
+            order_number=str(uuid.uuid4())[:12],
+            customer=self.customer_b,
+            status="paid",
+            total_amount=Decimal("90.00"),
+        )
+
+        self.assertEqual(self.repo.count_orders_today(self.store_a), 1)
+        self.assertEqual(self.repo.sum_sales_today(self.store_a), Decimal("30.00"))
+        recent = self.repo.recent_orders(self.store_a)
+        self.assertEqual(len(recent), 1)
+        self.assertEqual(recent[0].id, order_a.id)

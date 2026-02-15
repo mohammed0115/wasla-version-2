@@ -9,7 +9,7 @@
   <title>{% block title %}Wasla{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% if LANGUAGE_BIDI %}
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}">
@@ -19,19 +19,21 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-  <div class="lang-switcher" aria-label="Language">
-    <form action="{% url 'set_language' %}" method="post">
-      {% csrf_token %}
-      <input name="next" type="hidden" value="{{ request.get_full_path }}">
-      {% if LANGUAGE_CODE == 'ar' %}
-        <input type="hidden" name="language" value="en">
-        <button type="submit" class="btn btn-soft">English</button>
-      {% else %}
-        <input type="hidden" name="language" value="ar">
-        <button type="submit" class="btn btn-soft">العربية</button>
-      {% endif %}
-    </form>
-  </div>
+  {% block global_lang_switcher %}
+    <div class="lang-switcher" aria-label="Language">
+      <form action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input name="next" type="hidden" value="{{ request.get_full_path }}">
+        {% if LANGUAGE_CODE == 'ar' %}
+          <input type="hidden" name="language" value="en">
+          <button type="submit" class="btn btn-soft">English</button>
+        {% else %}
+          <input type="hidden" name="language" value="ar">
+          <button type="submit" class="btn btn-soft">العربية</button>
+        {% endif %}
+      </form>
+    </div>
+  {% endblock %}
   {% block body %}{% endblock %}
   <script src="{% static 'js/app.js' %}"></script>
   {% block extra_js %}{% endblock %}

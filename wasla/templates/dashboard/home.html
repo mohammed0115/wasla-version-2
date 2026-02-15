@@ -5,53 +5,41 @@
 {% block page_subtitle %}{% trans "A quick snapshot of your store." %}{% endblock %}
 
 {% block content %}
-  <div style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px;">
-    <div class="card" style="padding:14px;">
-      <div class="muted" style="font-weight:800;">{% trans "Sales (today)" %}</div>
-      <div style="font-size:24px; font-weight:900; margin-top:6px;">—</div>
+  <section class="dash__kpi-grid">
+    <div class="card dash__kpi-card">
+      <div class="dash__kpi-label">{% trans "Sales (today)" %}</div>
+      <div class="dash__kpi-value">—</div>
     </div>
-    <div class="card" style="padding:14px;">
-      <div class="muted" style="font-weight:800;">{% trans "Orders" %}</div>
-      <div style="font-size:24px; font-weight:900; margin-top:6px;">—</div>
+    <div class="card dash__kpi-card">
+      <div class="dash__kpi-label">{% trans "Orders" %}</div>
+      <div class="dash__kpi-value">—</div>
     </div>
-    <div class="card" style="padding:14px;">
-      <div class="muted" style="font-weight:800;">{% trans "Visitors" %}</div>
-      <div style="font-size:24px; font-weight:900; margin-top:6px;">—</div>
+    <div class="card dash__kpi-card">
+      <div class="dash__kpi-label">{% trans "Visitors" %}</div>
+      <div class="dash__kpi-value">—</div>
     </div>
-    <div class="card" style="padding:14px;">
-      <div class="muted" style="font-weight:800;">{% trans "Conversion" %}</div>
-      <div style="font-size:24px; font-weight:900; margin-top:6px;">—</div>
+    <div class="card dash__kpi-card">
+      <div class="dash__kpi-label">{% trans "Conversion" %}</div>
+      <div class="dash__kpi-value">—</div>
     </div>
-  </div>
+  </section>
 
-  <div style="height:14px"></div>
-
-  <div class="card" style="padding:16px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-      <div>
-        <div style="font-weight:900;">{% trans "Quick links" %}</div>
-        <div class="muted" style="font-weight:700; margin-top:4px;">{% trans "Jump to key areas of your store." %}</div>
+  <section class="card dash__section">
+    <div class="dash__section-header">
+      <div class="stack-8">
+        <h2 class="dash__section-title">{% trans "Quick links" %}</h2>
+        <p class="dash__section-note">{% trans "Jump to key areas of your store." %}</p>
       </div>
     </div>
-    <div style="height:12px"></div>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
-      <a class="card" style="padding:14px;" href="{% url 'tenants:dashboard_orders' %}">{% trans "Orders" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'imports_web:dashboard_import' %}">{% trans "Imports" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'exports_web:dashboard_exports' %}">{% trans "Exports" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'analytics_web:dashboard_analytics_events' %}">{% trans "Analytics" %}</a>
-      <a class="card" style="padding:14px;" href="{% url 'tenants:store_settings_update' %}">{% trans "Store settings" %}</a>
+    <div class="dash__quick-grid">
+      <a class="dash__quick-link" href="{% url 'tenants:dashboard_orders' %}">{% trans "Orders" %}</a>
+      <a class="dash__quick-link" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
+      <a class="dash__quick-link" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
+      <a class="dash__quick-link" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
+      <a class="dash__quick-link" href="{% url 'imports_web:dashboard_import' %}">{% trans "Imports" %}</a>
+      <a class="dash__quick-link" href="{% url 'exports_web:dashboard_exports' %}">{% trans "Exports" %}</a>
+      <a class="dash__quick-link" href="{% url 'analytics_web:dashboard_analytics_events' %}">{% trans "Analytics" %}</a>
+      <a class="dash__quick-link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store settings" %}</a>
     </div>
-  </div>
-
-  <style>
-    @media (max-width: 980px){
-      div[style*="repeat(4"]{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-    }
-    @media (max-width: 520px){
-      div[style*="repeat(4"]{ grid-template-columns: 1fr !important; }
-    }
-  </style>
+  </section>
 {% endblock %}

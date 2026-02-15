@@ -1,8 +1,17 @@
 /* RTL overrides (Arabic) */
-html[dir="rtl"] body { direction: rtl; text-align: right; }
-html[dir="rtl"] .container { direction: rtl; }
-html[dir="rtl"] .text-start { text-align: right !important; }
-html[dir="rtl"] .text-end { text-align: left !important; }
-html[dir="rtl"] .ms-auto { margin-right: auto !important; margin-left: 0 !important; }
-html[dir="rtl"] .me-auto { margin-left: auto !important; margin-right: 0 !important; }
-html[dir="rtl"] .lang-switcher { left: 16px; right: auto; }
+html[dir="rtl"] body {
+	direction: rtl;
+	text-align: start;
+}
+
+html[dir="rtl"] .container {
+	direction: rtl;
+}
+
+html[dir="rtl"] .text-start {
+	text-align: start;
+}
+
+html[dir="rtl"] .text-end {
+	text-align: end;
+}

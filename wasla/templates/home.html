@@ -10,12 +10,26 @@
 {% block body %}
   {% get_current_language as LANGUAGE_CODE %}
 
+<<<<<<< HEAD
   <nav class="navbar navbar-dark bg-primary">
     <div class="container">
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'home' %}">
         <img src="{% static 'images/logo.jpeg' %}" alt="{% trans 'Wasla' %}" class="wasla-logo" />
         <span>{% trans "Wasla" %}</span>
       </a>
+=======
+  <div class="hero__grid">
+    <div class="hero__copy">
+      <h1 class="hero__title">{% trans "Build your online store in minutes" %}</h1>
+      <p class="hero__subtitle">
+        {% trans "A store-builder platform designed for Saudi & Gulf merchants." %}
+        {% trans "Beautiful storefronts, subscriptions, and AI tools." %}
+      </p>
+      <div class="hero__cta">
+        <a class="btn btn-primary" href="{% url 'accounts:auth' %}">{% trans "Get started" %}</a>
+        <a class="btn btn-soft" href="{% url 'accounts:auth' %}">{% trans "See plans" %}</a>
+      </div>
+>>>>>>> 832f5c3e885d0444fc716cb968d915a3e44d23a9
 
       <form action="{% url 'set_language' %}" method="post" class="d-inline ms-auto">
         {% csrf_token %}
@@ -28,6 +42,7 @@
     </div>
   </nav>
 
+<<<<<<< HEAD
   <main class="container py-4 py-md-5">
     <section id="top" class="wasla-hero" aria-label="{% trans 'Wasla hero banner' %}">
       <div class="container position-relative">
@@ -134,6 +149,15 @@
               </div>
             </div>
           </div>
+=======
+    <div class="hero__card">
+      <div class="card stack-16">
+        <h2 class="hero__card-title">{% trans "Start your merchant journey" %}</h2>
+        <p class="hero__card-subtitle">{% trans "Follow the onboarding steps, choose a plan, then launch your store." %}</p>
+        <div class="hero__card-actions">
+          <a class="btn btn-primary btn-block" href="{% url 'accounts:auth' %}">{% trans "Start now" %}</a>
+          <a class="btn btn-soft btn-block" href="{% url 'ai_web:dashboard_ai_visual_search' %}">{% trans "Try AI Visual Search" %}</a>
+>>>>>>> 832f5c3e885d0444fc716cb968d915a3e44d23a9
         </div>
       </div>
     </section>
