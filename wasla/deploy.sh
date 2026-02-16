@@ -53,6 +53,33 @@ pip install -U pip
 echo "📦 Install requirements"
 pip install -r "$PROJECT_DIR/requirements.txt"
 
+# -------- Language / i18n --------
+if ! command -v msgfmt >/dev/null 2>&1; then
+  echo "🛠️ msgfmt not found -> installing gettext"
+  sudo apt-get update -y
+  sudo apt-get install -y gettext
+fi
+
+echo "🌐 Compile translation files (.po -> .mo)"
+if ! sudo -u www-data "$PYTHON" manage.py compilemessages; then
+  echo "⚠️ compilemessages failed (likely missing msgfmt). Using Python fallback..."
+  pip install -q polib
+  sudo -u www-data "$PYTHON" - <<'PY'
+from pathlib import Path
+import polib
+
+base = Path('.').resolve()
+compiled = 0
+for po_path in base.rglob('locale/*/LC_MESSAGES/*.po'):
+    mo_path = po_path.with_suffix('.mo')
+    po = polib.pofile(str(po_path))
+    po.save_as_mofile(str(mo_path))
+    compiled += 1
+
+print(f"✅ Fallback compiled {compiled} locale file(s).")
+PY
+fi
+
 # -------- Django Checks --------
 echo "✅ Django system check"
 sudo -u www-data "$PYTHON" manage.py check

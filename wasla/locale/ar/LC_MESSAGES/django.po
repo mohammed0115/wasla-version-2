@@ -146,3 +146,39 @@ msgstr "بيسك"
 
 msgid "Feature"
 msgstr "الميزة"
+
+msgid "Dashboard"
+msgstr "لوحة التحكم"
+
+msgid "Merchant Dashboard"
+msgstr "لوحة تحكم التاجر"
+
+msgid "Overview"
+msgstr "نظرة عامة"
+
+msgid "Orders"
+msgstr "الطلبات"
+
+msgid "AI Tools"
+msgstr "أدوات الذكاء الاصطناعي"
+
+msgid "Settlements"
+msgstr "التسويات"
+
+msgid "Themes"
+msgstr "القوالب"
+
+msgid "Store Setup"
+msgstr "إعداد المتجر"
+
+msgid "Store Settings"
+msgstr "إعدادات المتجر"
+
+msgid "Language"
+msgstr "اللغة"
+
+msgid "Logout"
+msgstr "تسجيل الخروج"
+
+msgid "View storefront"
+msgstr "عرض المتجر"
