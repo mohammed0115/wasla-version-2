@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -162,6 +163,7 @@ INSTALLED_APPS = [
     "webhooks.apps.WebhooksConfig",
     "system.apps.SystemConfig",
     "stores.apps.StoresConfig"
+    ,"apps.visual_search.apps.VisualSearchConfig"
     
     
 ]
@@ -202,33 +204,41 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+DB_DEFAULT_ALIAS = (os.getenv("DJANGO_DB_DEFAULT", "sqlite") or "sqlite").strip().lower()
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
+SQLITE_DB_NAME = os.getenv("SQLITE_DB_NAME", str(BASE_DIR / "db.sqlite3"))
 
-DB_ENGINE = os.getenv("DB_ENGINE", os.getenv("DJANGO_DB_ENGINE", "django.db.backends.sqlite3")).strip()
-if DB_ENGINE == "django.db.backends.postgresql":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "wasla")),
-            "USER": os.getenv("DB_USER", os.getenv("POSTGRES_USER", "wasla")),
-            "PASSWORD": os.getenv("DB_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")),
-            "HOST": os.getenv("DB_HOST", os.getenv("POSTGRES_HOST", "127.0.0.1")),
-            "PORT": os.getenv("DB_PORT", os.getenv("POSTGRES_PORT", "5432")),
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+MYSQL_DB_NAME = os.getenv("MYSQL_DB_NAME", os.getenv("DB_NAME", "wasla"))
+MYSQL_DB_USER = os.getenv("MYSQL_DB_USER", os.getenv("DB_USER", "root"))
+MYSQL_DB_PASSWORD = os.getenv("MYSQL_DB_PASSWORD", os.getenv("DB_PASSWORD", ""))
+MYSQL_DB_HOST = os.getenv("MYSQL_DB_HOST", os.getenv("DB_HOST", "127.0.0.1"))
+MYSQL_DB_PORT = os.getenv("MYSQL_DB_PORT", os.getenv("DB_PORT", "3306"))
+
+SQLITE_CONFIG = {
+    "ENGINE": "django.db.backends.sqlite3",
+    "NAME": SQLITE_DB_NAME,
+}
+
+MYSQL_CONFIG = {
+    "ENGINE": "django.db.backends.mysql",
+    "NAME": MYSQL_DB_NAME,
+    "USER": MYSQL_DB_USER,
+    "PASSWORD": MYSQL_DB_PASSWORD,
+    "HOST": MYSQL_DB_HOST,
+    "PORT": MYSQL_DB_PORT,
+    "OPTIONS": {
+        "charset": "utf8mb4",
+    },
+}
+
+if DB_DEFAULT_ALIAS not in {"sqlite", "mysql"}:
+    raise ImproperlyConfigured("DJANGO_DB_DEFAULT must be either 'sqlite' or 'mysql'.")
+
+DATABASES = {
+    "default": SQLITE_CONFIG if DB_DEFAULT_ALIAS == "sqlite" else MYSQL_CONFIG,
+    "sqlite": SQLITE_CONFIG,
+    "mysql": MYSQL_CONFIG,
+}
 
 
 # Password validation

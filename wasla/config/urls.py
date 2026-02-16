@@ -15,6 +15,7 @@ urlpatterns = [
     path("", include(("analytics.interfaces.web.urls", "analytics_web"), namespace="analytics_web")),
     path("", include(("cart.interfaces.web.urls", "cart_web"), namespace="cart_web")),
     path("", include(("checkout.interfaces.web.urls", "checkout_web"), namespace="checkout_web")),
+    path("", include(("apps.visual_search.presentation.urls", "visual_search"), namespace="visual_search")),
     path("", include(("exports.interfaces.web.urls", "exports_web"), namespace="exports_web")),
     path("", include(("imports.interfaces.web.urls", "imports_web"), namespace="imports_web")),
     path("", include(("themes.interfaces.web.urls", "themes_web"), namespace="themes_web")),
