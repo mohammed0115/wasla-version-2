@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
 
 from .forms import (
     LoginForm,
@@ -125,7 +126,7 @@ def verify_otp(request: HttpRequest) -> HttpResponse:
                 clear_otp(request)
 
                 login(request, user)
-                return redirect("accounts:persona_welcome")
+                return redirect(resolve_onboarding_state(request))
 
             form.add_error(None, "رمز غير صحيح أو منتهي الصلاحية.")
         else:

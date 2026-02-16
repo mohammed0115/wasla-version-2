@@ -1,87 +1,100 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Visual Search{% endblock %}
 
 {% block extra_css %}
-<style>
-  :root {
-    --wasla-primary: #C9A227;
-    --wasla-secondary: #0A1628;
-    --wasla-accent: #1E3A5F;
-  }
-  .vs-wrapper { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; }
-  .vs-card { background: #fff; border: 1px solid #e7e7e7; border-radius: 14px; padding: 1rem; }
-  .vs-title { color: var(--wasla-secondary); margin: 0 0 .5rem; }
-  .vs-uploader { border: 2px dashed var(--wasla-accent); border-radius: 12px; padding: 1rem; text-align: center; }
-  .vs-uploader.dragover { background: #f5f8fd; }
-  .vs-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-top: .75rem; }
-  .vs-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .vs-item { border: 1px solid #ececec; border-radius: 12px; padding: .75rem; background: #fff; }
-  .vs-item img { width: 100%; height: 180px; object-fit: cover; border-radius: 10px; background: #f3f3f3; }
-  .vs-pill { color: #fff; background: var(--wasla-accent); border-radius: 999px; padding: .2rem .6rem; font-size: .8rem; }
-  .vs-actions { margin-top: .75rem; display: flex; gap: .5rem; flex-wrap: wrap; }
-  .vs-btn { border: 0; border-radius: 10px; padding: .6rem .9rem; cursor: pointer; }
-  .vs-btn-primary { background: var(--wasla-primary); color: #111; font-weight: 600; }
-  .vs-btn-dark { background: var(--wasla-secondary); color: #fff; }
-  .vs-error { color: #b00020; margin-top: .5rem; }
-  .vs-empty { margin-top: 1rem; border: 1px dashed #d8d8d8; border-radius: 10px; padding: 1rem; color: #555; }
-  .vs-spinner { display: none; margin-top: .5rem; }
-  .vs-spinner.active { display: inline-block; }
-  @media (max-width: 768px) { .vs-filters { grid-template-columns: 1fr 1fr; } }
-</style>
+<link rel="stylesheet" href="{% static 'css/visual_search.css' %}">
 {% endblock %}
 
 {% block body %}
-<div class="vs-wrapper">
+<div class="vs-shell">
   <div class="vs-card">
     <h1 class="vs-title">Visual Search Engine</h1>
     <form method="post" enctype="multipart/form-data" id="visual-search-form">
       {% csrf_token %}
 
-      <div class="vs-uploader" id="dropzone">
-        <p>Upload product image or drag & drop</p>
-        <input type="file" name="image_file" id="image_file" accept="image/jpeg,image/png,image/webp">
-        <p style="margin-top:.5rem;">or</p>
-        <input type="url" name="image_url" placeholder="https://example.com/product.jpg" style="width:100%; max-width:520px;">
+      <div class="vs-dropzone" id="vs-dropzone">
+        <p class="vs-uploader-text">Upload product image or drag & drop</p>
+        <input class="vs-input" type="file" name="image_file" id="image_file" accept="image/jpeg,image/png,image/webp">
+        <p class="vs-or">or</p>
+        <input class="vs-input" type="url" name="image_url" value="{{ image_url }}" placeholder="https://example.com/product.jpg">
       </div>
 
       <div class="vs-filters">
-        <input type="number" step="0.01" name="min_price" placeholder="Min price" value="{{ min_price }}">
-        <input type="number" step="0.01" name="max_price" placeholder="Max price" value="{{ max_price }}">
-        <select name="sort_by">
+        <input class="vs-input" type="number" step="0.01" name="min_price" placeholder="Min price" value="{{ min_price }}">
+        <input class="vs-input" type="number" step="0.01" name="max_price" placeholder="Max price" value="{{ max_price }}">
+        <select class="vs-input" name="sort_by">
           <option value="similarity" {% if sort_by == 'similarity' %}selected{% endif %}>Sort by similarity</option>
-          <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price low to high</option>
-          <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price high to low</option>
+          <option value="price_low" {% if sort_by == 'price_low' or sort_by == 'price_asc' %}selected{% endif %}>Price low to high</option>
+          <option value="price_high" {% if sort_by == 'price_high' or sort_by == 'price_desc' %}selected{% endif %}>Price high to low</option>
+          <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
+        </select>
+        <select class="vs-input" name="max_results">
+          <option value="12" {% if max_results == '12' %}selected{% endif %}>12</option>
+          <option value="24" {% if max_results == '24' %}selected{% endif %}>24</option>
+          <option value="48" {% if max_results == '48' %}selected{% endif %}>48</option>
         </select>
         <div class="vs-actions">
           <button class="vs-btn vs-btn-primary" type="submit">Search</button>
-          <button class="vs-btn vs-btn-dark" type="reset">Reset</button>
+          <a class="vs-btn vs-btn-dark" href="{% url 'visual_search:visual_search' %}">Reset</a>
         </div>
       </div>
 
-      <div id="spinner" class="vs-spinner" aria-live="polite">Searching...</div>
+      <div id="spinner" class="vs-spinner" aria-live="polite">
+        <span class="vs-spinner-dot" aria-hidden="true"></span>
+        <span>Searching for similar products...</span>
+      </div>
+      {% if info_message %}
+      <p class="vs-info">{{ info_message }}</p>
+      {% endif %}
       {% if error_message %}
       <p class="vs-error">{{ error_message }}</p>
       {% endif %}
     </form>
 
+    {% if attributes %}
+      <div class="vs-attrs">
+        {% for key, value in attributes.items %}
+          <span class="vs-attr">{{ key }}: {{ value }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% if results %}
-      <div class="vs-results">
+      <div class="vs-grid">
         {% for item in results %}
           <article class="vs-item">
-            {% if item.image_url %}
-              <img src="{{ item.image_url }}" alt="{{ item.title }}">
+            {% if request.tenant and request.tenant.slug %}
+              <a class="vs-item-link" href="{% url 'cart_web:product_detail' store_slug=request.tenant.slug product_id=item.product_id %}">
+                {% if item.image_url %}
+                  <img src="{{ item.image_url }}" alt="{{ item.title }}">
+                {% else %}
+                  <div class="vs-no-image">No image available</div>
+                {% endif %}
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.price }} {{ item.currency }}</p>
+                <span class="vs-pill">Similarity {{ item.similarity_score|floatformat:3 }}</span>
+              </a>
             {% else %}
-              <img alt="No image available">
+              <div class="vs-item-link">
+                {% if item.image_url %}
+                  <img src="{{ item.image_url }}" alt="{{ item.title }}">
+                {% else %}
+                  <div class="vs-no-image">No image available</div>
+                {% endif %}
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.price }} {{ item.currency }}</p>
+                <span class="vs-pill">Similarity {{ item.similarity_score|floatformat:3 }}</span>
+              </div>
             {% endif %}
-            <h3>{{ item.title }}</h3>
-            <p>{{ item.price }} SAR</p>
-            <span class="vs-pill">Similarity {{ item.similarity_score|floatformat:3 }}</span>
           </article>
         {% endfor %}
       </div>
+    {% elif has_searched and not error_message %}
+      <div class="vs-empty">No matching products yet. Try another image, URL, or adjust your filters.</div>
     {% else %}
-      <div class="vs-empty">No results yet. Upload an image to start visual search.</div>
+      <div class="vs-empty">Start by uploading an image or adding an image URL to discover similar products.</div>
     {% endif %}
   </div>
 </div>
@@ -92,7 +105,7 @@
   (function () {
     const form = document.getElementById('visual-search-form');
     const spinner = document.getElementById('spinner');
-    const dropzone = document.getElementById('dropzone');
+    const dropzone = document.getElementById('vs-dropzone');
     const input = document.getElementById('image_file');
 
     form.addEventListener('submit', function () {

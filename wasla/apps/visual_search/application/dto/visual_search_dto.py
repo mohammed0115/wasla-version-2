@@ -10,8 +10,8 @@ class VisualSearchQueryDTO:
     image_file: object | None = None
     image_url: str | None = None
     max_results: int = 12
-    min_price: str | None = None
-    max_price: str | None = None
+    min_price: Decimal | None = None
+    max_price: Decimal | None = None
     sort_by: str = "similarity"
 
 
@@ -22,3 +22,10 @@ class VisualSearchResultDTO:
     price: Decimal
     similarity_score: float
     image_url: str
+    currency: str = "SAR"
+
+
+@dataclass(frozen=True)
+class VisualSearchResponseDTO:
+    results: list[VisualSearchResultDTO]
+    attributes: dict

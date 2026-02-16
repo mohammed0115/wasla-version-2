@@ -12,7 +12,7 @@
               <div style="font-weight:800;">{{ t.name }}</div>
               <div class="muted">{{ t.code }}</div>
             </div>
-            <form method="post" action="/dashboard/themes/apply" style="display:flex; gap:10px;">
+            <form method="post" action="{% url 'themes_web:dashboard_themes' %}" style="display:flex; gap:10px;">
               {% csrf_token %}
               <input type="hidden" name="theme_code" value="{{ t.code }}">
               <button class="btn btn-soft" type="submit">تطبيق</button>

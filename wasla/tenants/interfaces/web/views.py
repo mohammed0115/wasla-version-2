@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
 
 from tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from tenants.application.use_cases.create_store import CreateStoreCommand, CreateStoreUseCase
@@ -53,6 +54,7 @@ from tenants.application.use_cases.get_merchant_dashboard_metrics import (
 from tenants.domain.errors import (
     StoreAccessDeniedError,
     StoreDomainError,
+    StoreInactiveError,
     StoreNotReadyError,
     StoreSlugAlreadyTakenError,
 )
@@ -599,7 +601,6 @@ def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
 @require_GET
 def dashboard_home(request: HttpRequest) -> HttpResponse:
     """Minimal dashboard landing page.
@@ -607,9 +608,18 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     - Requires login and tenant access
     - Keeps view thin; KPI widgets can be added later
     """
+    destination = resolve_onboarding_state(request)
+    if destination != request.path:
+        return redirect(destination)
+
     tenant = getattr(request, "tenant", None)
     if tenant is None:
-        return redirect("tenants:dashboard_setup_store")
+        return redirect("tenants:store_create")
+
+    try:
+        EnsureTenantOwnershipPolicy.ensure_can_access(user=request.user, tenant=tenant)
+    except (StoreAccessDeniedError, StoreInactiveError) as exc:
+        raise PermissionDenied(str(exc)) from exc
 
     use_case = GetMerchantDashboardMetricsUseCase(
         order_repository=DjangoOrderRepository(),

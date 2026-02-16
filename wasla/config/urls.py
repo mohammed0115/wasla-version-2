@@ -26,6 +26,7 @@ urlpatterns = [
     # APIs
     path("api/", include(("ai.interfaces.api.urls", "ai_api"), namespace="ai_api")),
     path("api/", include(("analytics.interfaces.api.urls", "analytics_api"), namespace="analytics_api")),
+    path("api/", include(("apps.visual_search.presentation.api_urls", "visual_search_api"), namespace="visual_search_api")),
     path("api/", include(("cart.interfaces.api.urls", "cart_api"), namespace="cart_api")),
     path("api/", include(("checkout.interfaces.api.urls", "checkout_api"), namespace="checkout_api")),
     path("api/", include(("exports.interfaces.api.urls", "exports_api"), namespace="exports_api")),

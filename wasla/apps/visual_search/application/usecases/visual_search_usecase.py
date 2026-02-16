@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from apps.visual_search.application.dto.visual_search_dto import (
     VisualSearchQueryDTO,
+    VisualSearchResponseDTO,
     VisualSearchResultDTO,
 )
 from apps.visual_search.application.interfaces.repository_port import VisualSearchRepositoryPort
@@ -18,16 +19,22 @@ class VisualSearchUseCase:
     max_file_size_bytes: int = 5 * 1024 * 1024
 
     def execute(self, query: VisualSearchQueryDTO) -> list[VisualSearchResultDTO]:
+        return self.run(query).results
+
+    def run(self, query: VisualSearchQueryDTO) -> VisualSearchResponseDTO:
         self._validate_query(query)
 
-        embedding_vector, _attributes = self._extract_features(query)
+        embedding_vector, attributes = self._extract_features(query)
         found = self.repository.find_similar_products(
             tenant_id=query.tenant_id,
             embedding_vector=embedding_vector,
             limit=query.max_results,
+            min_price=query.min_price,
+            max_price=query.max_price,
+            sort_by=query.sort_by,
         )
         if not found:
-            return self._safe_fallback()
+            return VisualSearchResponseDTO(results=self._safe_fallback(), attributes=attributes)
 
         mapped: list[VisualSearchResultDTO] = []
         for row in found:
@@ -41,14 +48,10 @@ class VisualSearchUseCase:
                     price=Decimal(str(price_raw)),
                     similarity_score=row.similarity_score.value,
                     image_url=attr_image_url,
+                    currency=str(row.extracted_attributes.get("currency") or "SAR"),
                 )
             )
-
-        results = self._apply_filters_and_sort(mapped, query)
-
-        if not results:
-            return self._safe_fallback()
-        return results
+        return VisualSearchResponseDTO(results=mapped, attributes=attributes)
 
     def _safe_fallback(self) -> list[VisualSearchResultDTO]:
         return []
@@ -95,33 +98,3 @@ class VisualSearchUseCase:
             "has_url": bool(query.image_url),
         }
         return vector, attributes
-
-    def _apply_filters_and_sort(
-        self,
-        results: list[VisualSearchResultDTO],
-        query: VisualSearchQueryDTO,
-    ) -> list[VisualSearchResultDTO]:
-        filtered = list(results)
-
-        if query.min_price:
-            try:
-                min_value = Decimal(str(query.min_price))
-                filtered = [row for row in filtered if row.price >= min_value]
-            except Exception:
-                pass
-
-        if query.max_price:
-            try:
-                max_value = Decimal(str(query.max_price))
-                filtered = [row for row in filtered if row.price <= max_value]
-            except Exception:
-                pass
-
-        if query.sort_by == "price_asc":
-            filtered.sort(key=lambda row: row.price)
-        elif query.sort_by == "price_desc":
-            filtered.sort(key=lambda row: row.price, reverse=True)
-        else:
-            filtered.sort(key=lambda row: row.similarity_score, reverse=True)
-
-        return filtered
