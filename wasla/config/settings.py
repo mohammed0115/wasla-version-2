@@ -319,8 +319,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "YazYaz@2030")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "/static/"
-# STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# التعديل هنا ليتوافق مع مسار Nginx في الصورة
+STATIC_ROOT = BASE_DIR / "static" 
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
