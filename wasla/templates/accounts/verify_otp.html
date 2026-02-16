@@ -1,44 +1,144 @@
 {% extends "base.html" %}
 {% load static i18n %}
 {% block title %}{% trans "Verify" %}{% endblock %}
+{% block global_lang_switcher %}{% endblock %}
+{% block extra_css %}
+<style>
+  .otp-header {
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .otp-title {
+    margin: 0;
+    font-weight: 900;
+  }
+
+  .otp-subtitle {
+    margin-top: 6px;
+  }
+
+  .otp-form {
+    margin-top: 18px;
+  }
+
+  .otp-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .otp-grid input {
+    min-height: 52px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--text);
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    outline: none;
+  }
+
+  .otp-grid input:focus {
+    border-color: var(--primary);
+  }
+
+  .otp-flash,
+  .otp-errors {
+    margin-top: 10px;
+  }
+
+  .otp-flash-item,
+  .otp-error-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .otp-flash-item.error,
+  .otp-error-item {
+    color: var(--accent);
+  }
+
+  .otp-links {
+    margin-top: 14px;
+    text-align: center;
+  }
+
+  .otp-logout {
+    color: var(--accent);
+  }
+
+  @media (max-width: 560px) {
+    .otp-grid {
+      gap: 8px;
+    }
+
+    .otp-grid input {
+      min-height: 48px;
+    }
+  }
+</style>
+{% endblock %}
 {% block body %}
-<div class="salla-shell">
-  <div class="salla-card">
-    <div class="salla-topbar">
+<div class="auth-shell">
+  <div class="card auth-card stack-24">
+    <div class="auth-header">
       <form action="{% url 'set_language' %}" method="post" style="display:inline;">
         {% csrf_token %}
         <input name="next" type="hidden" value="{{ request.get_full_path }}">
         {% get_current_language as LANGUAGE_CODE %}
         {% if LANGUAGE_CODE == 'ar' %}
           <input type="hidden" name="language" value="en">
-          <button class="salla-lang" type="submit">English</button>
+          <button class="btn btn-soft" type="submit">English</button>
         {% else %}
           <input type="hidden" name="language" value="ar">
-          <button class="salla-lang" type="submit">العربية</button>
+          <button class="btn btn-soft" type="submit">العربية</button>
         {% endif %}
       </form>
-      <div class="salla-brand">
-        <img src="{% static 'images/logo.jpeg' %}" alt="Wasla">
-      </div>
+      <img class="auth-logo" src="{% static 'images/logo.jpeg' %}" alt="Wasla">
     </div>
 
-    <div style="text-align:center;margin-top:60px">
-      <h2 style="margin:0 0 8px;font-weight:900">{% trans "Enter verification code" %}</h2>
-      <div class="muted">{% trans "We sent a code to" %} {{ masked_phone }}</div>
+    <div class="otp-header">
+      <h2 class="otp-title">{% trans "Enter verification code" %}</h2>
+      <div class="muted otp-subtitle">{% trans "We sent a code to" %} {{ masked_email }}</div>
 
-      <form method="post" style="margin-top:22px">
+      {% if messages %}
+        <div class="stack-8 otp-flash">
+          {% for message in messages %}
+            <div class="otp-flash-item {{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="otp-form">
         {% csrf_token %}
-        <div class="salla-otp">
-          {{ form.d1 }}{{ form.d2 }}{{ form.d3 }}{{ form.d4 }}
-        </div>
-        {% for e in form.non_field_errors %}<div class="error" style="text-align:center;margin-top:10px">{{e}}</div>{% endfor %}
-        <div style="margin-top:14px;text-align:center">
-          <a href="{% url 'accounts:logout' %}" style="color:#ef4444;text-decoration:none">{% trans "Logout" %}</a>
-          <span class="muted"> | </span>
-          <a href="{% url 'accounts:resend_otp' %}" style="text-decoration:none">{% trans "Resend" %}</a>
+        <div class="otp-grid salla-otp">
+          {{ form.d1.as_widget }}
+          {{ form.d2.as_widget }}
+          {{ form.d3.as_widget }}
+          {{ form.d4.as_widget }}
         </div>
 
-        <button class="salla-primary" type="submit" style="max-width:420px">{% trans "Verify" %}</button>
+        {% if form.non_field_errors %}
+          <div class="stack-8 otp-errors">
+            {% for e in form.non_field_errors %}
+              <div class="otp-error-item">{{ e }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="otp-links">
+          <a href="{% url 'accounts:logout' %}" class="otp-logout">{% trans "Logout" %}</a>
+          <span class="muted"> | </span>
+          <a href="{% url 'accounts:resend_otp' %}">{% trans "Resend" %}</a>
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit">{% trans "Verify" %}</button>
       </form>
     </div>
   </div>

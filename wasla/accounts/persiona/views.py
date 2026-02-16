@@ -110,7 +110,12 @@ def persona_plans(request):
 
         chosen = next((p for p in plans if str(p.id) == str(plan_id)), None)
         if not chosen:
-            chosen = next((p for p in plans if p.is_popular), plans[0])
+            # Safer default for onboarding monetization flow: paid popular plan first.
+            chosen = next((p for p in plans if p.is_popular and not p.is_free), None)
+        if not chosen:
+            chosen = next((p for p in plans if not p.is_free), None)
+        if not chosen:
+            chosen = plans[0]
 
         with transaction.atomic():
             # save on profile
@@ -136,8 +141,12 @@ def persona_plans(request):
             request.session["persona_billing_cycle"] = billing_cycle
             request.session["persona_plan_id"] = chosen.id
 
-        # Next: business activity step (then store setup wizard)
-        return redirect("accounts:persona_business")
+        # Next step after choosing plan:
+        # - Free plan: go مباشرة إلى لوحة التحكم
+        # - Paid plan: go to payment setup first
+        if chosen.is_free:
+            return redirect("tenants:dashboard_home")
+        return redirect("tenants:dashboard_setup_payment")
 
     # GET
     selected_plan_id = request.session.get("persona_plan_id")

@@ -321,14 +321,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "/static/"
 
 # التعديل هنا ليتوافق مع مسار Nginx في الصورة
-STATIC_ROOT = BASE_DIR / "static" 
+# STATIC_ROOT = BASE_DIR / "static" 
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # STATIC_URL = "/static/"
 # STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles")))
-# STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
 # MEDIA_URL = "/media/"
 # MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))

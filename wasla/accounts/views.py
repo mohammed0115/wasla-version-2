@@ -36,6 +36,16 @@ from .services.otp import (
 User = get_user_model()
 
 
+def _mask_email(email: str) -> str:
+    local, sep, domain = email.partition("@")
+    if not sep or not local or not domain:
+        return email
+    if len(local) <= 2:
+        masked_local = local[0] + ("*" * (len(local) - 1))
+    else:
+        masked_local = local[:2] + ("*" * (len(local) - 2))
+    return f"{masked_local}@{domain}"
+
 
 def auth_page(request: HttpRequest) -> HttpResponse:
     """Tabs page: login + register (Salla-like)."""
@@ -117,13 +127,14 @@ def verify_otp(request: HttpRequest) -> HttpResponse:
                 login(request, user)
                 return redirect("accounts:persona_welcome")
 
-            messages.error(request, "رمز غير صحيح أو منتهي الصلاحية.")
+            form.add_error(None, "رمز غير صحيح أو منتهي الصلاحية.")
         else:
-            messages.error(request, "أدخل رمز التحقق بشكل صحيح.")
+            form.add_error(None, "أدخل رمز التحقق بشكل صحيح.")
 
     return render(request, "accounts/verify_otp.html", {
         "form": form,
         "email": email,
+        "masked_email": _mask_email(email),
         "remaining": remaining,
     })
 
@@ -156,7 +167,6 @@ def persona_welcome(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         return redirect("accounts:persona_country")
     return render(request, "accounts/persona_welcome.html")
-
 
 @login_required
 def persona_country(request: HttpRequest) -> HttpResponse:
@@ -238,9 +248,10 @@ def persona_category_main(request: HttpRequest) -> HttpResponse:
             return redirect("accounts:persona_plans")
 
     from .forms import SUBCATEGORY_MAP
-    return render(request, "accounts/persona_category_main.html", {"form": form, "subs_json": json.dumps({k: v for k, v in SUBCATEGORY_MAP.items()})})
-
-
+    return render(request, "accounts/persona_category_main.html", {
+        "form": form,
+        "subs_json": json.dumps({k: v for k, v in SUBCATEGORY_MAP.items()}),
+    })
 
 @login_required
 def persona_finish(request: HttpRequest) -> HttpResponse:

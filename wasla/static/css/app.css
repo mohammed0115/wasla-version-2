@@ -356,3 +356,110 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.salla-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.salla-card {
+  inline-size: min(760px, 100%);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.salla-lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.salla-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-height: 46px;
+  margin-top: 16px;
+  padding-inline: 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #1F4FD8, #F28C28);
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.salla-option-list {
+  display: grid;
+  gap: 10px;
+}
+
+.salla-option {
+  inline-size: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.salla-option:hover {
+  border-color: rgba(31, 79, 216, 0.35);
+}
+
+.salla-option .right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.salla-pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.salla-pill {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.salla-pill.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(31, 79, 216, 0.08);
+}
+
+@media (max-width: 640px) {
+  .salla-card {
+    padding: 16px;
+  }
+}

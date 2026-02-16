@@ -1,8 +1,40 @@
+.lang-switcher {
+  display: none !important;
+}
+
 .dash {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   background: var(--bg);
+}
+
+.dash .card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.dash .form-control {
+  inline-size: 100%;
+  min-height: 44px;
+  padding-block: 10px;
+  padding-inline: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--text);
+  outline: none;
+}
+
+.dash .form-control:focus {
+  border-color: var(--primary);
+}
+
+.dash .kicker {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .dash__sidebar {
@@ -56,6 +88,10 @@
 .dash__sidebar-panel {
   margin-block-start: 16px;
   padding: 12px;
+}
+
+.dash__sidebar-panel .btn {
+  inline-size: 100%;
 }
 
 .dash__sidebar-title {
