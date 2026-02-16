@@ -13,17 +13,19 @@ from ai.application.use_cases.generate_description import (
     GenerateProductDescriptionCommand,
     GenerateProductDescriptionUseCase,
 )
+from ai.application.use_cases.index_product_embeddings import (
+    IndexProductEmbeddingsCommand,
+    IndexProductEmbeddingsUseCase,
+)
 from ai.application.use_cases.save_description import (
     SaveProductDescriptionCommand,
     SaveProductDescriptionUseCase,
 )
 from ai.application.use_cases.visual_search import VisualSearchCommand, VisualSearchUseCase
-from ai.application.use_cases.index_product_embeddings import (
-    IndexProductEmbeddingsCommand,
-    IndexProductEmbeddingsUseCase,
-)
 from cart.interfaces.api.responses import api_response
+from subscriptions.application.services.feature_gate import FeatureGateService
 from tenants.domain.tenant_context import TenantContext
+
 from .throttles import TenantScopedRateThrottle
 
 
@@ -40,12 +42,44 @@ def _build_tenant_context(request) -> TenantContext:
     return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
 
 
+def _feature_denied_response(feature_key: str):
+    return api_response(
+        success=False,
+        errors=["feature_not_allowed"],
+        data={"feature": feature_key},
+        status_code=status.HTTP_403_FORBIDDEN,
+    )
+
+
+def _to_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_bool(value):
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized in ("1", "true", "yes", "on"):
+        return True
+    if normalized in ("0", "false", "no", "off"):
+        return False
+    return None
+
+
 class AIDescriptionAPI(APIView):
     throttle_classes = [TenantScopedRateThrottle]
     throttle_scope = "ai"
 
     def post(self, request):
         tenant_ctx = _build_tenant_context(request)
+        if not FeatureGateService.can_use_feature(tenant_ctx.tenant_id, FeatureGateService.AI_TOOLS):
+            return _feature_denied_response(FeatureGateService.AI_TOOLS)
+
         try:
             product_id = int(request.data.get("product_id") or 0)
         except (TypeError, ValueError):
@@ -112,6 +146,9 @@ class AICategorizeAPI(APIView):
 
     def post(self, request):
         tenant_ctx = _build_tenant_context(request)
+        if not FeatureGateService.can_use_feature(tenant_ctx.tenant_id, FeatureGateService.AI_TOOLS):
+            return _feature_denied_response(FeatureGateService.AI_TOOLS)
+
         try:
             product_id = int(request.data.get("product_id") or 0)
         except (TypeError, ValueError):
@@ -174,6 +211,9 @@ class AIVisualSearchAPI(APIView):
 
     def post(self, request):
         tenant_ctx = _build_tenant_context(request)
+        if not FeatureGateService.can_use_feature(tenant_ctx.tenant_id, FeatureGateService.AI_VISUAL_SEARCH):
+            return _feature_denied_response(FeatureGateService.AI_VISUAL_SEARCH)
+
         image_file = request.FILES.get("image")
         try:
             top_n = int(request.data.get("top_n") or 12)
@@ -209,13 +249,16 @@ class AIVisualSearchAPI(APIView):
 
 class AIIndexProductsAPI(APIView):
     """Index product images into vector store for the current tenant."""
+
     throttle_classes = [TenantScopedRateThrottle]
     throttle_scope = "ai"
-
     parser_classes = [FormParser, MultiPartParser]
 
     def post(self, request):
         tenant_ctx = _build_tenant_context(request)
+        if not FeatureGateService.can_use_feature(tenant_ctx.tenant_id, FeatureGateService.AI_TOOLS):
+            return _feature_denied_response(FeatureGateService.AI_TOOLS)
+
         product_ids = request.data.get("product_ids")
         force = str(request.data.get("force", "false")).lower() in ("1", "true", "yes")
 

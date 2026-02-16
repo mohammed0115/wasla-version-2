@@ -1,14 +1,73 @@
 {% extends "base.html" %}
-{% block title %}معلومات المتجر{% endblock %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block title %}{% if LANGUAGE_CODE == "ar" %}معلومات المتجر{% else %}Store information{% endif %}{% endblock %}
+
 {% block body %}
-<div class="container">
-  <div class="card" style="padding:18px;">
-    <h1 style="margin:0 0 10px;">معلومات المتجر</h1>
-    <form method="post" style="display:grid; gap:12px;">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn" type="submit">حفظ</button>
-    </form>
+<section class="container setup-shell">
+  <div class="setup-grid">
+    <article class="card setup-card stack-16">
+      <header class="stack-8">
+        <span class="badge">{% if LANGUAGE_CODE == "ar" %}الخطوة 1 من 4{% else %}Step 1 of 4{% endif %}</span>
+        <h1 class="setup-title">{% if LANGUAGE_CODE == "ar" %}معلومات المتجر{% else %}Store information{% endif %}</h1>
+        {% if LANGUAGE_CODE == "ar" %}
+          <p class="setup-subtitle">اختر اسم المتجر والنطاق الفرعي الخاص بك. يمكنك تعديل الهوية لاحقًا من الإعدادات.</p>
+        {% else %}
+          <p class="setup-subtitle">Choose a store name and a unique subdomain. You can adjust branding later from settings.</p>
+        {% endif %}
+      </header>
+
+      {% if form.non_field_errors %}
+        <div class="card setup-alert" role="alert">
+          {% for error in form.non_field_errors %}
+            <p class="error" style="margin:0;">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="setup-form stack-16" novalidate>
+        {% csrf_token %}
+        {{ form.currency }}
+        {{ form.language }}
+
+        <div class="setup-field stack-8">
+          <label class="auth-label" for="{{ form.name.id_for_label }}">{% if LANGUAGE_CODE == "ar" %}اسم المتجر{% else %}Store name{% endif %}</label>
+          {{ form.name }}
+          {% for error in form.name.errors %}
+            <p class="error" style="margin:0;">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="setup-field stack-8">
+          <label class="auth-label" for="{{ form.slug.id_for_label }}">{% if LANGUAGE_CODE == "ar" %}رابط المتجر (النطاق الفرعي){% else %}Store slug (subdomain){% endif %}</label>
+          <div class="setup-slug-row">
+            {{ form.slug }}
+            <span class="setup-slug-suffix">.wasla.site</span>
+          </div>
+          {% for error in form.slug.errors %}
+            <p class="error" style="margin:0;">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <button class="btn btn-primary" type="submit">{% if LANGUAGE_CODE == "ar" %}حفظ والمتابعة{% else %}Save and continue{% endif %}</button>
+      </form>
+    </article>
+
+    <aside class="card setup-help stack-16" aria-label="setup help">
+      <h2 class="setup-help-title">{% if LANGUAGE_CODE == "ar" %}نصائح سريعة{% else %}Quick tips{% endif %}</h2>
+      <ul class="setup-help-list">
+        {% if LANGUAGE_CODE == "ar" %}
+          <li>استخدم اسم متجر قصير وسهل التذكر.</li>
+          <li>النطاق الفرعي يقبل الأحرف والأرقام والشرطة فقط.</li>
+          <li>يمكنك تعديل الدفع والشحن في الخطوات التالية.</li>
+        {% else %}
+          <li>Use a short, memorable store name.</li>
+          <li>Subdomain can include letters, numbers, and hyphens only.</li>
+          <li>You can change payment and shipping details in the next steps.</li>
+        {% endif %}
+      </ul>
+    </aside>
   </div>
-</div>
+</section>
 {% endblock %}

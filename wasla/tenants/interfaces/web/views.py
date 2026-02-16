@@ -78,17 +78,34 @@ from .forms import (
 @require_http_methods(["GET", "POST"])
 def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
     existing = resolve_tenant_for_request(request)
+    existing_profile = None
+    allow_existing_setup_form = False
     if existing:
-        profile = StoreProfile.objects.filter(tenant=existing).first()
-        if profile:
-            state = StoreSetupWizardUseCase.get_state(profile=profile)
-            if not profile.is_setup_complete and state.current_step == StoreSetupWizardUseCase.STEP_PAYMENT:
+        existing_profile = StoreProfile.objects.filter(tenant=existing).first()
+        if existing_profile:
+            state = StoreSetupWizardUseCase.get_state(profile=existing_profile)
+            if (
+                not existing_profile.is_setup_complete
+                and state.current_step <= StoreSetupWizardUseCase.STEP_STORE_INFO
+            ):
+                allow_existing_setup_form = True
+            if (
+                not existing_profile.is_setup_complete
+                and state.current_step == StoreSetupWizardUseCase.STEP_PAYMENT
+            ):
                 return redirect("tenants:dashboard_setup_payment")
-            if not profile.is_setup_complete and state.current_step == StoreSetupWizardUseCase.STEP_SHIPPING:
+            if (
+                not existing_profile.is_setup_complete
+                and state.current_step == StoreSetupWizardUseCase.STEP_SHIPPING
+            ):
                 return redirect("tenants:dashboard_setup_shipping")
-            if not profile.is_setup_complete and state.current_step == StoreSetupWizardUseCase.STEP_FIRST_PRODUCT:
+            if (
+                not existing_profile.is_setup_complete
+                and state.current_step == StoreSetupWizardUseCase.STEP_FIRST_PRODUCT
+            ):
                 return redirect("tenants:dashboard_setup_activate")
-        return redirect("tenants:dashboard_home")
+        if not allow_existing_setup_form:
+            return redirect("tenants:dashboard_home")
 
     # If the merchant has not finished the persona/onboarding flow, send them there.
     # (The onboarding flow lives in the accounts app in this codebase.)
@@ -99,8 +116,46 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
         # If anything goes wrong, fail safe by letting the user proceed to store setup.
         pass
 
-    form = StoreInfoSetupForm(request.POST or None)
+    initial = None
+    if allow_existing_setup_form and existing is not None:
+        initial = {
+            "name": getattr(existing, "name", ""),
+            "slug": getattr(existing, "slug", ""),
+            "currency": getattr(existing, "currency", "SAR") or "SAR",
+            "language": getattr(existing, "language", "ar") or "ar",
+        }
+
+    form = StoreInfoSetupForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
+        if allow_existing_setup_form and existing is not None:
+            try:
+                UpdateStoreSettingsUseCase.execute(
+                    UpdateStoreSettingsCommand(
+                        user=request.user,
+                        tenant=existing,
+                        name=form.cleaned_data["name"],
+                        slug=form.cleaned_data["slug"],
+                        currency=form.cleaned_data.get("currency") or "SAR",
+                        language=form.cleaned_data.get("language") or "ar",
+                        logo_file=None,
+                        primary_color=getattr(existing, "primary_color", "") or "",
+                        secondary_color=getattr(existing, "secondary_color", "") or "",
+                    )
+                )
+            except StoreSlugAlreadyTakenError as exc:
+                form.add_error("slug", str(exc))
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            else:
+                if existing_profile:
+                    StoreSetupWizardUseCase.mark_step_done(
+                        user=request.user,
+                        profile=existing_profile,
+                        step=StoreSetupWizardUseCase.STEP_STORE_INFO,
+                    )
+                messages.success(request, "Store info saved.")
+                return redirect("tenants:dashboard_setup_payment")
+
         try:
             result = CreateStoreUseCase.execute(
                 CreateStoreCommand(
@@ -481,14 +536,43 @@ def store_setup_step4(request: HttpRequest) -> HttpResponse:
 
 @login_required
 @tenant_access_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def store_settings_update(request: HttpRequest) -> HttpResponse:
     tenant = request.tenant
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
         raise PermissionDenied(str(exc)) from exc
-    form = StoreSettingsForm(request.POST, request.FILES or None)
+
+    initial = {
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "currency": tenant.currency,
+        "language": tenant.language,
+        "primary_color": tenant.primary_color,
+        "secondary_color": tenant.secondary_color,
+    }
+    form = StoreSettingsForm(request.POST or None, request.FILES or None, initial=initial)
+
+    if request.method == "GET":
+        context = {
+            "form": form,
+            "tenant": tenant,
+            "step": 1,
+            "wizard_progress": GetSetupProgressUseCase.execute(
+                GetSetupProgressCommand(
+                    tenant_ctx=TenantContext(
+                        tenant_id=tenant.id,
+                        currency=tenant.currency,
+                        user_id=request.user.id,
+                        session_key=request.session.session_key or "",
+                    ),
+                    actor_id=request.user.id,
+                )
+            ),
+        }
+        return render(request, "web/store/setup_step1.html", context)
+
     if not form.is_valid():
         messages.error(request, "Invalid store settings.")
         return redirect("tenants:store_settings_update")

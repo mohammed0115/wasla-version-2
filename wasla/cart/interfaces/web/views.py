@@ -12,11 +12,18 @@ from cart.application.use_cases.remove_cart_item import RemoveCartItemCommand, R
 from cart.application.use_cases.update_cart_item import UpdateCartItemCommand, UpdateCartItemUseCase
 from cart.domain.errors import CartError
 from tenants.domain.tenant_context import TenantContext
+from tenants.interfaces.web.decorators import resolve_tenant_for_request
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
     tenant = getattr(request, "tenant", None)
     tenant_id = getattr(tenant, "id", None)
+
+    if not tenant_id and getattr(request, "user", None) and request.user.is_authenticated:
+        resolved_tenant = resolve_tenant_for_request(request)
+        tenant = resolved_tenant or tenant
+        tenant_id = getattr(tenant, "id", None)
+
     currency = getattr(tenant, "currency", "SAR")
     if not tenant_id:
         raise CartError("Tenant context is required.")
@@ -29,7 +36,10 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 @require_GET
 def product_detail(request: HttpRequest, store_slug: str, product_id: int) -> HttpResponse:
-    tenant_ctx = _build_tenant_context(request)
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        raise Http404
     tenant = getattr(request, "tenant", None)
     if tenant and tenant.slug != store_slug:
         return redirect("tenants:storefront_home")
@@ -42,14 +52,24 @@ def product_detail(request: HttpRequest, store_slug: str, product_id: int) -> Ht
 
 @require_GET
 def cart_view(request: HttpRequest) -> HttpResponse:
-    tenant_ctx = _build_tenant_context(request)
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
     cart = GetCartUseCase.execute(tenant_ctx)
     return render(request, "store/cart.html", {"cart": cart})
 
 
 @require_POST
 def cart_add(request: HttpRequest) -> HttpResponse:
-    tenant_ctx = _build_tenant_context(request)
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
     try:
         product_id = int(request.POST.get("product_id") or 0)
     except (TypeError, ValueError):
@@ -64,7 +84,12 @@ def cart_add(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["POST"])
 def cart_update(request: HttpRequest) -> HttpResponse:
-    tenant_ctx = _build_tenant_context(request)
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
     try:
         item_id = int(request.POST.get("item_id") or 0)
     except (TypeError, ValueError):
@@ -81,7 +106,12 @@ def cart_update(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["POST"])
 def cart_remove(request: HttpRequest) -> HttpResponse:
-    tenant_ctx = _build_tenant_context(request)
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
     try:
         item_id = int(request.POST.get("item_id") or 0)
     except (TypeError, ValueError):
