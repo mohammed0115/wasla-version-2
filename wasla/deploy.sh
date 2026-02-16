@@ -9,7 +9,7 @@ VENV="$PROJECT_DIR/venv"
 PYTHON="$VENV/bin/python"
 
 # Optional: branch name
-BRANCH="main"
+BRANCH="resolve1"
 
 # -------- Pre-checks --------
 echo "📁 Go to project directory: $PROJECT_DIR"
