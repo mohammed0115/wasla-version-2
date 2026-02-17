@@ -48,13 +48,14 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
 
     CreditOrderPaymentUseCase.execute(CreditOrderPaymentCommand(order_id=order.id))
 
+    shipment = None
     if not order.shipments.exists() and order.status in {"paid", "processing"}:
         if order.status == "paid":
             order.status = "processing"
             order.save(update_fields=["status"])
         carrier = (getattr(order, "shipping_method_code", "") or "manual_delivery").strip()
         try:
-            ShippingService.create_shipment(order=order, carrier=carrier)
+            shipment = ShippingService.create_shipment(order=order, carrier=carrier)
         except ValueError:
             pass
 
@@ -75,6 +76,23 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
             )
         except Exception:
             pass
+
+        if shipment and shipment.tracking_number:
+            shipment_sms_body = (
+                f"Your order {order.order_number} has been shipped. "
+                f"Tracking: {shipment.tracking_number}."
+            )
+            try:
+                SendSmsUseCase.execute(
+                    SendSmsCommand(
+                        body=shipment_sms_body,
+                        recipients=[order.customer_phone],
+                        tenant=tenant,
+                        metadata={"order_id": order.id, "event": "order_shipped"},
+                    )
+                )
+            except Exception:
+                pass
 
     if not was_paid:
         NotifyMerchantOrderPlacedUseCase.execute(

@@ -22,6 +22,7 @@ from checkout.application.use_cases.select_shipping_method import (
 from checkout.application.use_cases.start_checkout import StartCheckoutCommand, StartCheckoutUseCase
 from checkout.domain.errors import CheckoutError
 from orders.models import Order
+from payments.models import PaymentIntent
 from payments.application.use_cases.initiate_payment import (
     InitiatePaymentCommand,
     InitiatePaymentUseCase,
@@ -137,7 +138,7 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
                     order_id=order.id,
                     provider_code=provider_code,
                     return_url=request.build_absolute_uri(
-                        f"/order/confirmation/{order.order_number}"
+                        f"/order/confirmation/{order.order_number}?provider={provider_code}"
                     ),
                 )
             )
@@ -161,10 +162,29 @@ def order_confirmation(request: HttpRequest, order_number: str) -> HttpResponse:
     order = Order.objects.filter(
         store_id=tenant_ctx.tenant_id, order_number=order_number
     ).first()
+    intent_reference = request.GET.get("intent") or ""
+    provider_code = request.GET.get("provider") or ""
+
+    payment_intent_qs = PaymentIntent.objects.filter(
+        store_id=tenant_ctx.tenant_id,
+        order=order,
+    ) if order else PaymentIntent.objects.none()
+    if intent_reference:
+        payment_intent_qs = payment_intent_qs.filter(provider_reference=intent_reference)
+    if provider_code:
+        payment_intent_qs = payment_intent_qs.filter(provider_code=provider_code)
+    payment_intent = payment_intent_qs.order_by("-created_at").first()
+    shipment = order.shipments.order_by("-created_at").first() if order else None
+
     return render(
         request,
         "store/order_confirmation.html",
-        {"order": order, "tracking_url": f"/order/track/{order_number}"},
+        {
+            "order": order,
+            "shipment": shipment,
+            "payment_intent": payment_intent,
+            "tracking_url": f"/order/track/{order_number}",
+        },
     )
 
 
@@ -184,6 +204,10 @@ def order_tracking(request: HttpRequest, order_number: str) -> HttpResponse:
         "cancelled": 0,
     }
     current_step = status_to_step.get(getattr(order, "status", "pending"), 1)
+    if shipment and shipment.status == "shipped":
+        current_step = max(current_step, 4)
+    if shipment and shipment.status == "delivered":
+        current_step = max(current_step, 5)
     timeline = [
         {"step": 1, "label": "Order Received", "done": current_step >= 1},
         {"step": 2, "label": "Processing", "done": current_step >= 2},
