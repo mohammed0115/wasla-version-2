@@ -14,6 +14,9 @@ from apps.visual_search.infrastructure.repositories.django_visual_search_reposit
 )
 
 
+TENANT_REQUIRED_MESSAGE = "Please open a store domain to search its catalog."
+
+
 def _parse_optional_decimal(raw_value: str) -> Decimal | None:
     value = (raw_value or "").strip()
     if not value:
@@ -51,13 +54,12 @@ def visual_search_view(request):
         "attributes": {},
     }
 
-    if request.method == "GET":
-        if not tenant_id:
-            context["info_message"] = "Tenant is not selected yet. Please open visual search from your store dashboard."
+    if not tenant_id:
+        context["info_message"] = TENANT_REQUIRED_MESSAGE
+        context["has_searched"] = False
         return render(request, "visual_search/search.html", context)
 
-    if not tenant_id:
-        context["info_message"] = "Tenant is required to run visual search."
+    if request.method == "GET":
         return render(request, "visual_search/search.html", context)
 
     uploaded_image = request.FILES.get("image") or request.FILES.get("image_file")
