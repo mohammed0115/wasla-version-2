@@ -209,11 +209,19 @@ DB_DEFAULT_ALIAS = (os.getenv("DJANGO_DB_DEFAULT", "mysql") or "mysql").strip().
 
 SQLITE_DB_NAME = os.getenv("SQLITE_DB_NAME", str(BASE_DIR / "db.sqlite3"))
 
+# MySQL Configuration
 MYSQL_DB_NAME = os.getenv("MYSQL_DB_NAME", os.getenv("DB_NAME", "wasla"))
 MYSQL_DB_USER = os.getenv("MYSQL_DB_USER", os.getenv("DB_USER", "root"))
 MYSQL_DB_PASSWORD = os.getenv("MYSQL_DB_PASSWORD", os.getenv("DB_PASSWORD", ""))
 MYSQL_DB_HOST = os.getenv("MYSQL_DB_HOST", os.getenv("DB_HOST", "127.0.0.1"))
 MYSQL_DB_PORT = os.getenv("MYSQL_DB_PORT", os.getenv("DB_PORT", "3306"))
+
+# PostgreSQL Configuration
+PG_DB_NAME = os.getenv("DB_NAME", "wasla")
+PG_DB_USER = os.getenv("DB_USER", "wasla_user")
+PG_DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+PG_DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+PG_DB_PORT = os.getenv("DB_PORT", "5432")
 
 SQLITE_CONFIG = {
     "ENGINE": "django.db.backends.sqlite3",
@@ -232,13 +240,31 @@ MYSQL_CONFIG = {
     },
 }
 
-if DB_DEFAULT_ALIAS not in {"sqlite", "mysql"}:
-    raise ImproperlyConfigured("DJANGO_DB_DEFAULT must be either 'sqlite' or 'mysql'.")
+POSTGRESQL_CONFIG = {
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": PG_DB_NAME,
+    "USER": PG_DB_USER,
+    "PASSWORD": PG_DB_PASSWORD,
+    "HOST": PG_DB_HOST,
+    "PORT": PG_DB_PORT,
+}
+
+if DB_DEFAULT_ALIAS not in {"sqlite", "mysql", "postgresql"}:
+    raise ImproperlyConfigured("DJANGO_DB_DEFAULT must be either 'sqlite', 'mysql', or 'postgresql'.")
+
+# Select database based on DJANGO_DB_DEFAULT
+if DB_DEFAULT_ALIAS == "sqlite":
+    DEFAULT_DB = SQLITE_CONFIG
+elif DB_DEFAULT_ALIAS == "postgresql":
+    DEFAULT_DB = POSTGRESQL_CONFIG
+else:
+    DEFAULT_DB = MYSQL_CONFIG
 
 DATABASES = {
-    "default": SQLITE_CONFIG if DB_DEFAULT_ALIAS == "sqlite" else MYSQL_CONFIG,
+    "default": DEFAULT_DB,
     "sqlite": SQLITE_CONFIG,
     "mysql": MYSQL_CONFIG,
+    "postgresql": POSTGRESQL_CONFIG,
 }
 
 

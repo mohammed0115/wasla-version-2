@@ -43,6 +43,9 @@ APP_GROUP="${APP_GROUP:-www-data}"
 START_SERVICES="${START_SERVICES:-true}"
 VERIFY_HEALTH="${VERIFY_HEALTH:-true}"
 
+# Database selection: "mysql" or "postgresql"
+DB_SYSTEM="${DB_SYSTEM:-}"
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 🛠️ UTILITY FUNCTIONS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -109,7 +112,42 @@ fi
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📝 ENVIRONMENT SETUP
+# � DATABASE SELECTION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+print_header "💾 Database Selection"
+
+if [ -z "$DB_SYSTEM" ]; then
+  echo "Which database system would you like to use?"
+  echo ""
+  echo "1) MySQL 8.0       (Recommended - Good performance, easy setup)"
+  echo "2) PostgreSQL 15   (Advanced - More features, excellent for large datasets)"
+  echo ""
+  read -p "Enter your choice [1-2] (default: 1): " db_choice
+  db_choice=${db_choice:-1}
+  
+  case "$db_choice" in
+    1)
+      DB_SYSTEM="mysql"
+      print_success "Selected: MySQL 8.0"
+      ;;
+    2)
+      DB_SYSTEM="postgresql"
+      print_success "Selected: PostgreSQL 15"
+      ;;
+    *)
+      print_error "Invalid choice. Please enter 1 or 2."
+      exit 1
+      ;;
+  esac
+else
+  print_info "Database system already set: $DB_SYSTEM"
+fi
+
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# �📝 ENVIRONMENT SETUP
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 print_header "⚙️ Environment Configuration"
@@ -122,19 +160,32 @@ if [ ! -f "$ENV_FILE" ]; then
     print_success "$ENV_FILE created (using defaults from example)"
   else
     print_warning "Neither $ENV_FILE nor $ENV_EXAMPLE_FILE found. Creating minimal $ENV_FILE"
-    cat > "$ENV_FILE" <<'EOF'
+    
+    # Determine database engine based on DB_SYSTEM selection
+    if [[ "$DB_SYSTEM" == "mysql" ]]; then
+      DB_ENGINE="django.db.backends.mysql"
+      DB_DEFAULT="mysql"
+      DB_PORT_VAL="3306"
+    else
+      DB_ENGINE="django.db.backends.postgresql"
+      DB_DEFAULT="postgresql"
+      DB_PORT_VAL="5432"
+    fi
+    
+    cat > "$ENV_FILE" <<EOF
 # WASLA Application Environment Configuration
 DEBUG=False
 SECRET_KEY=django-insecure-change-me-in-production
 ALLOWED_HOSTS=localhost,127.0.0.1,backend,yourdomain.com
 
 # Database Configuration
-DB_ENGINE=django.db.backends.postgresql
+DB_ENGINE=$DB_ENGINE
+DJANGO_DB_DEFAULT=$DB_DEFAULT
 DB_NAME=wasla
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_HOST=db
-DB_PORT=5432
+DB_USER=wasla_user
+DB_PASSWORD=wasla_password
+DB_HOST=localhost
+DB_PORT=$DB_PORT_VAL
 
 # Cache Configuration
 CACHE_BACKEND=django_redis.cache.RedisCache
@@ -160,6 +211,7 @@ PAYPAL_SECRET=
 PAYPAL_SANDBOX=true
 
 # AWS S3 (Optional)
+EOF
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_STORAGE_BUCKET_NAME=
@@ -321,122 +373,229 @@ if [[ "$DEPLOY_TYPE" == "traditional" ]]; then
   echo ""
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 🗄️ MySQL Database Setup
+  # 🗄️ DATABASE SETUP (MySQL or PostgreSQL)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  print_header "🗄️ MySQL Database Setup"
+  if [[ "$DB_SYSTEM" == "mysql" ]]; then
 
-  # Check if MySQL is installed
-  if ! check_command mysql; then
-    print_step "MySQL is not installed. Installing MySQL Server 8.0..."
-    sudo apt-get update -qq
-    
-    # Set MySQL root password to empty for non-interactive installation
-    export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get install -y -qq mysql-server mysql-client
-    export DEBIAN_FRONTEND=dialog
+    print_header "🗄️ MySQL Database Setup"
 
-    if check_command mysql; then
-      print_success "MySQL Server 8.0 installed successfully"
+    # Check if MySQL is installed
+    if ! check_command mysql; then
+      print_step "MySQL is not installed. Installing MySQL Server 8.0..."
+      sudo apt-get update -qq
+      
+      # Set MySQL root password to empty for non-interactive installation
+      export DEBIAN_FRONTEND=noninteractive
+      sudo apt-get install -y -qq mysql-server mysql-client
+      export DEBIAN_FRONTEND=dialog
+
+      if check_command mysql; then
+        print_success "MySQL Server 8.0 installed successfully"
+      else
+        print_error "Failed to install MySQL"
+        exit 1
+      fi
     else
-      print_error "Failed to install MySQL"
-      exit 1
+      MYSQL_VERSION=$(mysql --version)
+      print_success "MySQL already installed: $MYSQL_VERSION"
     fi
-  else
-    MYSQL_VERSION=$(mysql --version)
-    print_success "MySQL already installed: $MYSQL_VERSION"
-  fi
 
-  # Start MySQL service
-  print_step "Starting MySQL service"
-  if ! sudo systemctl is-active --quiet mysql; then
-    sudo systemctl start mysql
-    sleep 2
-  fi
-  print_success "MySQL service is running"
+    # Start MySQL service
+    print_step "Starting MySQL service"
+    if ! sudo systemctl is-active --quiet mysql; then
+      sudo systemctl start mysql
+      sleep 2
+    fi
+    print_success "MySQL service is running"
 
-  # MySQL root password - try to connect without password first
-  print_step "Configuring MySQL access"
-  MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-$(openssl rand -base64 16)}"
-  
-  # Try to connect as root with no password (default on fresh MySQL)
-  if sudo mysql -e "SELECT 1" >/dev/null 2>&1; then
-    print_info "MySQL root user is accessible without password"
-  else
-    print_warning "Could not connect to MySQL as root. You may need to run this manually."
-  fi
-
-  # Get database settings from environment or use defaults
-  DB_NAME="${DB_NAME:-wasla}"
-  DB_USER="${DB_USER:-wasla_user}"
-  DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
-  DB_HOST="${DB_HOST:-localhost}"
-  DB_PORT="${DB_PORT:-3306}"
-
-  # Create database
-  print_step "Creating MySQL database: $DB_NAME"
-  if ! sudo mysql -e "SHOW DATABASES" | grep -q "^$DB_NAME$"; then
-    sudo mysql -e "CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    print_success "Database '$DB_NAME' created"
-  else
-    print_info "Database '$DB_NAME' already exists"
-  fi
-
-  # Create database user and grant privileges
-  print_step "Creating MySQL user: $DB_USER"
-  
-  # Drop user if exists to ensure clean state
-  sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'$DB_HOST';" 2>/dev/null || true
-  
-  # Create new user with all privileges
-  sudo mysql -e "CREATE USER '$DB_USER'@'$DB_HOST' IDENTIFIED BY '$DB_PASSWORD';"
-  sudo mysql -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'$DB_HOST';"
-  sudo mysql -e "FLUSH PRIVILEGES;"
-  print_success "User '$DB_USER' created with privileges"
-
-  # Update .env file with database credentials
-  print_step "Updating .env with MySQL credentials"
-  if [ -f "$ENV_FILE" ]; then
-    # Backup the existing .env file
-    cp "$ENV_FILE" "$ENV_FILE.backup.$(date +%s)"
+    # MySQL root password - try to connect without password first
+    print_step "Configuring MySQL access"
+    MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-$(openssl rand -base64 16)}"
     
-    # Update or add database configuration for MySQL
-    sed -i "s|DB_ENGINE=.*|DB_ENGINE=django.db.backends.mysql|" "$ENV_FILE" || echo "DB_ENGINE=django.db.backends.mysql" >> "$ENV_FILE"
-    sed -i "s|DJANGO_DB_DEFAULT=.*|DJANGO_DB_DEFAULT=mysql|" "$ENV_FILE" || echo "DJANGO_DB_DEFAULT=mysql" >> "$ENV_FILE"
-    sed -i "s|MYSQL_DB_NAME=.*|MYSQL_DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "MYSQL_DB_NAME=$DB_NAME" >> "$ENV_FILE"
-    sed -i "s|MYSQL_DB_USER=.*|MYSQL_DB_USER=$DB_USER|" "$ENV_FILE" || echo "MYSQL_DB_USER=$DB_USER" >> "$ENV_FILE"
-    sed -i "s|MYSQL_DB_PASSWORD=.*|MYSQL_DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "MYSQL_DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
-    sed -i "s|MYSQL_DB_HOST=.*|MYSQL_DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "MYSQL_DB_HOST=$DB_HOST" >> "$ENV_FILE"
-    sed -i "s|MYSQL_DB_PORT=.*|MYSQL_DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "MYSQL_DB_PORT=$DB_PORT" >> "$ENV_FILE"
-    
-    # Also set DB_* variables for compatibility
-    sed -i "s|^DB_NAME=.*|DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "DB_NAME=$DB_NAME" >> "$ENV_FILE"
-    sed -i "s|^DB_USER=.*|DB_USER=$DB_USER|" "$ENV_FILE" || echo "DB_USER=$DB_USER" >> "$ENV_FILE"
-    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
-    sed -i "s|^DB_HOST=.*|DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "DB_HOST=$DB_HOST" >> "$ENV_FILE"
-    sed -i "s|^DB_PORT=.*|DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "DB_PORT=$DB_PORT" >> "$ENV_FILE"
-    
-    print_success ".env file updated with MySQL credentials"
-    echo ""
-    print_info "Database Credentials (saved in $ENV_FILE):"
-    echo "  MYSQL_DB_NAME: $DB_NAME"
-    echo "  MYSQL_DB_USER: $DB_USER"
-    echo "  MYSQL_DB_PASSWORD: $DB_PASSWORD (64-bit randomized)"
-    echo "  MYSQL_DB_HOST: $DB_HOST"
-    echo "  MYSQL_DB_PORT: $DB_PORT"
-  fi
+    # Try to connect as root with no password (default on fresh MySQL)
+    if sudo mysql -e "SELECT 1" >/dev/null 2>&1; then
+      print_info "MySQL root user is accessible without password"
+    else
+      print_warning "Could not connect to MySQL as root. You may need to run this manually."
+    fi
 
-  # Install MySQL Python driver
-  print_step "Installing mysqlclient for Python"
-  pip install -q mysqlclient
-  print_success "mysqlclient installed"
+    # Get database settings from environment or use defaults
+    DB_NAME="${DB_NAME:-wasla}"
+    DB_USER="${DB_USER:-wasla_user}"
+    DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
+    DB_HOST="${DB_HOST:-localhost}"
+    DB_PORT="${DB_PORT:-3306}"
 
-  # Test the database connection
-  print_step "Testing MySQL connection"
-  if python3 -c "import MySQLdb; MySQLdb.connect(host='$DB_HOST', user='$DB_USER', passwd='$DB_PASSWORD', db='$DB_NAME')" 2>/dev/null; then
-    print_success "MySQL connection test passed"
+    # Create database
+    print_step "Creating MySQL database: $DB_NAME"
+    if ! sudo mysql -e "SHOW DATABASES" | grep -q "^$DB_NAME$"; then
+      sudo mysql -e "CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+      print_success "Database '$DB_NAME' created"
+    else
+      print_info "Database '$DB_NAME' already exists"
+    fi
+
+    # Create database user and grant privileges
+    print_step "Creating MySQL user: $DB_USER"
+    
+    # Drop user if exists to ensure clean state
+    sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'$DB_HOST';" 2>/dev/null || true
+    
+    # Create new user with all privileges
+    sudo mysql -e "CREATE USER '$DB_USER'@'$DB_HOST' IDENTIFIED BY '$DB_PASSWORD';"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'$DB_HOST';"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+    print_success "User '$DB_USER' created with privileges"
+
+    # Update .env file with database credentials
+    print_step "Updating .env with MySQL credentials"
+    if [ -f "$ENV_FILE" ]; then
+      # Backup the existing .env file
+      cp "$ENV_FILE" "$ENV_FILE.backup.$(date +%s)"
+      
+      # Update or add database configuration for MySQL
+      sed -i "s|DB_ENGINE=.*|DB_ENGINE=django.db.backends.mysql|" "$ENV_FILE" || echo "DB_ENGINE=django.db.backends.mysql" >> "$ENV_FILE"
+      sed -i "s|DJANGO_DB_DEFAULT=.*|DJANGO_DB_DEFAULT=mysql|" "$ENV_FILE" || echo "DJANGO_DB_DEFAULT=mysql" >> "$ENV_FILE"
+      sed -i "s|MYSQL_DB_NAME=.*|MYSQL_DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "MYSQL_DB_NAME=$DB_NAME" >> "$ENV_FILE"
+      sed -i "s|MYSQL_DB_USER=.*|MYSQL_DB_USER=$DB_USER|" "$ENV_FILE" || echo "MYSQL_DB_USER=$DB_USER" >> "$ENV_FILE"
+      sed -i "s|MYSQL_DB_PASSWORD=.*|MYSQL_DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "MYSQL_DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
+      sed -i "s|MYSQL_DB_HOST=.*|MYSQL_DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "MYSQL_DB_HOST=$DB_HOST" >> "$ENV_FILE"
+      sed -i "s|MYSQL_DB_PORT=.*|MYSQL_DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "MYSQL_DB_PORT=$DB_PORT" >> "$ENV_FILE"
+      
+      # Also set DB_* variables for compatibility
+      sed -i "s|^DB_NAME=.*|DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "DB_NAME=$DB_NAME" >> "$ENV_FILE"
+      sed -i "s|^DB_USER=.*|DB_USER=$DB_USER|" "$ENV_FILE" || echo "DB_USER=$DB_USER" >> "$ENV_FILE"
+      sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
+      sed -i "s|^DB_HOST=.*|DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "DB_HOST=$DB_HOST" >> "$ENV_FILE"
+      sed -i "s|^DB_PORT=.*|DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "DB_PORT=$DB_PORT" >> "$ENV_FILE"
+      
+      print_success ".env file updated with MySQL credentials"
+      echo ""
+      print_info "Database Credentials (saved in $ENV_FILE):"
+      echo "  MYSQL_DB_NAME: $DB_NAME"
+      echo "  MYSQL_DB_USER: $DB_USER"
+      echo "  MYSQL_DB_PASSWORD: $DB_PASSWORD (64-bit randomized)"
+      echo "  MYSQL_DB_HOST: $DB_HOST"
+      echo "  MYSQL_DB_PORT: $DB_PORT"
+    fi
+
+    # Install MySQL Python driver
+    print_step "Installing mysqlclient for Python"
+    pip install -q mysqlclient
+    print_success "mysqlclient installed"
+
+    # Test the database connection
+    print_step "Testing MySQL connection"
+    if python3 -c "import MySQLdb; MySQLdb.connect(host='$DB_HOST', user='$DB_USER', passwd='$DB_PASSWORD', db='$DB_NAME')" 2>/dev/null; then
+      print_success "MySQL connection test passed"
+    else
+      print_warning "MySQL connection test failed. Verify credentials in $ENV_FILE"
+    fi
+
+  elif [[ "$DB_SYSTEM" == "postgresql" ]]; then
+
+    print_header "🗄️ PostgreSQL Database Setup"
+
+    # Check if PostgreSQL is installed
+    if ! check_command psql; then
+      print_step "PostgreSQL is not installed. Installing PostgreSQL 15..."
+      sudo apt-get update -qq
+      sudo apt-get install -y -qq postgresql postgresql-contrib postgresql-client
+
+      if check_command psql; then
+        print_success "PostgreSQL 15 installed successfully"
+      else
+        print_error "Failed to install PostgreSQL"
+        exit 1
+      fi
+    else
+      PG_VERSION=$(psql --version)
+      print_success "PostgreSQL already installed: $PG_VERSION"
+    fi
+
+    # Start PostgreSQL service
+    print_step "Starting PostgreSQL service"
+    if ! sudo systemctl is-active --quiet postgresql; then
+      sudo systemctl start postgresql
+      sleep 2
+    fi
+    print_success "PostgreSQL service is running"
+
+    # Get database settings from environment or use defaults
+    DB_NAME="${DB_NAME:-wasla}"
+    DB_USER="${DB_USER:-wasla_user}"
+    DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
+    DB_HOST="${DB_HOST:-localhost}"
+    DB_PORT="${DB_PORT:-5432}"
+
+    # Create database
+    if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+      print_info "Creating database: $DB_NAME"
+      sudo -u postgres psql -c "CREATE DATABASE \"$DB_NAME\" WITH ENCODING 'utf8';"
+      print_success "Database '$DB_NAME' created"
+    else
+      print_info "Database '$DB_NAME' already exists"
+    fi
+
+    # Create database user
+    if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
+      print_info "Creating database user: $DB_USER"
+      sudo -u postgres psql -c "CREATE USER \"$DB_USER\" WITH PASSWORD '$DB_PASSWORD';"
+      print_success "User '$DB_USER' created"
+    else
+      print_info "User '$DB_USER' already exists"
+    fi
+
+    # Grant privileges
+    print_step "Granting privileges to $DB_USER on $DB_NAME"
+    sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO \"$DB_USER\";"
+    sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO \"$DB_USER\";"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";"
+    sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL ON SCHEMA public TO \"$DB_USER\";"
+    print_success "Privileges granted"
+
+    # Update .env file with database credentials
+    print_step "Updating .env with PostgreSQL credentials"
+    if [ -f "$ENV_FILE" ]; then
+      # Backup the existing .env file
+      cp "$ENV_FILE" "$ENV_FILE.backup.$(date +%s)"
+      
+      # Update or add database configuration for PostgreSQL
+      sed -i "s|DB_ENGINE=.*|DB_ENGINE=django.db.backends.postgresql|" "$ENV_FILE" || echo "DB_ENGINE=django.db.backends.postgresql" >> "$ENV_FILE"
+      sed -i "s|DJANGO_DB_DEFAULT=.*|DJANGO_DB_DEFAULT=postgresql|" "$ENV_FILE" || echo "DJANGO_DB_DEFAULT=postgresql" >> "$ENV_FILE"
+      sed -i "s|DB_NAME=.*|DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "DB_NAME=$DB_NAME" >> "$ENV_FILE"
+      sed -i "s|DB_USER=.*|DB_USER=$DB_USER|" "$ENV_FILE" || echo "DB_USER=$DB_USER" >> "$ENV_FILE"
+      sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
+      sed -i "s|DB_HOST=.*|DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "DB_HOST=$DB_HOST" >> "$ENV_FILE"
+      sed -i "s|DB_PORT=.*|DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "DB_PORT=$DB_PORT" >> "$ENV_FILE"
+      
+      print_success ".env file updated with PostgreSQL credentials"
+      echo ""
+      print_info "Database Credentials (saved in $ENV_FILE):"
+      echo "  DB_NAME: $DB_NAME"
+      echo "  DB_USER: $DB_USER"
+      echo "  DB_PASSWORD: $DB_PASSWORD (64-bit randomized)"
+      echo "  DB_HOST: $DB_HOST"
+      echo "  DB_PORT: $DB_PORT"
+    fi
+
+    # Install PostgreSQL client library for Python
+    print_step "Installing psycopg2-binary for Python"
+    pip install -q psycopg2-binary
+    print_success "psycopg2-binary installed"
+
+    # Test the database connection
+    print_step "Testing PostgreSQL connection"
+    if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
+      print_success "PostgreSQL connection test passed"
+    else
+      print_warning "PostgreSQL connection test failed. Manual setup may be needed."
+    fi
+
   else
-    print_warning "MySQL connection test failed. Verify credentials in $ENV_FILE"
+    print_error "Invalid database system: $DB_SYSTEM. Must be 'mysql' or 'postgresql'"
+    exit 1
   fi
 
   echo ""

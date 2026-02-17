@@ -8,6 +8,11 @@ faiss-cpu>=1.7.4
 requests
 scipy
 gunicorn
+
+# Database Drivers (choose one based on your DB_SYSTEM)
+mysqlclient>=2.2.0  # For MySQL support
+psycopg2-binary>=2.9.0  # For PostgreSQL support
+
 # Optional for CLIP embeddings (V1-P3):
 # torch>=2.1
 # transformers>=4.41
