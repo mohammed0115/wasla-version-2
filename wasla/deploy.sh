@@ -320,6 +320,110 @@ if [[ "$DEPLOY_TYPE" == "traditional" ]]; then
 
   echo ""
 
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 🗄️ PostgreSQL Database Setup
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  print_header "🗄️ PostgreSQL Database Setup"
+
+  # Check if PostgreSQL is installed
+  if ! check_command psql; then
+    print_step "PostgreSQL is not installed. Installing PostgreSQL 15..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq postgresql postgresql-contrib postgresql-client
+
+    if check_command psql; then
+      print_success "PostgreSQL 15 installed successfully"
+    else
+      print_error "Failed to install PostgreSQL"
+      exit 1
+    fi
+  else
+    PG_VERSION=$(psql --version)
+    print_success "PostgreSQL already installed: $PG_VERSION"
+  fi
+
+  # Start PostgreSQL service
+  print_step "Starting PostgreSQL service"
+  if ! sudo systemctl is-active --quiet postgresql; then
+    sudo systemctl start postgresql
+    sleep 2
+  fi
+  print_success "PostgreSQL service is running"
+
+  # Create database and user if they don't exist
+  print_step "Creating PostgreSQL database and user"
+  
+  # Get database settings from environment or use defaults
+  DB_NAME="${DB_NAME:-wasla}"
+  DB_USER="${DB_USER:-wasla_user}"
+  DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
+  DB_HOST="${DB_HOST:-localhost}"
+  DB_PORT="${DB_PORT:-5432}"
+
+  # Create database
+  if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+    print_info "Creating database: $DB_NAME"
+    sudo -u postgres psql -c "CREATE DATABASE \"$DB_NAME\" WITH ENCODING 'utf8';"
+    print_success "Database '$DB_NAME' created"
+  else
+    print_info "Database '$DB_NAME' already exists"
+  fi
+
+  # Create database user
+  if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
+    print_info "Creating database user: $DB_USER"
+    sudo -u postgres psql -c "CREATE USER \"$DB_USER\" WITH PASSWORD '$DB_PASSWORD';"
+    print_success "User '$DB_USER' created"
+  else
+    print_info "User '$DB_USER' already exists"
+  fi
+
+  # Grant privileges
+  print_step "Granting privileges to $DB_USER on $DB_NAME"
+  sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO \"$DB_USER\";"
+  sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO \"$DB_USER\";"
+  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";"
+  sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL ON SCHEMA public TO \"$DB_USER\";"
+  print_success "Privileges granted"
+
+  # Update .env file with database credentials
+  print_step "Updating .env with database credentials"
+  if [ -f "$ENV_FILE" ]; then
+    # Backup the existing .env file
+    cp "$ENV_FILE" "$ENV_FILE.backup.$(date +%s)"
+    
+    # Update or add database configuration
+    sed -i "s|DB_ENGINE=.*|DB_ENGINE=django.db.backends.postgresql|" "$ENV_FILE" || echo "DB_ENGINE=django.db.backends.postgresql" >> "$ENV_FILE"
+    sed -i "s|DB_NAME=.*|DB_NAME=$DB_NAME|" "$ENV_FILE" || echo "DB_NAME=$DB_NAME" >> "$ENV_FILE"
+    sed -i "s|DB_USER=.*|DB_USER=$DB_USER|" "$ENV_FILE" || echo "DB_USER=$DB_USER" >> "$ENV_FILE"
+    sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$ENV_FILE" || echo "DB_PASSWORD=$DB_PASSWORD" >> "$ENV_FILE"
+    sed -i "s|DB_HOST=.*|DB_HOST=$DB_HOST|" "$ENV_FILE" || echo "DB_HOST=$DB_HOST" >> "$ENV_FILE"
+    sed -i "s|DB_PORT=.*|DB_PORT=$DB_PORT|" "$ENV_FILE" || echo "DB_PORT=$DB_PORT" >> "$ENV_FILE"
+    
+    print_success ".env file updated with database credentials"
+    echo ""
+    print_info "Database Credentials (saved in $ENV_FILE):"
+    echo "  DB_NAME: $DB_NAME"
+    echo "  DB_USER: $DB_USER"
+    echo "  DB_PASSWORD: $DB_PASSWORD"
+  fi
+
+  # Install PostgreSQL client library for Python
+  print_step "Installing psycopg2-binary for Python"
+  pip install -q psycopg2-binary
+  print_success "psycopg2-binary installed"
+
+  # Test the database connection
+  print_step "Testing PostgreSQL connection"
+  if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
+    print_success "PostgreSQL connection test passed"
+  else
+    print_warning "PostgreSQL connection test failed. Manual setup may be needed."
+  fi
+
+  echo ""
+
   # Virtualenv setup
   print_header "🐍 Python Virtual Environment"
 
@@ -514,6 +618,52 @@ echo "║ 📖 Documentation: See docs/ directory                     ║"
 echo "║ 🔧 Config: Review .env file for settings                 ║"
 echo "║ 🆘 Support: Check logs for troubleshooting               ║"
 echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📚 POSTGRESQL QUICK REFERENCE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [[ "$DEPLOY_TYPE" == "traditional" ]]; then
+  echo ""
+  echo "╔════════════════════════════════════════════════════════════╗"
+  echo "║            📚 PostgreSQL Quick Reference                   ║"
+  echo "╠════════════════════════════════════════════════════════════╣"
+  echo "║                                                            ║"
+  echo "║ START/STOP POSTGRESQL:                                    ║"
+  echo "║   $ sudo systemctl start postgresql                       ║"
+  echo "║   $ sudo systemctl stop postgresql                        ║"
+  echo "║   $ sudo systemctl status postgresql                      ║"
+  echo "║                                                            ║"
+  echo "║ CONNECT TO DATABASE:                                      ║"
+  echo "║   $ sudo -u postgres psql -d wasla                        ║"
+  echo "║   $ psql -h localhost -U wasla_user -d wasla              ║"
+  echo "║                                                            ║"
+  echo "║ USEFUL COMMANDS (in psql):                                ║"
+  echo "║   \\l        List all databases                            ║"
+  echo "║   \\du       List all users/roles                          ║"
+  echo "║   \\c DB     Connect to database DB                        ║"
+  echo "║   \\dt       List tables in current database               ║"
+  echo "║   \\d TABLE  Show table structure                          ║"
+  echo "║   \\q        Quit psql                                     ║"
+  echo "║                                                            ║"
+  echo "║ BACKUP/RESTORE:                                           ║"
+  echo "║   $ pg_dump -U wasla_user -d wasla > backup.sql           ║"
+  echo "║   $ psql -U wasla_user -d wasla < backup.sql              ║"
+  echo "║   $ pg_dump -U wasla_user -d wasla | gzip > backup.sql.gz║"
+  echo "║                                                            ║"
+  echo "║ DJANGO DATABASE OPERATIONS:                               ║"
+  echo "║   $ python manage.py migrate                              ║"
+  echo "║   $ python manage.py makemigrations                       ║"
+  echo "║   $ python manage.py dbshell                              ║"
+  echo "║                                                            ║"
+  echo "║ LOGS:                                                      ║"
+  echo "║   $ sudo tail -f /var/log/postgresql/postgresql-*.log     ║"
+  echo "║   $ journalctl -u postgresql -f                           ║"
+  echo "║                                                            ║"
+  echo "╚════════════════════════════════════════════════════════════╝"
+fi
+
 echo ""
 
 print_success "WASLA v2 deployment successful!"
