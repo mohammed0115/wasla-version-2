@@ -20,6 +20,7 @@ urlpatterns = [
     path("", include(("imports.interfaces.web.urls", "imports_web"), namespace="imports_web")),
     path("", include(("themes.interfaces.web.urls", "themes_web"), namespace="themes_web")),
     path("", include(("settlements.interfaces.web.urls", "settlements_web"), namespace="settlements_web")),
+    path("", include("stores.urls")),
     path("", include(("tenants.urls", "tenants"), namespace="tenants")),
     path("", include(("plugins.urls", "plugins"), namespace="plugins")),
 

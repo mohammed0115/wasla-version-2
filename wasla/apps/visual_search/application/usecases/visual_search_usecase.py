@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from decimal import Decimal
+from io import BytesIO
 
 from apps.visual_search.application.dto.visual_search_dto import (
     VisualSearchQueryDTO,
@@ -10,6 +10,8 @@ from apps.visual_search.application.dto.visual_search_dto import (
     VisualSearchResultDTO,
 )
 from apps.visual_search.application.interfaces.repository_port import VisualSearchRepositoryPort
+from apps.visual_search.application.services.image_processor import ImageProcessor
+from apps.visual_search.application.services.embedding_service import EmbeddingService
 from apps.visual_search.domain.errors import InvalidImageError
 
 
@@ -85,16 +87,41 @@ class VisualSearchUseCase:
                 raise InvalidImageError("Invalid image file size.")
 
     def _extract_features(self, query: VisualSearchQueryDTO) -> tuple[list[float], dict]:
-        if query.image_file is not None:
-            payload = f"file:{getattr(query.image_file, 'name', '')}:{getattr(query.image_file, 'size', 0)}"
-        else:
-            payload = f"url:{(query.image_url or '').strip()}"
+        """Extract features and embedding from image."""
+        processor = ImageProcessor()
+        embedding_service = EmbeddingService(embedding_dim=512)
 
-        digest = hashlib.sha256(payload.encode("utf-8")).digest()
-        vector = [round(byte / 255.0, 6) for byte in digest[:16]]
+        # Process image
+        if query.image_file is not None:
+            try:
+                features = processor.process_image_file(query.image_file)
+                # Generate embedding from image file
+                query.image_file.seek(0)  # Reset file pointer
+                embedding = embedding_service.generate_embedding(
+                    query.image_file,
+                    features.attributes
+                )
+            except Exception as exc:
+                raise InvalidImageError(f"Failed to process image: {exc}")
+        elif query.image_url:
+            try:
+                import requests
+                response = requests.get(query.image_url, timeout=10)
+                response.raise_for_status()
+                features = processor.process_image_file(BytesIO(response.content))
+                embedding = embedding_service.generate_embedding(response.content, features.attributes)
+            except Exception as exc:
+                raise InvalidImageError(f"Failed to fetch image from URL: {exc}")
+        else:
+            raise InvalidImageError("No image provided")
+
         attributes = {
-            "source": "mock-visual-ai",
-            "has_file": query.image_file is not None,
-            "has_url": bool(query.image_url),
+            "source": "visual-ai",
+            "colors": features.colors.color_names,
+            "brightness": features.attributes.get("brightness", "medium"),
+            "aspect_ratio": features.aspect_ratio,
+            "has_pattern": features.attributes.get("has_pattern", False),
+            "category_hint": features.attributes.get("category_hint", "general"),
         }
-        return vector, attributes
+
+        return embedding, attributes

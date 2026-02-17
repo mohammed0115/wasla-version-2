@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Merchant Dashboard" %}{% endblock %}
+
+{% block body %}
+<main class="container" style="max-width: 1000px; margin: 2rem auto;">
+  <h1>{% trans "Merchant Dashboard" %}</h1>
+  <h2>{{ store.name }}</h2>
+  <ul>
+    <li>{% trans "Today's Sales" %}: {{ total_sales_today }}</li>
+    <li>{% trans "New Orders" %}: {{ new_orders }}</li>
+    <li>{% trans "Visitors" %}: {{ visitors }}</li>
+    <li>{% trans "Conversion Rate" %}: {{ conversion_rate }}%</li>
+  </ul>
+</main>
+{% endblock %}

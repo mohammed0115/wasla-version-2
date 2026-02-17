@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Store Setup - Domain" %}{% endblock %}
+
+{% block body %}
+<main class="container" style="max-width: 900px; margin: 2rem auto;">
+  <h1>{% trans "Domain Configuration" %}</h1>
+  <p>{% trans "Step" %} {{ step }} / 4 - {{ step_label }} ({{ progress }}%)</p>
+  <p>{% trans "Suggested domain" %}: {{ domain_hint }}</p>
+  {% if messages %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">{% trans "Continue" %}</button>
+  </form>
+</main>
+{% endblock %}

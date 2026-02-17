@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Store Setup - Products" %}{% endblock %}
+
+{% block body %}
+<main class="container" style="max-width: 900px; margin: 2rem auto;">
+  <h1>{% trans "Product Upload" %}</h1>
+  <p>{% trans "Step" %} {{ step }} / 4 - {{ step_label }} ({{ progress }}%)</p>
+  <p>{% blocktrans %}Upload up to {{ max_images }} product images.{% endblocktrans %}</p>
+  {% if messages %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endif %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="products" multiple accept="image/*">
+    <button type="submit" class="btn btn-primary">{% trans "Process and Continue" %}</button>
+  </form>
+</main>
+{% endblock %}
