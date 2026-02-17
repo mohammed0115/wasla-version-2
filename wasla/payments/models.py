@@ -78,6 +78,10 @@ class PaymentEvent(models.Model):
 
 
 class PaymentProviderSettings(models.Model):
+    """
+    Multi-tenant payment provider configuration.
+    Stores provider API keys, webhook secrets, and fee settings per tenant.
+    """
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
@@ -88,6 +92,18 @@ class PaymentProviderSettings(models.Model):
     is_enabled = models.BooleanField(default=False)
     credentials = models.JSONField(default=dict, blank=True)
     webhook_secret = models.CharField(max_length=255, blank=True, default="")
+    
+    # Fee configuration per provider per tenant
+    transaction_fee_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text="Transaction fee percentage (e.g., 2.50 for 2.5%)"
+    )
+    wasla_commission_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=3,
+        help_text="Wasla platform commission percentage"
+    )
+    is_sandbox_mode = models.BooleanField(default=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -105,3 +121,44 @@ class PaymentProviderSettings(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tenant_id}:{self.provider_code}"
+
+
+class RefundRecord(models.Model):
+    """
+    Refund record linked to a payment.
+    Tracks refund attempts and status.
+    """
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_FAILED = "failed"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    payment_intent = models.ForeignKey(
+        PaymentIntent, on_delete=models.PROTECT, related_name="refunds"
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=10, default="SAR")
+    provider_reference = models.CharField(max_length=120, blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    reason = models.TextField(blank=True, default="")
+    raw_response = models.JSONField(default=dict, blank=True)
+    requested_by = models.CharField(max_length=120, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["payment_intent", "status"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Refund {self.id} - {self.amount} {self.currency}"
