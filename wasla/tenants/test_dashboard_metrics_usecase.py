@@ -15,16 +15,16 @@ from tenants.application.use_cases.get_merchant_dashboard_metrics import (
 
 
 class _FakeOrderRepository:
-    def sum_sales_today(self, tenant_id: int, tz: str) -> Decimal:
+    def sum_sales_today(self, store_id: int, tz: str) -> Decimal:
         return Decimal("150.00")
 
-    def count_orders_today(self, tenant_id: int, tz: str) -> int:
+    def count_orders_today(self, store_id: int, tz: str) -> int:
         return 3
 
-    def sum_revenue_last_7_days(self, tenant_id: int, tz: str) -> Decimal:
+    def sum_revenue_last_7_days(self, store_id: int, tz: str) -> Decimal:
         return Decimal("700.00")
 
-    def chart_revenue_orders_last_7_days(self, tenant_id: int, tz: str) -> list[dict]:
+    def chart_revenue_orders_last_7_days(self, store_id: int, tz: str) -> list[dict]:
         return [
             {"date": "2026-02-09", "revenue": Decimal("50.00"), "orders": 1, "revenue_level": 0},
             {"date": "2026-02-10", "revenue": Decimal("150.00"), "orders": 2, "revenue_level": 0},
@@ -35,7 +35,7 @@ class _FakeOrderRepository:
             {"date": "2026-02-15", "revenue": Decimal("100.00"), "orders": 1, "revenue_level": 0},
         ]
 
-    def recent_orders(self, tenant_id: int, limit: int = 10) -> list[RecentOrderRowDTO]:
+    def recent_orders(self, store_id: int, limit: int = 10) -> list[RecentOrderRowDTO]:
         return [
             {
                 "id": 1,
@@ -48,7 +48,7 @@ class _FakeOrderRepository:
 
 
 class _FakeInventoryRepository:
-    def low_stock_products(self, tenant_id: int, threshold: int = 5, limit: int = 10) -> list[dict]:
+    def low_stock_products(self, store_id: int, threshold: int = 5, limit: int = 10) -> list[dict]:
         return [{"product_id": 1, "name": "P1", "sku": "SKU1", "quantity": 2}]
 
 
@@ -56,7 +56,7 @@ class _FakeVisitorRepository:
     def __init__(self, visitors_7d: int) -> None:
         self.visitors_7d = visitors_7d
 
-    def count_visitors_last_7_days(self, tenant_id: int, tz: str) -> int:
+    def count_visitors_last_7_days(self, store_id: int, tz: str) -> int:
         return self.visitors_7d
 
 
@@ -71,7 +71,7 @@ class DashboardMetricsUseCaseTests(SimpleTestCase):
         result = use_case.execute(
             GetMerchantDashboardMetricsQuery(
                 actor_user_id=10,
-                tenant_id=1,
+                store_id=1,
                 currency="SAR",
                 timezone="UTC",
             )
@@ -96,7 +96,7 @@ class DashboardMetricsUseCaseTests(SimpleTestCase):
         result = use_case.execute(
             GetMerchantDashboardMetricsQuery(
                 actor_user_id=10,
-                tenant_id=1,
+                store_id=1,
                 currency="SAR",
                 timezone="UTC",
             )

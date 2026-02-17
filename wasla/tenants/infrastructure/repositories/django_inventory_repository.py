@@ -6,9 +6,9 @@ from tenants.application.interfaces.inventory_repository_port import InventoryRe
 
 
 class DjangoInventoryRepository(InventoryRepositoryPort):
-    def low_stock_products(self, tenant_id: int, threshold: int = 5, limit: int = 10) -> list[LowStockRowDTO]:
+    def low_stock_products(self, store_id: int, threshold: int = 5, limit: int = 10) -> list[LowStockRowDTO]:
         rows = list(
-            Inventory.objects.filter(product__store_id=tenant_id, quantity__lte=threshold)
+            Inventory.objects.filter(product__store_id=store_id, quantity__lte=threshold)
             .select_related("product")
             .only("quantity", "product__id", "product__name", "product__sku")
             .order_by("quantity", "product__id")[:limit]

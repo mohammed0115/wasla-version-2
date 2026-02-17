@@ -7,17 +7,17 @@ from tenants.application.dto.merchant_dashboard_metrics import ChartPointDTO, Re
 
 
 class OrderRepositoryPort(Protocol):
-    def sum_sales_today(self, tenant_id: int, tz: str) -> Decimal:
+    def sum_sales_today(self, store_id: int, tz: str) -> Decimal:
         ...
 
-    def count_orders_today(self, tenant_id: int, tz: str) -> int:
+    def count_orders_today(self, store_id: int, tz: str) -> int:
         ...
 
-    def sum_revenue_last_7_days(self, tenant_id: int, tz: str) -> Decimal:
+    def sum_revenue_last_7_days(self, store_id: int, tz: str) -> Decimal:
         ...
 
-    def chart_revenue_orders_last_7_days(self, tenant_id: int, tz: str) -> list[ChartPointDTO]:
+    def chart_revenue_orders_last_7_days(self, store_id: int, tz: str) -> list[ChartPointDTO]:
         ...
 
-    def recent_orders(self, tenant_id: int, limit: int = 10) -> list[RecentOrderRowDTO]:
+    def recent_orders(self, store_id: int, limit: int = 10) -> list[RecentOrderRowDTO]:
         ...

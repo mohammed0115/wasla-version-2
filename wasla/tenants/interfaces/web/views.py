@@ -708,7 +708,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     metrics = use_case.execute(
         GetMerchantDashboardMetricsQuery(
             actor_user_id=request.user.id,
-            tenant_id=tenant.id,
+            store_id=tenant.id,
             currency=getattr(tenant, "currency", "SAR") or "SAR",
             timezone=str(timezone.get_current_timezone()),
         )

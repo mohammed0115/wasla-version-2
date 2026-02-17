@@ -9,7 +9,7 @@ from typing import TypedDict
 @dataclass(frozen=True)
 class GetMerchantDashboardMetricsQuery:
     actor_user_id: int
-    tenant_id: int
+    store_id: int
     currency: str
     timezone: str
 

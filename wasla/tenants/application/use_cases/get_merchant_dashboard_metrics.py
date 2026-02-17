@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
-from math import ceil
+from decimal import Decimal, ROUND_HALF_UP
 
 from tenants.application.dto.merchant_dashboard_metrics import (
     ChartPointDTO,
@@ -12,7 +11,7 @@ from tenants.application.dto.merchant_dashboard_metrics import (
 from tenants.application.interfaces.inventory_repository_port import InventoryRepositoryPort
 from tenants.application.interfaces.order_repository_port import OrderRepositoryPort
 from tenants.application.interfaces.visitor_repository_port import VisitorRepositoryPort
-from tenants.infrastructure.repositories.django_inventory_repository import DjangoInventoryRepository
+from tenants.infrastructure.repositories.django_low_stock_repository import DjangoLowStockRepository
 from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
 from tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
 
@@ -20,7 +19,7 @@ from tenants.infrastructure.repositories.django_visitor_repository import Django
 @dataclass(frozen=True)
 class GetMerchantDashboardMetricsCommand:
     user_id: int
-    tenant_id: int
+    store_id: int
     currency: str = "SAR"
     timezone: str = "UTC"
 
@@ -37,7 +36,7 @@ class GetMerchantDashboardMetricsUseCase:
     ) -> None:
         self._order_repository = order_repository or DjangoOrderRepository()
         self._visitor_repository = visitor_repository or DjangoVisitorRepository()
-        self._inventory_repository = inventory_repository or DjangoInventoryRepository()
+        self._inventory_repository = inventory_repository or DjangoLowStockRepository()
 
     def execute(
         self,
@@ -46,27 +45,27 @@ class GetMerchantDashboardMetricsUseCase:
         normalized_query = self._normalize_query(query)
 
         sales_today = self._order_repository.sum_sales_today(
-            tenant_id=normalized_query.tenant_id,
+            store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
         orders_today = self._order_repository.count_orders_today(
-            tenant_id=normalized_query.tenant_id,
+            store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
         revenue_7d = self._order_repository.sum_revenue_last_7_days(
-            tenant_id=normalized_query.tenant_id,
+            store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
         visitors_7d = self._visitor_repository.count_visitors_last_7_days(
-            tenant_id=normalized_query.tenant_id,
+            store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
         raw_chart_7d = self._order_repository.chart_revenue_orders_last_7_days(
-            tenant_id=normalized_query.tenant_id,
+            store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
-        recent_orders = self._order_repository.recent_orders(normalized_query.tenant_id, limit=10)
-        low_stock = self._inventory_repository.low_stock_products(normalized_query.tenant_id, threshold=5, limit=10)
+        recent_orders = self._order_repository.recent_orders(normalized_query.store_id, limit=10)
+        low_stock = self._inventory_repository.low_stock_products(normalized_query.store_id, threshold=5, limit=10)
 
         chart_7d = self._with_revenue_levels(raw_chart_7d)
         orders_7d = sum(int(point["orders"]) for point in chart_7d)
@@ -104,7 +103,7 @@ class GetMerchantDashboardMetricsUseCase:
 
         return GetMerchantDashboardMetricsQuery(
             actor_user_id=query.user_id,
-            tenant_id=query.tenant_id,
+            store_id=query.store_id,
             currency=query.currency,
             timezone=query.timezone,
         )
@@ -129,8 +128,11 @@ class GetMerchantDashboardMetricsUseCase:
         normalized: list[ChartPointDTO] = []
         for point in chart_7d:
             revenue = Decimal(point["revenue"])
-            ratio = revenue / max_revenue
-            level = 0 if revenue <= Decimal("0") else min(10, max(1, ceil(float(ratio) * 10)))
+            if revenue <= Decimal("0"):
+                level = 0
+            else:
+                level = int(((revenue / max_revenue) * Decimal("10")).to_integral_value(rounding=ROUND_HALF_UP))
+                level = max(0, min(10, level))
             normalized.append(
                 {
                     "date": point["date"],
