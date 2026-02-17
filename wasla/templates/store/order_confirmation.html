@@ -4,8 +4,18 @@
 <div class="container">
   <div class="card" style="padding:18px;">
     <h1 style="margin:0 0 10px;">تم استلام طلبك ✅</h1>
-    <p class="muted">رقم الطلب: {{ order.id }}</p>
-    <a class="btn" href="/">العودة للرئيسية</a>
+    {% if order %}
+      <p class="muted">رقم الطلب: {{ order.order_number }}</p>
+      <p class="muted">طريقة الدفع: {{ order.payment_status }}</p>
+      <p class="muted">إجمالي الطلب: {{ order.total_amount }} {{ order.currency }}</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="{{ tracking_url }}">تتبع الطلب</a>
+        <a class="btn" href="/">متابعة التسوق</a>
+      </div>
+    {% else %}
+      <p class="muted">تعذر العثور على الطلب.</p>
+      <a class="btn" href="/">العودة للرئيسية</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

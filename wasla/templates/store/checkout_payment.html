@@ -6,7 +6,16 @@
     <h1 style="margin:0 0 10px;">الدفع</h1>
     <form method="post" style="display:grid; gap:12px;">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% if providers %}
+        {% for provider in providers %}
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="radio" name="provider_code" value="{{ provider.code }}" {% if forloop.first %}checked{% endif %}>
+            <span>{{ provider.name }}</span>
+          </label>
+        {% endfor %}
+      {% else %}
+        <p class="muted">لا توجد وسائل دفع مفعلة لهذا المتجر.</p>
+      {% endif %}
       <button class="btn" type="submit">ادفع الآن</button>
     </form>
   </div>

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.http import Http404
@@ -59,7 +61,20 @@ def cart_view(request: HttpRequest) -> HttpResponse:
             return redirect("tenants:dashboard_home")
         return redirect("home")
     cart = GetCartUseCase.execute(tenant_ctx)
-    return render(request, "store/cart.html", {"cart": cart})
+    vat_rate = Decimal("0.15")
+    vat_amount = (cart.subtotal * vat_rate).quantize(Decimal("0.01"))
+    shipping_fee = Decimal("0.00")
+    grand_total = (cart.subtotal + vat_amount + shipping_fee).quantize(Decimal("0.01"))
+    return render(
+        request,
+        "store/cart.html",
+        {
+            "cart": cart,
+            "vat_amount": vat_amount,
+            "shipping_fee": shipping_fee,
+            "grand_total": grand_total,
+        },
+    )
 
 
 @require_POST

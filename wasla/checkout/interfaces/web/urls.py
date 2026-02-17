@@ -10,4 +10,5 @@ urlpatterns = [
     path("checkout/shipping", views.checkout_shipping, name="checkout_shipping"),
     path("checkout/payment", views.checkout_payment, name="checkout_payment"),
     path("order/confirmation/<str:order_number>", views.order_confirmation, name="order_confirmation"),
+    path("order/track/<str:order_number>", views.order_tracking, name="order_tracking"),
 ]

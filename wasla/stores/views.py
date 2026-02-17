@@ -5,14 +5,17 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from django.db import transaction
+
+from tenants.application.use_cases.get_merchant_dashboard_metrics import (
+    GetMerchantDashboardMetricsCommand,
+    GetMerchantDashboardMetricsUseCase,
+)
 
 from .models import Store, StoreSettings, StoreSetupStep
 from .forms import (
     MerchantRegistrationForm,
     StoreBasicInfoForm,
     StoreDomainForm,
-    StoreSettingsForm,
 )
 
 
@@ -316,12 +319,28 @@ def store_dashboard(request, store_id=None):
         if not store:
             return redirect("store_setup_basic")
 
-    # Get store metrics
+    metrics = None
+    try:
+        metrics = GetMerchantDashboardMetricsUseCase().execute(
+            GetMerchantDashboardMetricsCommand(
+                user_id=request.user.id,
+                store_id=store.id,
+                currency="SAR",
+                timezone="Asia/Riyadh",
+            )
+        )
+    except Exception:
+        metrics = None
+
     context = {
         "store": store,
-        "total_sales_today": 0,  # TODO: Calculate from orders
-        "new_orders": 0,  # TODO: Count orders
-        "visitors": 0,  # TODO: From analytics
-        "conversion_rate": 0,  # TODO: Calculate
+        "total_sales_today": metrics.sales_today if metrics else 0,
+        "new_orders": metrics.orders_today if metrics else 0,
+        "visitors": metrics.visitors_7d if metrics else 0,
+        "conversion_rate": round(float(metrics.conversion_7d) * 100, 2) if metrics else 0,
+        "revenue_7d": metrics.revenue_7d if metrics else 0,
+        "chart_7d": metrics.chart_7d if metrics else [],
+        "recent_orders": metrics.recent_orders if metrics else [],
+        "low_stock": metrics.low_stock if metrics else [],
     }
     return render(request, "stores/dashboard.html", context)

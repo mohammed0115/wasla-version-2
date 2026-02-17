@@ -7,11 +7,46 @@
 <main class="container" style="max-width: 1000px; margin: 2rem auto;">
   <h1>{% trans "Merchant Dashboard" %}</h1>
   <h2>{{ store.name }}</h2>
-  <ul>
-    <li>{% trans "Today's Sales" %}: {{ total_sales_today }}</li>
-    <li>{% trans "New Orders" %}: {{ new_orders }}</li>
-    <li>{% trans "Visitors" %}: {{ visitors }}</li>
-    <li>{% trans "Conversion Rate" %}: {{ conversion_rate }}%</li>
-  </ul>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:10px;">
+    <div class="card" style="padding:12px;"><strong>{% trans "Today's Sales" %}</strong><div>{{ total_sales_today }} SAR</div></div>
+    <div class="card" style="padding:12px;"><strong>{% trans "New Orders" %}</strong><div>{{ new_orders }}</div></div>
+    <div class="card" style="padding:12px;"><strong>{% trans "Visitors (7d)" %}</strong><div>{{ visitors }}</div></div>
+    <div class="card" style="padding:12px;"><strong>{% trans "Conversion Rate" %}</strong><div>{{ conversion_rate }}%</div></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:14px; margin-top:14px;">
+    <section class="card" style="padding:14px;">
+      <h3 style="margin:0 0 8px;">{% trans "Recent Orders" %}</h3>
+      {% if recent_orders %}
+        <div style="display:grid; gap:8px;">
+          {% for order in recent_orders %}
+            <div style="display:flex; justify-content:space-between; border:1px solid #e5e7eb; padding:8px; border-radius:8px;">
+              <span>#{{ order.id }} - {{ order.customer_name }}</span>
+              <strong>{{ order.total }} SAR</strong>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">{% trans "No recent orders." %}</p>
+      {% endif %}
+    </section>
+
+    <section class="card" style="padding:14px;">
+      <h3 style="margin:0 0 8px;">{% trans "Low Stock Alerts" %}</h3>
+      {% if low_stock %}
+        <div style="display:grid; gap:8px;">
+          {% for item in low_stock %}
+            <div style="display:flex; justify-content:space-between; border:1px solid #fde68a; background:#fffbeb; padding:8px; border-radius:8px;">
+              <span>{{ item.name }}</span>
+              <strong>{{ item.quantity }}</strong>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">{% trans "No low stock items." %}</p>
+      {% endif %}
+    </section>
+  </div>
 </main>
 {% endblock %}

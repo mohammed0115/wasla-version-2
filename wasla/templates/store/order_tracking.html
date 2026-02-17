@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}تتبع الطلب{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">تتبع الطلب</h1>
+    {% if order %}
+      <p class="muted">رقم الطلب: {{ order.order_number }}</p>
+      <p class="muted">الحالة الحالية: {{ order.status }}</p>
+
+      <div style="display:grid; gap:8px; margin-top:12px;">
+        {% for item in timeline %}
+          <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; display:flex; justify-content:space-between;">
+            <span>{{ item.label }}</span>
+            {% if item.done %}<strong>✓</strong>{% else %}<span>○</span>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:12px;">
+        <a class="btn" href="/">متابعة التسوق</a>
+      </div>
+    {% else %}
+      <p class="muted">تعذر العثور على الطلب.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

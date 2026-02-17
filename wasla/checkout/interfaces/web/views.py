@@ -161,4 +161,42 @@ def order_confirmation(request: HttpRequest, order_number: str) -> HttpResponse:
     order = Order.objects.filter(
         store_id=tenant_ctx.tenant_id, order_number=order_number
     ).first()
-    return render(request, "store/order_confirmation.html", {"order": order})
+    return render(
+        request,
+        "store/order_confirmation.html",
+        {"order": order, "tracking_url": f"/order/track/{order_number}"},
+    )
+
+
+@require_GET
+def order_tracking(request: HttpRequest, order_number: str) -> HttpResponse:
+    tenant_ctx = _build_tenant_context(request)
+    order = Order.objects.filter(store_id=tenant_ctx.tenant_id, order_number=order_number).first()
+
+    status_to_step = {
+        "pending": 1,
+        "paid": 2,
+        "processing": 2,
+        "shipped": 3,
+        "delivered": 5,
+        "completed": 5,
+        "cancelled": 0,
+    }
+    current_step = status_to_step.get(getattr(order, "status", "pending"), 1)
+    timeline = [
+        {"step": 1, "label": "Order Received", "done": current_step >= 1},
+        {"step": 2, "label": "Processing", "done": current_step >= 2},
+        {"step": 3, "label": "Shipped", "done": current_step >= 3},
+        {"step": 4, "label": "In Transit", "done": current_step >= 4},
+        {"step": 5, "label": "Delivered", "done": current_step >= 5},
+    ]
+
+    return render(
+        request,
+        "store/order_tracking.html",
+        {
+            "order": order,
+            "timeline": timeline,
+            "current_step": current_step,
+        },
+    )
