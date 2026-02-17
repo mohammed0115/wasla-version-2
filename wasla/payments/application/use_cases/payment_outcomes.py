@@ -13,6 +13,9 @@ from settlements.application.use_cases.credit_order_payment import (
     CreditOrderPaymentCommand,
     CreditOrderPaymentUseCase,
 )
+from shipping.services.shipping_service import ShippingService
+from sms.application.use_cases.send_sms import SendSmsCommand, SendSmsUseCase
+from tenants.models import Tenant
 from tenants.domain.tenant_context import TenantContext
 
 
@@ -44,6 +47,34 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
         )
 
     CreditOrderPaymentUseCase.execute(CreditOrderPaymentCommand(order_id=order.id))
+
+    if not order.shipments.exists() and order.status in {"paid", "processing"}:
+        if order.status == "paid":
+            order.status = "processing"
+            order.save(update_fields=["status"])
+        carrier = (getattr(order, "shipping_method_code", "") or "manual_delivery").strip()
+        try:
+            ShippingService.create_shipment(order=order, carrier=carrier)
+        except ValueError:
+            pass
+
+    if not was_paid and getattr(order, "customer_phone", ""):
+        tenant = Tenant.objects.filter(id=tenant_ctx.tenant_id).first()
+        sms_body = (
+            f"Your order {order.order_number} is confirmed. "
+            f"Amount: {order.total_amount} {order.currency}."
+        )
+        try:
+            SendSmsUseCase.execute(
+                SendSmsCommand(
+                    body=sms_body,
+                    recipients=[order.customer_phone],
+                    tenant=tenant,
+                    metadata={"order_id": order.id, "event": "order_confirmed"},
+                )
+            )
+        except Exception:
+            pass
 
     if not was_paid:
         NotifyMerchantOrderPlacedUseCase.execute(

@@ -172,6 +172,7 @@ def order_confirmation(request: HttpRequest, order_number: str) -> HttpResponse:
 def order_tracking(request: HttpRequest, order_number: str) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     order = Order.objects.filter(store_id=tenant_ctx.tenant_id, order_number=order_number).first()
+    shipment = order.shipments.order_by("-created_at").first() if order else None
 
     status_to_step = {
         "pending": 1,
@@ -196,6 +197,7 @@ def order_tracking(request: HttpRequest, order_number: str) -> HttpResponse:
         "store/order_tracking.html",
         {
             "order": order,
+            "shipment": shipment,
             "timeline": timeline,
             "current_step": current_step,
         },

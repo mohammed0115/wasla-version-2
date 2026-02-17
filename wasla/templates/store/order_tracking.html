@@ -7,6 +7,10 @@
     {% if order %}
       <p class="muted">رقم الطلب: {{ order.order_number }}</p>
       <p class="muted">الحالة الحالية: {{ order.status }}</p>
+      {% if shipment %}
+        <p class="muted">شركة الشحن: {{ shipment.carrier }}</p>
+        <p class="muted">رقم التتبع: {{ shipment.tracking_number|default:"-" }}</p>
+      {% endif %}
 
       <div style="display:grid; gap:8px; margin-top:12px;">
         {% for item in timeline %}
