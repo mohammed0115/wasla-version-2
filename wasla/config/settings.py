@@ -133,7 +133,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-     "rest_framework",
+    "rest_framework",
+    "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
     "accounts.apps.AccountsConfig",
     "sms.apps.SmsConfig",
@@ -294,6 +295,40 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# drf-spectacular OpenAPI/Swagger Configuration
+SPECTACULAR_SETTINGS = {
+    "TITLE": "WASLA API",
+    "DESCRIPTION": "WASLA E-Commerce Platform API Documentation",
+    "VERSION": os.getenv("APP_VERSION", "1.0.0"),
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "RETRIEVE_SCHEMA_PATH": "/api/schema/",
+    "SCHEMA_PATH_PREFIX": "/api/",
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "defaultModelsExpandDepth": 1,
+        "defaultModelExpandDepth": 1,
+        "displayOperationId": True,
+        "layoutName": "BaseLayout",
+        "syncUrl": True,
+        "tryItOutEnabled": True,
+    },
+    "REDOC_UI_SETTINGS": {
+        "expand-single-schema-field": True,
+        "untrustedSpec": False,
+        "hideDownloadButton": False,
+    },
+    "CONTACT": {
+        "name": "WASLA Support",
+        "url": "https://wasla.com/support",
+        "email": "support@wasla.com",
+    },
+    "LICENSE": {
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
 }
 
 
