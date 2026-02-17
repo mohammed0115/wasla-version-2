@@ -1,52 +1,112 @@
 {% extends "base.html" %}
 {% load i18n %}
+{% load stores_filters %}
 
 {% block title %}{% trans "Merchant Dashboard" %}{% endblock %}
 
 {% block body %}
-<main class="container" style="max-width: 1000px; margin: 2rem auto;">
-  <h1>{% trans "Merchant Dashboard" %}</h1>
-  <h2>{{ store.name }}</h2>
+<main class="container" style="max-width: 1200px; margin: 2rem auto;">
+  <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div>
+      <h1 style="margin:0;">{% trans "Merchant Dashboard" %}</h1>
+      <p class="muted" style="margin:4px 0 0;">{{ store.name }}</p>
+    </div>
+    <a href="/settings" class="btn" style="padding:8px 16px;">{% trans "Settings" %}</a>
+  </header>
 
-  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:10px;">
-    <div class="card" style="padding:12px;"><strong>{% trans "Today's Sales" %}</strong><div>{{ total_sales_today }} SAR</div></div>
-    <div class="card" style="padding:12px;"><strong>{% trans "New Orders" %}</strong><div>{{ new_orders }}</div></div>
-    <div class="card" style="padding:12px;"><strong>{% trans "Visitors (7d)" %}</strong><div>{{ visitors }}</div></div>
-    <div class="card" style="padding:12px;"><strong>{% trans "Conversion Rate" %}</strong><div>{{ conversion_rate }}%</div></div>
-  </div>
+  <!-- KPI Cards Row -->
+  <section style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:20px;">
+    <div class="card" style="padding:16px; border-left:4px solid #10b981;">
+      <p style="margin:0; font-size:12px; color:#666;">{% trans "Today's Revenue" %}</p>
+      <div style="font-size:24px; font-weight:bold; margin:8px 0;">{{ metrics.sales_today|floatformat:0 }} SAR</div>
+      <p style="margin:0; font-size:11px; color:#999;">{% trans "Updated now" %}</p>
+    </div>
+    <div class="card" style="padding:16px; border-left:4px solid #3b82f6;">
+      <p style="margin:0; font-size:12px; color:#666;">{% trans "Orders Today" %}</p>
+      <div style="font-size:24px; font-weight:bold; margin:8px 0;">{{ metrics.orders_today }}</div>
+      <p style="margin:0; font-size:11px; color:#999;">{% trans "New orders" %}</p>
+    </div>
+    <div class="card" style="padding:16px; border-left:4px solid #f59e0b;">
+      <p style="margin:0; font-size:12px; color:#666;">{% trans "Revenue (7d)" %}</p>
+      <div style="font-size:24px; font-weight:bold; margin:8px 0;">{{ metrics.revenue_7d|floatformat:0 }} SAR</div>
+      <p style="margin:0; font-size:11px; color:#999;">{% trans "Last 7 days" %}</p>
+    </div>
+    <div class="card" style="padding:16px; border-left:4px solid #8b5cf6;">
+      <p style="margin:0; font-size:12px; color:#666;">{% trans "Conversion Rate" %}</p>
+      <div style="font-size:24px; font-weight:bold; margin:8px 0;">{{ metrics.conversion_7d|floatformat:2 }}%</div>
+      <p style="margin:0; font-size:11px; color:#999;">{% trans "Visitors to orders" %}</p>
+    </div>
+  </section>
 
-  <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:14px; margin-top:14px;">
-    <section class="card" style="padding:14px;">
-      <h3 style="margin:0 0 8px;">{% trans "Recent Orders" %}</h3>
-      {% if recent_orders %}
-        <div style="display:grid; gap:8px;">
-          {% for order in recent_orders %}
-            <div style="display:flex; justify-content:space-between; border:1px solid #e5e7eb; padding:8px; border-radius:8px;">
-              <span>#{{ order.id }} - {{ order.customer_name }}</span>
-              <strong>{{ order.total }} SAR</strong>
+  <!-- Main Content Grid -->
+  <section style="display:grid; grid-template-columns: 2fr 1fr; gap:18px; margin-bottom:20px;">
+    <!-- Chart & Metrics -->
+    <div class="card" style="padding:18px;">
+      <h3 style="margin:0 0 16px;">{% trans "Revenue & Orders" %}</h3>
+      <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; height:180px;">
+        {% for point in metrics.chart_7d %}
+          <div style="display:flex; flex-direction:column; justify-content:flex-end; align-items:center; position:relative;">
+            <div style="width:100%; height:{{ point.revenue_level|multiply:15 }}px; background:#3b82f6; border-radius:4px 4px 0 0; cursor:pointer;" title="{{ point.date }}: {{ point.revenue|floatformat:0 }} SAR, {{ point.orders }} orders"></div>
+            <small style="margin-top:4px; font-size:10px;">{{ point.date|date:'a' }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div style="display:grid; gap:12px;">
+      <div class="card" style="padding:14px;">
+        <p style="margin:0; font-size:12px; color:#666;">{% trans "Visitors (7d)" %}</p>
+        <div style="font-size:20px; font-weight:bold; margin:6px 0;">{{ metrics.visitors_7d }}</div>
+      </div>
+      <div class="card" style="padding:14px;">
+        <p style="margin:0; font-size:12px; color:#666;">{% trans "Goal Progress" %}</p>
+        <div style="margin:8px 0; background:#e5e7eb; height:8px; border-radius:4px; overflow:hidden;">
+          <div style="width:{{ metrics.conversion_7d|multiply:10 }}%; height:100%; background:#10b981;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Orders & Inventory -->
+  <section style="display:grid; grid-template-columns: 1.2fr 1fr; gap:18px;">
+    <div class="card" style="padding:18px;">
+      <h3 style="margin:0 0 14px;">{% trans "Recent Orders" %}</h3>
+      {% if metrics.recent_orders %}
+        <div style="display:grid; gap:10px; max-height:280px; overflow-y:auto;">
+          {% for order in metrics.recent_orders %}
+            <div style="display:flex; justify-content:space-between; align-items:center; border:1px solid #e5e7eb; padding:10px; border-radius:6px; font-size:13px;">
+              <div>
+                <strong>{{ order.order_number }}</strong>
+                <p style="margin:2px 0 0; color:#666; font-size:11px;">{{ order.customer_name }}</p>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:bold;">{{ order.total_amount|floatformat:0 }} SAR</div>
+                <span style="display:inline-block; padding:2px 6px; background:{% if order.status == 'paid' %}#d1fae5{% elif order.status == 'shipped' %}#dbeafe{% elif order.status == 'delivered' %}#dcfce7{% else %}#fee2e2{% endif %}; color:{% if order.status == 'paid' %}#065f46{% elif order.status == 'shipped' %}#0c4a6e{% elif order.status == 'delivered' %}#15803d{% else %}#7f1d1d{% endif %}; border-radius:3px; font-size:10px;">{{ order.status|title }}</span>
+              </div>
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <p class="muted">{% trans "No recent orders." %}</p>
+        <p class="muted">{% trans "No recent orders yet." %}</p>
       {% endif %}
-    </section>
+    </div>
 
-    <section class="card" style="padding:14px;">
-      <h3 style="margin:0 0 8px;">{% trans "Low Stock Alerts" %}</h3>
-      {% if low_stock %}
-        <div style="display:grid; gap:8px;">
-          {% for item in low_stock %}
-            <div style="display:flex; justify-content:space-between; border:1px solid #fde68a; background:#fffbeb; padding:8px; border-radius:8px;">
-              <span>{{ item.name }}</span>
-              <strong>{{ item.quantity }}</strong>
+    <div class="card" style="padding:18px;">
+      <h3 style="margin:0 0 14px;">{% trans "Low Stock Alert" %}</h3>
+      {% if metrics.low_stock %}
+        <div style="display:grid; gap:10px; max-height:280px; overflow-y:auto;">
+          {% for item in metrics.low_stock %}
+            <div style="border:1px solid #fca5a5; background:#fee2e2; padding:10px; border-radius:6px; font-size:13px;">
+              <strong style="color:#991b1b;">{{ item.name }}</strong>
+              <p style="margin:4px 0 0; color:#7f1d1d; font-size:12px;">{% trans "Stock" %}: {{ item.quantity }} {% trans "units" %}</p>
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <p class="muted">{% trans "No low stock items." %}</p>
+        <p class="muted" style="color:#059669;">✓ {% trans "All inventory levels are healthy." %}</p>
       {% endif %}
-    </section>
-  </div>
+    </div>
+  </section>
 </main>
 {% endblock %}

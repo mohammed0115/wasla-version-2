@@ -334,6 +334,7 @@ def store_dashboard(request, store_id=None):
 
     context = {
         "store": store,
+        "metrics": metrics or {},
         "total_sales_today": metrics.sales_today if metrics else 0,
         "new_orders": metrics.orders_today if metrics else 0,
         "visitors": metrics.visitors_7d if metrics else 0,
