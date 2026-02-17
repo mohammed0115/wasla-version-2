@@ -205,7 +205,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-DB_DEFAULT_ALIAS = (os.getenv("DJANGO_DB_DEFAULT", "sqlite") or "sqlite").strip().lower()
+DB_DEFAULT_ALIAS = (os.getenv("DJANGO_DB_DEFAULT", "mysql") or "mysql").strip().lower()
 
 SQLITE_DB_NAME = os.getenv("SQLITE_DB_NAME", str(BASE_DIR / "db.sqlite3"))
 
