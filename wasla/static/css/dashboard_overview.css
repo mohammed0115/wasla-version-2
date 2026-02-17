@@ -1,0 +1,77 @@
+.dbov-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.dbov-row {
+  display: grid;
+  grid-template-columns: 110px minmax(120px, 1fr) 140px 90px;
+  gap: 10px;
+  align-items: center;
+}
+
+.dbov-date,
+.dbov-value,
+.dbov-orders {
+  font-size: 0.875rem;
+}
+
+.dbov-track {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text) 10%, transparent);
+  overflow: hidden;
+}
+
+.dbov-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.dbov-bar.l0 { width: 0%; }
+.dbov-bar.l1 { width: 10%; }
+.dbov-bar.l2 { width: 20%; }
+.dbov-bar.l3 { width: 30%; }
+.dbov-bar.l4 { width: 40%; }
+.dbov-bar.l5 { width: 50%; }
+.dbov-bar.l6 { width: 60%; }
+.dbov-bar.l7 { width: 70%; }
+.dbov-bar.l8 { width: 80%; }
+.dbov-bar.l9 { width: 90%; }
+.dbov-bar.l10 { width: 100%; }
+
+.dbov-low-stock-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dbov-low-stock-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+  border-radius: 10px;
+}
+
+.dbov-low-stock-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dbov-low-stock-qty {
+  min-width: 40px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+  .dbov-row {
+    grid-template-columns: 1fr;
+  }
+}

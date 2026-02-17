@@ -120,8 +120,8 @@ class OrderRepositoryTenantIsolationTests(TestCase):
             total_amount=Decimal("90.00"),
         )
 
-        self.assertEqual(self.repo.count_orders_today(self.store_a), 1)
-        self.assertEqual(self.repo.sum_sales_today(self.store_a), Decimal("30.00"))
+        self.assertEqual(self.repo.count_orders_today(self.store_a, "UTC"), 1)
+        self.assertEqual(self.repo.sum_sales_today(self.store_a, "UTC"), Decimal("30.00"))
         recent = self.repo.recent_orders(self.store_a)
         self.assertEqual(len(recent), 1)
-        self.assertEqual(recent[0].id, order_a.id)
+        self.assertEqual(recent[0]["id"], order_a.id)

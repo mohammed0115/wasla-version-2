@@ -62,8 +62,6 @@ from tenants.interfaces.web.decorators import resolve_tenant_for_request, tenant
 from tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings
 from tenants.tasks import enqueue_verify_domain
 from tenants.domain.tenant_context import TenantContext
-from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
-from tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
 
 from .forms import (
     CustomDomainForm,
@@ -685,6 +683,7 @@ def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
 
 
 @login_required
+@tenant_access_required
 @require_GET
 def dashboard_home(request: HttpRequest) -> HttpResponse:
     """Minimal dashboard landing page.
@@ -705,10 +704,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     except (StoreAccessDeniedError, StoreInactiveError) as exc:
         raise PermissionDenied(str(exc)) from exc
 
-    use_case = GetMerchantDashboardMetricsUseCase(
-        order_repository=DjangoOrderRepository(),
-        visitor_repository=DjangoVisitorRepository(),
-    )
+    use_case = GetMerchantDashboardMetricsUseCase()
     metrics = use_case.execute(
         GetMerchantDashboardMetricsQuery(
             actor_user_id=request.user.id,

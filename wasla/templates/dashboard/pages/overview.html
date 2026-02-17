@@ -1,5 +1,10 @@
 {% extends "dashboard/_base.html" %}
-{% load i18n %}
+{% load i18n static %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/dashboard_overview.css' %}">
+{% endblock %}
 
 {% block page_title %}{% trans "Overview" %}{% endblock %}
 {% block page_subtitle %}{% trans "Your store performance (real data)." %}{% endblock %}
@@ -23,9 +28,37 @@
     <div class="dash__kpi-label">{% trans "Visitors (7 days)" %}</div>
     <div class="dash__kpi-value">{{ metrics.visitors_7d|default:0 }}</div>
   </div>
+  <div class="card dash__kpi-card">
+    <div class="dash__kpi-label">{% trans "Conversion (7 days)" %}</div>
+    <div class="dash__kpi-value">{{ metrics.conversion_7d }}</div>
+  </div>
 </section>
 
 <section class="dash__overview-grid stack-16">
+  <section class="card dash__section">
+    <div class="dash__section-header">
+      <div class="stack-8">
+        <h2 class="dash__section-title">{% trans "Revenue trend (7 days)" %}</h2>
+        <p class="dash__section-note">{% trans "HTML-only chart grouped by day." %}</p>
+      </div>
+    </div>
+
+    <div class="dbov-chart" role="img" aria-label="{% trans '7 day revenue chart' %}">
+      {% for row in metrics.chart_7d %}
+        <div class="dbov-row">
+          <div class="dbov-date">{{ row.date }}</div>
+          <div class="dbov-track">
+            <div class="dbov-bar l{{ row.revenue_level }}"></div>
+          </div>
+          <div class="dbov-value">{{ row.revenue }} {{ tenant.currency|default:"SAR" }}</div>
+          <div class="dbov-orders">{{ row.orders }} {% trans "orders" %}</div>
+        </div>
+      {% empty %}
+        <div class="muted">{% trans "No chart data available." %}</div>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="card dash__section">
     <div class="dash__section-header">
       <div class="stack-8">
@@ -70,20 +103,29 @@
   <section class="card dash__section">
     <div class="dash__section-header">
       <div class="stack-8">
-        <h2 class="dash__section-title">{% trans "Quick actions" %}</h2>
-        <p class="dash__section-note">{% trans "Jump to key areas of your store." %}</p>
+        <h2 class="dash__section-title">{% trans "Low stock" %}</h2>
+        <p class="dash__section-note">{% trans "Products that need restocking soon." %}</p>
       </div>
     </div>
-    <div class="dash__quick-grid">
-      <a class="dash__quick-link" href="{% url 'tenants:dashboard_orders' %}">{% trans "Orders" %}</a>
-      <a class="dash__quick-link" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
-      <a class="dash__quick-link" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
-      <a class="dash__quick-link" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
-      <a class="dash__quick-link" href="{% url 'imports_web:dashboard_import' %}">{% trans "Imports" %}</a>
-      <a class="dash__quick-link" href="{% url 'exports_web:dashboard_exports' %}">{% trans "Exports" %}</a>
-      <a class="dash__quick-link" href="{% url 'analytics_web:dashboard_analytics_events' %}">{% trans "Analytics" %}</a>
-      <a class="dash__quick-link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store settings" %}</a>
-    </div>
+
+    {% if metrics.low_stock %}
+      <div class="dbov-low-stock-list">
+        {% for item in metrics.low_stock %}
+          <div class="dbov-low-stock-item">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <div class="muted">SKU: {{ item.sku }}</div>
+            </div>
+            <div class="dbov-low-stock-meta">
+              <span class="dbov-low-stock-qty">{{ item.quantity }}</span>
+              <a class="btn btn-soft" href="{% url 'cart_web:product_detail' tenant.slug item.product_id %}">{% trans "View" %}</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">{% trans "No low stock items" %}</div>
+    {% endif %}
   </section>
 </section>
 

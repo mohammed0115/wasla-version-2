@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from math import ceil
 
 from tenants.application.dto.merchant_dashboard_metrics import (
+    ChartPointDTO,
     GetMerchantDashboardMetricsQuery,
     MerchantDashboardMetricsDTO,
 )
+from tenants.application.interfaces.inventory_repository_port import InventoryRepositoryPort
 from tenants.application.interfaces.order_repository_port import OrderRepositoryPort
 from tenants.application.interfaces.visitor_repository_port import VisitorRepositoryPort
+from tenants.infrastructure.repositories.django_inventory_repository import DjangoInventoryRepository
 from tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
 from tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
 
@@ -29,9 +33,11 @@ class GetMerchantDashboardMetricsUseCase:
         self,
         order_repository: OrderRepositoryPort | None = None,
         visitor_repository: VisitorRepositoryPort | None = None,
+        inventory_repository: InventoryRepositoryPort | None = None,
     ) -> None:
         self._order_repository = order_repository or DjangoOrderRepository()
         self._visitor_repository = visitor_repository or DjangoVisitorRepository()
+        self._inventory_repository = inventory_repository or DjangoInventoryRepository()
 
     def execute(
         self,
@@ -39,16 +45,36 @@ class GetMerchantDashboardMetricsUseCase:
     ) -> MerchantDashboardMetricsDTO:
         normalized_query = self._normalize_query(query)
 
-        sales_today = self._order_repository.sum_sales_today(normalized_query.tenant_id)
-        orders_today = self._order_repository.count_orders_today(normalized_query.tenant_id)
-        revenue_7d = self._order_repository.sum_revenue_last_7_days(normalized_query.tenant_id)
-        visitors_7d = self._visitor_repository.count_visitors_last_7_days(normalized_query.tenant_id)
+        sales_today = self._order_repository.sum_sales_today(
+            tenant_id=normalized_query.tenant_id,
+            tz=normalized_query.timezone,
+        )
+        orders_today = self._order_repository.count_orders_today(
+            tenant_id=normalized_query.tenant_id,
+            tz=normalized_query.timezone,
+        )
+        revenue_7d = self._order_repository.sum_revenue_last_7_days(
+            tenant_id=normalized_query.tenant_id,
+            tz=normalized_query.timezone,
+        )
+        visitors_7d = self._visitor_repository.count_visitors_last_7_days(
+            tenant_id=normalized_query.tenant_id,
+            tz=normalized_query.timezone,
+        )
+        raw_chart_7d = self._order_repository.chart_revenue_orders_last_7_days(
+            tenant_id=normalized_query.tenant_id,
+            tz=normalized_query.timezone,
+        )
         recent_orders = self._order_repository.recent_orders(normalized_query.tenant_id, limit=10)
+        low_stock = self._inventory_repository.low_stock_products(normalized_query.tenant_id, threshold=5, limit=10)
+
+        chart_7d = self._with_revenue_levels(raw_chart_7d)
+        orders_7d = sum(int(point["orders"]) for point in chart_7d)
 
         conversion_7d = (
             Decimal("0")
             if visitors_7d == 0
-            else Decimal(orders_today) / Decimal(visitors_7d)
+            else Decimal(orders_7d) / Decimal(visitors_7d)
         )
 
         return MerchantDashboardMetricsDTO(
@@ -57,7 +83,9 @@ class GetMerchantDashboardMetricsUseCase:
             revenue_7d=revenue_7d,
             visitors_7d=visitors_7d,
             conversion_7d=conversion_7d,
+            chart_7d=chart_7d,
             recent_orders=recent_orders,
+            low_stock=low_stock,
         )
 
     @classmethod
@@ -80,3 +108,35 @@ class GetMerchantDashboardMetricsUseCase:
             currency=query.currency,
             timezone=query.timezone,
         )
+
+    @staticmethod
+    def _with_revenue_levels(chart_7d: list[ChartPointDTO]) -> list[ChartPointDTO]:
+        if not chart_7d:
+            return []
+
+        max_revenue = max((Decimal(point["revenue"]) for point in chart_7d), default=Decimal("0"))
+        if max_revenue <= Decimal("0"):
+            return [
+                {
+                    "date": point["date"],
+                    "revenue": Decimal(point["revenue"]),
+                    "orders": int(point["orders"]),
+                    "revenue_level": 0,
+                }
+                for point in chart_7d
+            ]
+
+        normalized: list[ChartPointDTO] = []
+        for point in chart_7d:
+            revenue = Decimal(point["revenue"])
+            ratio = revenue / max_revenue
+            level = 0 if revenue <= Decimal("0") else min(10, max(1, ceil(float(ratio) * 10)))
+            normalized.append(
+                {
+                    "date": point["date"],
+                    "revenue": revenue,
+                    "orders": int(point["orders"]),
+                    "revenue_level": level,
+                }
+            )
+        return normalized
