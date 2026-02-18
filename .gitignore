@@ -1,0 +1,14 @@
+# Virtual Environment
+venv/
+ENV/
+.venv/
+bin/
+lib/
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Local env / data
+.env
+db.sqlite3

@@ -1,0 +1,21 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}إدارة التسويات{% endblock %}
+{% block content %}
+<div class="card" style="padding:18px;">
+  <h3 style="margin:0 0 10px;">التسويات (Admin)</h3>
+  {% if settlements %}
+    <div style="display:grid; gap:10px;">
+      {% for s in settlements %}
+        <a class="card" style="padding:12px 14px; width:100%;" href="/admin/settlements/{{ s.id }}">
+          <div style="display:flex; justify-content:space-between;">
+            <div style="font-weight:800;">{{ s.reference }}</div>
+            <div>{{ s.status }}</div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">لا توجد تسويات.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}تأكيد الطلب{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">تم استلام طلبك ✅</h1>
+    {% if order %}
+      <p class="muted">رقم الطلب: {{ order.order_number }}</p>
+      <p class="muted">طريقة الدفع: {{ order.payment_status }}</p>
+      {% if payment_intent %}
+        <p class="muted">مزود الدفع: {{ payment_intent.provider_code }}</p>
+        <p class="muted">حالة عملية الدفع: {{ payment_intent.status }}</p>
+      {% endif %}
+      <p class="muted">إجمالي الطلب: {{ order.total_amount }} {{ order.currency }}</p>
+      <p class="muted">طريقة الشحن: {{ order.shipping_method_code|default:"-" }}</p>
+      {% if order.shipping_address_json %}
+        <p class="muted">العنوان: {{ order.shipping_address_json.line1|default:"" }} - {{ order.shipping_address_json.city|default:"" }}</p>
+      {% endif %}
+      {% if shipment %}
+        <p class="muted">رقم التتبع: {{ shipment.tracking_number|default:"-" }}</p>
+      {% endif %}
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="{{ tracking_url }}">تتبع الطلب</a>
+        <a class="btn" href="/">متابعة التسوق</a>
+      </div>
+    {% else %}
+      <p class="muted">تعذر العثور على الطلب.</p>
+      <a class="btn" href="/">العودة للرئيسية</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

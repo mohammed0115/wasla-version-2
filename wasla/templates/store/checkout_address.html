@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}الدفع | العنوان{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">عنوان الشحن</h1>
+    <form method="post" style="display:grid; gap:12px;">
+      {% csrf_token %}
+      <input type="text" name="full_name" placeholder="الاسم الكامل" value="{{ address.full_name|default:'' }}" required>
+      <input type="email" name="email" placeholder="البريد الإلكتروني" value="{{ address.email|default:'' }}" required>
+      <input type="text" name="phone" placeholder="رقم الجوال" value="{{ address.phone|default:'' }}" required>
+      <input type="text" name="city" placeholder="المدينة" value="{{ address.city|default:'' }}" required>
+      <input type="text" name="line1" placeholder="الحي / الشارع / المبنى" value="{{ address.line1|default:'' }}" required>
+      <input type="text" name="country" placeholder="الدولة" value="{{ address.country|default:'SA' }}" required>
+
+      <div class="card" style="padding:10px;">
+        <div style="display:flex; justify-content:space-between;"><span>عدد المنتجات</span><strong>{{ cart.items|length }}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>المجموع الفرعي</span><strong>{{ cart.subtotal }} {{ cart.currency }}</strong></div>
+      </div>
+      <button class="btn" type="submit">التالي</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

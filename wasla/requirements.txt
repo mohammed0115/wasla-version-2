@@ -1,0 +1,23 @@
+Django>=5.1,<6.0
+djangorestframework>=3.15,<4.0
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27.0
+python-dotenv>=1.0,<2.0
+numpy>=1.24
+Pillow>=10.0
+faiss-cpu>=1.7.4
+requests
+scipy
+gunicorn
+
+# Database Drivers (choose one based on your DB_SYSTEM)
+mysqlclient>=2.2.0  # For MySQL support
+psycopg2-binary>=2.9.0  # For PostgreSQL support
+
+# Optional for CLIP embeddings (V1-P3):
+# torch>=2.1
+# transformers>=4.41
+
+# Testing
+pytest==8.3.3
+pytest-django==4.9.0

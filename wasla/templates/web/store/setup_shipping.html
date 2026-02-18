@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block title %}{% if LANGUAGE_CODE == "ar" %}إعداد المتجر | الشحن{% else %}Store Setup | Shipping{% endif %}{% endblock %}
+
+{% block body %}
+<section class="container setup-shell">
+  {% include "web/store/_wizard_header.html" with wizard_title="الخطوة 3 — الشحن" %}
+
+  <article class="card setup-card stack-16">
+    {% if LANGUAGE_CODE == "ar" %}
+      <p class="setup-subtitle">حدد طريقة الشحن ورسوم التوصيل وحد الشحن المجاني.</p>
+    {% else %}
+      <p class="setup-subtitle">Choose your fulfillment mode and delivery pricing rules.</p>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="card setup-alert" role="alert">
+        {% for error in form.non_field_errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" class="setup-form stack-16" novalidate>
+      {% csrf_token %}
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.fulfillment_mode.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}طريقة التنفيذ{% else %}Fulfillment mode{% endif %}
+        </label>
+        {{ form.fulfillment_mode }}
+        {% for error in form.fulfillment_mode.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.origin_city.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}مدينة الانطلاق{% else %}Origin city{% endif %}
+        </label>
+        {{ form.origin_city }}
+        {% for error in form.origin_city.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.delivery_fee_flat.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}رسوم التوصيل الثابتة{% else %}Flat delivery fee{% endif %}
+        </label>
+        {{ form.delivery_fee_flat }}
+        {% for error in form.delivery_fee_flat.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.free_shipping_threshold.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}حد الشحن المجاني{% else %}Free shipping threshold{% endif %}
+        </label>
+        {{ form.free_shipping_threshold }}
+        {% for error in form.free_shipping_threshold.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <label class="setup-check-row" for="{{ form.is_enabled.id_for_label }}">
+        {{ form.is_enabled }}
+        <span>{% if LANGUAGE_CODE == "ar" %}تفعيل الشحن{% else %}Enable shipping{% endif %}</span>
+      </label>
+
+      <div class="setup-actions">
+        <button class="btn btn-primary" type="submit">{% if LANGUAGE_CODE == "ar" %}حفظ والمتابعة{% else %}Save and continue{% endif %}</button>
+        <a class="btn btn-soft" href="{% url 'tenants:store_setup_step2' %}">{% if LANGUAGE_CODE == "ar" %}رجوع{% else %}Back{% endif %}</a>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

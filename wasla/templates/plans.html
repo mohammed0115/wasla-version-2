@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Plans" %}{% endblock %}
+{% block extra_css %}
+<style>
+  .plans-wrap {
+    inline-size: min(1100px, 100%);
+  }
+
+  .plans-top {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .plans-pill {
+    display: inline-block;
+    background: rgba(105, 230, 211, 0.65);
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 900;
+  }
+
+  .plans-title {
+    text-align: center;
+    margin: 10px 0 18px;
+    font-weight: 900;
+    font-size: clamp(30px, 4vw, 56px);
+    line-height: 1.15;
+  }
+
+  .plan-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+
+  .plan-toggle button {
+    min-height: 42px;
+    padding: 8px 16px;
+    border: 0;
+    background: var(--white);
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .plan-toggle button.active {
+    background: var(--primary);
+    color: var(--white);
+  }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .plan-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    padding: 18px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .plan-card.free {
+    background: rgba(105, 230, 211, 0.22);
+  }
+
+  .plan-card.popular {
+    border-color: rgba(31, 79, 216, 0.35);
+    box-shadow: 0 4px 24px rgba(11, 28, 58, 0.08);
+  }
+
+  .plan-card.dark {
+    background: #0b1c3a;
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .plan-name {
+    font-size: 30px;
+    line-height: 1.1;
+    font-weight: 900;
+  }
+
+  .plan-price {
+    font-size: 40px;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  .plan-unit {
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .plan-btn {
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--text);
+    color: var(--white);
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .plan-card.popular .plan-btn {
+    background: var(--primary);
+  }
+
+  .plan-card.dark .plan-btn {
+    background: var(--white);
+    color: var(--text);
+  }
+
+  .plan-badge {
+    justify-self: start;
+    background: rgba(31, 79, 216, 0.1);
+    color: var(--primary);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .compare-actions {
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .compare-actions button {
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .compare-table {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .compare-row {
+    display: grid;
+    grid-template-columns: repeat(3, 92px) minmax(0, 1fr);
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-row:last-child {
+    border-bottom: 0;
+  }
+
+  .compare-row > div {
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .compare-row .feat {
+    text-align: start;
+    font-weight: 600;
+  }
+
+  .yes {
+    color: #059669;
+  }
+
+  .no {
+    color: #dc2626;
+  }
+
+  @media (max-width: 992px) {
+    .plan-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .compare-row {
+      grid-template-columns: repeat(3, 72px) minmax(0, 1fr);
+    }
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="salla-shell">
+  <div class="salla-card plans-wrap">
+    <div class="plans-top">
+      <div class="plans-pill">
+        {% trans "Join over" %} <span style="font-weight:900">68,000</span> {% trans "active merchants on Wasla" %}
+      </div>
+    </div>
+
+    <h1 class="plans-title">{% trans "Choose the best plan for your business growth" %}</h1>
+
+    <div class="plan-toggle" role="tablist" aria-label="billing cycle">
+      <button type="button" id="btnYear" class="{% if billing_cycle == 'yearly' %}active{% endif %}">{% trans "Yearly" %}</button>
+      <button type="button" id="btnMonth" class="{% if billing_cycle != 'yearly' %}active{% endif %}">{% trans "Monthly" %}</button>
+    </div>
+
+    <form method="post" id="planForm">
+      {% csrf_token %}
+      <input type="hidden" name="billing_cycle" id="billingCycle" value="{{ billing_cycle|default:'monthly' }}">
+      <input type="hidden" name="plan_id" id="planId" value="{{ selected_plan_id|default:'' }}">
+
+      <div class="plan-grid">
+        {% for p in plans %}
+          {% if p.is_free %}
+            <div class="plan-card free">
+              <div class="plan-name">{% trans "Wasla Basic" %}</div>
+              <div class="muted" style="margin-top:6px">{% trans "For getting started" %}</div>
+              <div class="plan-price price" data-month="0" data-year="0">{% trans "Free" %}</div>
+              <button class="plan-btn" type="submit" name="plan_id" value="{{p.id}}">{% trans "Choose Basic" %}</button>
+            </div>
+          {% elif p.is_popular %}
+            <div class="plan-card popular">
+              <div class="plan-badge">الأنسب لتجارتك</div>
+              <div class="plan-name">{% trans "Wasla Plus" %}</div>
+              <div class="muted" style="margin-top:6px">{% trans "For individual merchants and families" %}</div>
+              <div class="plan-price price" data-month="{{p.price_monthly}}" data-year="{{p.price_yearly}}">
+                <span class="num"></span>
+                <span class="plan-unit">{% trans "SAR / month" %}</span>
+              </div>
+              <button class="plan-btn" type="submit" name="plan_id" value="{{p.id}}">{% trans "Choose Plus" %}</button>
+            </div>
+          {% else %}
+            <div class="plan-card dark">
+              <div class="plan-name">{% trans "Wasla Pro" %}</div>
+              <div class="muted" style="margin-top:6px;color:rgba(255,255,255,.8)">{% trans "For companies and institutions" %}</div>
+              <div class="plan-price price" data-month="{{p.price_monthly}}" data-year="{{p.price_yearly}}">
+                <span class="num"></span>
+                <span class="plan-unit">{% trans "SAR / month" %}</span>
+              </div>
+              <button class="plan-btn" type="submit" name="plan_id" value="{{p.id}}">{% trans "Choose Pro" %}</button>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="compare-actions">
+        <button type="button" id="toggleCompare">{% trans "Compare plans" %}</button>
+      </div>
+
+      <div id="compareBox" class="compare-table" style="display:none">
+        <!-- simplified features table (MVP) -->
+        <div class="compare-row" style="background:#f8fafc;font-weight:900">
+          <div>{% trans "Pro" %}</div><div>{% trans "Plus" %}</div><div>{% trans "Basic" %}</div><div class="feat">{% trans "Feature" %}</div>
+        </div>
+        {% for feat in compare_features %}
+        <div class="compare-row">
+          <div class="{% if feat.pro %}yes{% else %}no{% endif %}">{% if feat.pro %}✓{% else %}×{% endif %}</div>
+          <div class="{% if feat.plus %}yes{% else %}no{% endif %}">{% if feat.plus %}✓{% else %}×{% endif %}</div>
+          <div class="{% if feat.basic %}yes{% else %}no{% endif %}">{% if feat.basic %}✓{% else %}×{% endif %}</div>
+          <div class="feat">{{ feat.name }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const cycleInput = document.getElementById("billingCycle");
+  const btnMonth = document.getElementById("btnMonth");
+  const btnYear = document.getElementById("btnYear");
+  const compareBox = document.getElementById("compareBox");
+  const toggleCompare = document.getElementById("toggleCompare");
+
+  const FREE_LABEL = "{% trans 'Free' %}";
+
+  function formatPrice(val){
+    // show as integer if possible
+    const n = parseFloat(val);
+    if (!isFinite(n) || n <= 0) return FREE_LABEL;
+    return n.toFixed(0);
+  }
+  function refreshPrices(){
+    const yearly = cycleInput.value === "yearly";
+    document.querySelectorAll(".price").forEach(el => {
+      if (el.textContent.includes(FREE_LABEL)) return;
+      const v = yearly ? el.dataset.year : el.dataset.month;
+      const num = el.querySelector(".num");
+      if (num) num.textContent = formatPrice(v);
+    });
+  }
+  btnMonth.addEventListener("click", ()=>{ cycleInput.value="monthly"; btnMonth.classList.add("active"); btnYear.classList.remove("active"); refreshPrices(); });
+  btnYear.addEventListener("click", ()=>{ cycleInput.value="yearly"; btnYear.classList.add("active"); btnMonth.classList.remove("active"); refreshPrices(); });
+
+  toggleCompare.addEventListener("click", ()=>{
+    const isOpen = compareBox.style.display !== "none";
+    compareBox.style.display = isOpen ? "none" : "block";
+    toggleCompare.textContent = isOpen ? "مقارنة الباقات" : "إخفاء المقارنة";
+  });
+
+  refreshPrices();
+</script>
+{% endblock %}

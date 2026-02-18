@@ -1,0 +1,28 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}الثيمات{% endblock %}
+{% block content %}
+<div class="card" style="padding:18px;">
+  <h3 style="margin:0 0 10px;">الثيمات المتاحة</h3>
+  {% if themes %}
+    <div style="display:grid; gap:10px;">
+      {% for t in themes %}
+        <div class="card" style="padding:12px 14px; width:100%;">
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:800;">{{ t.name }}</div>
+              <div class="muted">{{ t.code }}</div>
+            </div>
+            <form method="post" action="{% url 'themes_web:dashboard_themes' %}" style="display:flex; gap:10px;">
+              {% csrf_token %}
+              <input type="hidden" name="theme_code" value="{{ t.code }}">
+              <button class="btn btn-soft" type="submit">تطبيق</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">لا توجد ثيمات.</p>
+  {% endif %}
+</div>
+{% endblock %}

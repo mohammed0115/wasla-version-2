@@ -1,0 +1,15 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Upgrade required" %}{% endblock %}
+{% block page_subtitle %}{% trans "This feature is not available on your current plan." %}{% endblock %}
+
+{% block content %}
+<section class="card dash__section stack-12">
+  <h2 class="dash__section-title">{% trans "Upgrade your plan" %}</h2>
+  <p class="dash__section-note">
+    {% blocktrans with feature=feature_name %}Your current subscription does not include: {{ feature }}.{% endblocktrans %}
+  </p>
+  <p class="dash__section-note">{% trans "Contact support or switch to a higher plan to unlock this feature." %}</p>
+</section>
+{% endblock %}

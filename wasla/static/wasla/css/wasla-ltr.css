@@ -1,0 +1,37 @@
+body.wasla-body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.wasla-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.wasla-sidebar .nav-link {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.wasla-sidebar .nav-link.active {
+  background: linear-gradient(135deg, #1F4FD8, #F28C28);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.wasla-card-button {
+  cursor: pointer;
+}
+
+.wasla-navbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+}
+
+.wasla-text-primary {
+  color: var(--primary);
+}

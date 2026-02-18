@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}هل تجارتك قائمة؟{% endblock %}
+{% block body %}
+<div class="salla-shell" dir="rtl">
+  <div class="salla-card">
+    <div style="text-align:right;margin-bottom:8px">
+      <a href="{% url 'accounts:persona_legal' %}" class="salla-lang" style="text-decoration:none">السؤال السابق</a>
+    </div>
+
+    <h2 style="text-align:center;margin:10px 0 6px;font-weight:900">هل تجارتك قائمة؟</h2>
+    <div class="muted" style="text-align:center;margin-bottom:14px">
+      سنبني الدعم الأنسب لك للبدء أو التوسّع.
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="salla-option-list">
+        {% for val,label in form.fields.has_existing_business.choices %}
+          <button type="submit" name="has_existing_business" value="{{val}}" class="salla-option">
+            <div class="right"><span>{{ label }}</span></div>
+            <span></span>
+          </button>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}الهوية والعلامة{% endblock %}
+{% block content %}
+<div class="card" style="padding:18px;">
+  <h3 style="margin:0 0 10px;">تعديل الهوية</h3>
+  <form method="post" enctype="multipart/form-data" style="display:grid; gap:12px;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">حفظ</button>
+  </form>
+</div>
+{% endblock %}

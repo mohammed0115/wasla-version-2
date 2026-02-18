@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}الدفع | الشحن{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">طريقة الشحن</h1>
+    <form method="post" style="display:grid; gap:12px;">
+      {% csrf_token %}
+      {% if methods %}
+        {% for method in methods %}
+          <label style="display:flex; justify-content:space-between; border:1px solid #e5e7eb; padding:10px; border-radius:8px;">
+            <span>
+              <input type="radio" name="method_code" value="{{ method.code }}" {% if forloop.first %}checked{% endif %}>
+              {{ method.label }}
+            </span>
+            <strong>{{ method.fee }} SAR</strong>
+          </label>
+        {% endfor %}
+      {% else %}
+        <p class="muted">لا توجد طرق شحن متاحة حالياً.</p>
+      {% endif %}
+      <button class="btn" type="submit">التالي</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

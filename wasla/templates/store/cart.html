@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}السلة{% endblock %}
+{% block body %}
+<div class="container">
+  <div class="card" style="padding:18px;">
+    <h1 style="margin:0 0 10px;">سلة التسوق</h1>
+    {% if cart.items %}
+      <div style="display:grid; gap:10px;">
+        {% for item in cart.items %}
+          <div class="card" style="padding:12px 14px; width:100%;">
+            <div style="display:flex; justify-content:space-between; gap:12px;">
+              <div>
+                <div style="font-weight:800;">{{ item.name }}</div>
+                <div class="muted">الكمية: {{ item.quantity }}</div>
+              </div>
+              <div style="font-weight:800;">{{ item.line_total }} {{ cart.currency }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div style="height:12px"></div>
+      <div class="card" style="padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between;"><span>المجموع الفرعي</span><strong>{{ cart.subtotal }} {{ cart.currency }}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>الشحن</span><strong>{{ shipping_fee }} {{ cart.currency }}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>الضريبة (15%)</span><strong>{{ vat_amount }} {{ cart.currency }}</strong></div>
+        <hr>
+        <div style="display:flex; justify-content:space-between;"><span>الإجمالي</span><strong>{{ grand_total }} {{ cart.currency }}</strong></div>
+      </div>
+      <a class="btn" href="{% url 'checkout_web:checkout_address' %}">إتمام الشراء</a>
+    {% else %}
+      <p class="muted">السلة فارغة.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

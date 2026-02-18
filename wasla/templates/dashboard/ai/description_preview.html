@@ -1,0 +1,14 @@
+{% extends "dashboard/_base.html" %}
+{% block page_title %}معاينة وصف المنتج{% endblock %}
+{% block content %}
+<div class="card" style="padding:18px;">
+  <h3 style="margin:0 0 10px;">الوصف المقترح</h3>
+  <div class="card" style="padding:14px; width:100%; white-space:pre-wrap;">{{ description }}</div>
+  <div style="height:12px"></div>
+  <form method="post" style="display:flex; gap:10px; flex-wrap:wrap;">
+    {% csrf_token %}
+    <button class="btn" type="submit">حفظ الوصف</button>
+    <a class="btn btn-soft" href="/dashboard/ai/tools">إلغاء</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+.wasla-hero {
+  border-radius: var(--radius);
+  padding: 24px 16px;
+  background: linear-gradient(135deg, #1F4FD8, #F28C28);
+  color: var(--white);
+}
+
+.wasla-hero__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.wasla-hero__subtitle {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.wasla-hero__cta {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wasla-hero__panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+}

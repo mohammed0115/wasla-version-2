@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Store Setup - Basic" %}{% endblock %}
+
+{% block body %}
+<main class="container" style="max-width: 900px; margin: 2rem auto;">
+  <h1>{% trans "Store Setup" %}</h1>
+  <p>{% trans "Step" %} {{ step }} / 4 - {{ step_label }} ({{ progress }}%)</p>
+  {% if messages %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endif %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">{% trans "Next" %}</button>
+  </form>
+</main>
+{% endblock %}

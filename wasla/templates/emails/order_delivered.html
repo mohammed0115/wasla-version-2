@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb; }
+    .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 6px; margin-bottom: 20px; }
+    .content { background: white; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
+    .success-box { background: #dcfce7; border: 2px solid #16a34a; padding: 16px; border-radius: 6px; margin: 16px 0; text-align: center; }
+    .footer { background: #f3f4f6; padding: 16px; text-align: center; border-radius: 6px; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✓ Order Delivered!</h1>
+      <p>Order {{ order_number }}</p>
+    </div>
+    
+    <div class="content">
+      <p>Hi {{ customer_name }},</p>
+      
+      <div class="success-box">
+        <h2 style="margin: 0; color: #15803d;">Your order has been delivered!</h2>
+      </div>
+      
+      <p>Your order {{ order_number }} has been successfully delivered. We hope you enjoy your purchase!</p>
+      
+      <p style="color: #666; font-size: 13px;">
+        If the package is damaged or you have any issues, please contact us immediately.<br>
+        We're here to help and want to make sure you're completely satisfied.
+      </p>
+      
+      <p>Thank you for your business!</p>
+    </div>
+    
+    <div class="footer">
+      <p>Did you enjoy your shopping experience?</p>
+      <p>We'd love to hear from you. Visit us again soon!</p>
+    </div>
+  </div>
+</body>
+</html>

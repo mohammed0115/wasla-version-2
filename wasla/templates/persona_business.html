@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}النشاط التجاري{% endblock %}
+{% block global_lang_switcher %}{% endblock %}
+{% block extra_css %}
+<style>
+  .biz-wrap {
+    inline-size: min(980px, 100%);
+    text-align: center;
+  }
+
+  .biz-title {
+    margin: 8px 0 6px;
+    font-size: clamp(36px, 5vw, 62px);
+    line-height: 1.1;
+    font-weight: 900;
+  }
+
+  .biz-sub {
+    margin: 0 0 18px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .biz-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 10px 0 18px;
+  }
+
+  .biz-chip {
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text);
+    min-height: 42px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .biz-chip.is-active {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    color: #065f46;
+  }
+
+</style>
+{% endblock %}
+{% block body %}
+<div class="salla-shell" dir="rtl">
+  <div class="salla-card biz-wrap">
+    <h1 class="biz-title">أخيرًا، ما هو نشاطك التجاري؟</h1>
+    <p class="biz-sub">اختر المنتجات والخدمات التي تخطط لبيعها.</p>
+
+    <form method="post" id="bizForm">
+      {% csrf_token %}
+      <input type="hidden" name="business_category" id="bizInput" value="{{ selected }}">
+
+      <div class="biz-chips" id="chips">
+        {% for c in choices %}
+          <button type="button"
+                  class="biz-chip {% if c == selected %}is-active{% endif %}"
+                  data-value="{{ c }}">{{ c }}</button>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const chips = document.getElementById("chips");
+    const bizInput = document.getElementById("bizInput");
+    const bizForm = document.getElementById("bizForm");
+    if(!chips) return;
+
+    chips.addEventListener("click", (e) => {
+      const btn = e.target.closest(".biz-chip");
+      if(!btn) return;
+
+      // remove active
+      chips.querySelectorAll(".biz-chip").forEach(x => x.classList.remove("is-active"));
+
+      // set active
+      btn.classList.add("is-active");
+
+      // store value
+      bizInput.value = btn.dataset.value || "";
+
+      // go to next step مباشرة بعد الاختيار
+      if (bizForm && bizInput.value) {
+        bizForm.submit();
+      }
+    });
+  })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}مرحباً{% endblock %}
+{% block body %}
+<div class="auth-shell">
+  <div class="card auth-card stack-24" style="text-align:center">
+    <div>
+      <img class="auth-logo" src="{% static 'images/logo.jpeg' %}" alt="Wasla">
+    </div>
+    <div style="font-weight:900;font-size:32px;line-height:1.2">{{ request.user.first_name|default:request.user.username }} ✨</div>
+    <div class="muted" style="max-width:520px;margin:0 auto">
+      نحب نعرف أكثر عنك وعن تجارتك عبر أسئلة قصيرة تهدف لتخصيص تجربتك
+    </div>
+    <div class="muted">الوقت المتوقع: 1 دقيقة</div>
+
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-primary btn-block" type="submit">يلا نبدأ</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,302 @@
+Modular Monolith Refactor Report
+
+Moved apps (28):
+- accounts: wasla\accounts -> wasla\apps\accounts
+- ai: wasla\ai -> wasla\apps\ai
+- analytics: wasla\analytics -> wasla\apps\analytics
+- cart: wasla\cart -> wasla\apps\cart
+- catalog: wasla\catalog -> wasla\apps\catalog
+- checkout: wasla\checkout -> wasla\apps\checkout
+- customers: wasla\customers -> wasla\apps\customers
+- domains: wasla\domains -> wasla\apps\domains
+- emails: wasla\emails -> wasla\apps\emails
+- exports: wasla\exports -> wasla\apps\exports
+- imports: wasla\imports -> wasla\apps\imports
+- notifications: wasla\notifications -> wasla\apps\notifications
+- observability: wasla\observability -> wasla\apps\observability
+- orders: wasla\orders -> wasla\apps\orders
+- payments: wasla\payments -> wasla\apps\payments
+- plugins: wasla\plugins -> wasla\apps\plugins
+- reviews: wasla\reviews -> wasla\apps\reviews
+- security: wasla\security -> wasla\apps\security
+- settlements: wasla\settlements -> wasla\apps\settlements
+- shipping: wasla\shipping -> wasla\apps\shipping
+- sms: wasla\sms -> wasla\apps\sms
+- stores: wasla\stores -> wasla\apps\stores
+- subscriptions: wasla\subscriptions -> wasla\apps\subscriptions
+- system: wasla\system -> wasla\apps\system
+- tenants: wasla\tenants -> wasla\apps\tenants
+- themes: wasla\themes -> wasla\apps\themes
+- wallet: wasla\wallet -> wasla\apps\wallet
+- webhooks: wasla\webhooks -> wasla\apps\webhooks
+
+Created files (6):
+- wasla\core\__init__.py
+- wasla\core\domain\__init__.py
+- wasla\core\application\__init__.py
+- wasla\core\infrastructure\__init__.py
+- wasla\core\interfaces\__init__.py
+- wasla\core\domain\exceptions.py
+
+Modified files (261):
+- wasla\apps\accounts\application\usecases\resolve_next_destination.py
+- wasla\apps\accounts\application\usecases\resolve_onboarding_state.py
+- wasla\apps\accounts\apps.py
+- wasla\apps\accounts\middleware.py
+- wasla\apps\accounts\persiona\views.py
+- wasla\apps\accounts\tests.py
+- wasla\apps\accounts\views.py
+- wasla\apps\ai\admin.py
+- wasla\apps\ai\application\use_cases\apply_category.py
+- wasla\apps\ai\application\use_cases\categorize_product.py
+- wasla\apps\ai\application\use_cases\generate_description.py
+- wasla\apps\ai\application\use_cases\index_product_embeddings.py
+- wasla\apps\ai\application\use_cases\log_ai_request.py
+- wasla\apps\ai\application\use_cases\save_description.py
+- wasla\apps\ai\application\use_cases\visual_search.py
+- wasla\apps\ai\apps.py
+- wasla\apps\ai\infrastructure\embeddings\image_attributes.py
+- wasla\apps\ai\infrastructure\embeddings\image_embedder.py
+- wasla\apps\ai\infrastructure\embeddings\vector_store.py
+- wasla\apps\ai\infrastructure\embeddings\vector_store_faiss.py
+- wasla\apps\ai\infrastructure\embeddings\vector_store_stub.py
+- wasla\apps\ai\infrastructure\providers\google_provider.py
+- wasla\apps\ai\infrastructure\providers\openai_provider.py
+- wasla\apps\ai\interfaces\api\views.py
+- wasla\apps\ai\interfaces\web\views.py
+- wasla\apps\ai\management\commands\ai_kpi_visual_search.py
+- wasla\apps\analytics\application\assign_variant.py
+- wasla\apps\analytics\application\evaluate_rules.py
+- wasla\apps\analytics\application\recommend_products.py
+- wasla\apps\analytics\application\report_kpis.py
+- wasla\apps\analytics\application\score_transaction.py
+- wasla\apps\analytics\application\telemetry.py
+- wasla\apps\analytics\application\track_event.py
+- wasla\apps\analytics\apps.py
+- wasla\apps\analytics\domain\ports.py
+- wasla\apps\analytics\infrastructure\db_sink.py
+- wasla\apps\analytics\infrastructure\rules\fraud_rules.py
+- wasla\apps\analytics\infrastructure\rules\recommendation_rules.py
+- wasla\apps\analytics\infrastructure\warehouse_stub.py
+- wasla\apps\analytics\interfaces\api\views.py
+- wasla\apps\analytics\interfaces\web\helpers.py
+- wasla\apps\analytics\interfaces\web\views.py
+- wasla\apps\cart\application\use_cases\add_to_cart.py
+- wasla\apps\cart\application\use_cases\clear_cart.py
+- wasla\apps\cart\application\use_cases\get_cart.py
+- wasla\apps\cart\application\use_cases\get_product.py
+- wasla\apps\cart\application\use_cases\remove_cart_item.py
+- wasla\apps\cart\application\use_cases\update_cart_item.py
+- wasla\apps\cart\apps.py
+- wasla\apps\cart\domain\policies.py
+- wasla\apps\cart\infrastructure\repositories.py
+- wasla\apps\cart\interfaces\api\views.py
+- wasla\apps\cart\interfaces\web\views.py
+- wasla\apps\catalog\apps.py
+- wasla\apps\catalog\management\commands\seed_demo_products.py
+- wasla\apps\catalog\migrations\0003_product_image.py
+- wasla\apps\checkout\application\use_cases\create_order_from_checkout.py
+- wasla\apps\checkout\application\use_cases\get_checkout.py
+- wasla\apps\checkout\application\use_cases\save_shipping_address.py
+- wasla\apps\checkout\application\use_cases\select_shipping_method.py
+- wasla\apps\checkout\application\use_cases\start_checkout.py
+- wasla\apps\checkout\apps.py
+- wasla\apps\checkout\domain\policies.py
+- wasla\apps\checkout\infrastructure\shipping_options.py
+- wasla\apps\checkout\interfaces\api\views.py
+- wasla\apps\checkout\interfaces\web\views.py
+- wasla\apps\customers\apps.py
+- wasla\apps\domains\application\provision_domain.py
+- wasla\apps\domains\application\verify_domain.py
+- wasla\apps\domains\apps.py
+- wasla\apps\domains\domain\policies.py
+- wasla\apps\domains\infrastructure\dns_verifier.py
+- wasla\apps\domains\infrastructure\http_verifier.py
+- wasla\apps\domains\infrastructure\nginx_generator.py
+- wasla\apps\domains\infrastructure\ssl_manager.py
+- wasla\apps\domains\interfaces\admin_views.py
+- wasla\apps\domains\interfaces\api_views.py
+- wasla\apps\domains\management\commands\provision_domains.py
+- wasla\apps\emails\admin.py
+- wasla\apps\emails\application\services\email_config_service.py
+- wasla\apps\emails\application\services\provider_resolver.py
+- wasla\apps\emails\application\use_cases\send_email.py
+- wasla\apps\emails\application\use_cases\send_order_confirmation_email.py
+- wasla\apps\emails\application\use_cases\send_welcome_email.py
+- wasla\apps\emails\apps.py
+- wasla\apps\emails\checks.py
+- wasla\apps\emails\infrastructure\providers\mailgun_gateway.py
+- wasla\apps\emails\infrastructure\providers\sendgrid_gateway.py
+- wasla\apps\emails\infrastructure\providers\smtp_gateway.py
+- wasla\apps\emails\infrastructure\renderers\django_renderer.py
+- wasla\apps\emails\interfaces\api.py
+- wasla\apps\emails\interfaces\signals.py
+- wasla\apps\emails\tasks.py
+- wasla\apps\emails\tests.py
+- wasla\apps\emails\urls.py
+- wasla\apps\exports\application\use_cases\export_invoice_pdf.py
+- wasla\apps\exports\application\use_cases\export_orders_csv.py
+- wasla\apps\exports\apps.py
+- wasla\apps\exports\interfaces\api\views.py
+- wasla\apps\exports\interfaces\web\views.py
+- wasla\apps\imports\application\use_cases\create_import_job.py
+- wasla\apps\imports\application\use_cases\get_import_job_status.py
+- wasla\apps\imports\application\use_cases\run_import_job.py
+- wasla\apps\imports\application\use_cases\validate_import_job.py
+- wasla\apps\imports\apps.py
+- wasla\apps\imports\infrastructure\csv_utils.py
+- wasla\apps\imports\infrastructure\storage.py
+- wasla\apps\imports\interfaces\api\views.py
+- wasla\apps\imports\interfaces\web\views.py
+- wasla\apps\notifications\application\use_cases\request_email_otp.py
+- wasla\apps\notifications\application\use_cases\send_email.py
+- wasla\apps\notifications\application\use_cases\verify_email_otp.py
+- wasla\apps\notifications\apps.py
+- wasla\apps\notifications\domain\policies.py
+- wasla\apps\notifications\infrastructure\gateways\console.py
+- wasla\apps\notifications\infrastructure\gateways\smtp.py
+- wasla\apps\notifications\infrastructure\router.py
+- wasla\apps\notifications\tests.py
+- wasla\apps\observability\apps.py
+- wasla\apps\observability\middleware\request_id.py
+- wasla\apps\observability\middleware\timing.py
+- wasla\apps\orders\application\use_cases\notify_merchant_order_placed.py
+- wasla\apps\orders\apps.py
+- wasla\apps\orders\services\order_lifecycle_service.py
+- wasla\apps\orders\services\order_service.py
+- wasla\apps\orders\tests.py
+- wasla\apps\orders\views\api.py
+- wasla\apps\payments\admin.py
+- wasla\apps\payments\application\facade.py
+- wasla\apps\payments\application\use_cases\confirm_payment.py
+- wasla\apps\payments\application\use_cases\handle_webhook_event.py
+- wasla\apps\payments\application\use_cases\initiate_payment.py
+- wasla\apps\payments\application\use_cases\payment_outcomes.py
+- wasla\apps\payments\apps.py
+- wasla\apps\payments\infrastructure\adapters\base.py
+- wasla\apps\payments\infrastructure\gateways\dummy_gateway.py
+- wasla\apps\payments\infrastructure\gateways\paypal_gateway.py
+- wasla\apps\payments\infrastructure\gateways\sandbox_stub.py
+- wasla\apps\payments\infrastructure\gateways\stripe_gateway.py
+- wasla\apps\payments\infrastructure\gateways\tap_gateway.py
+- wasla\apps\payments\interfaces\api\views.py
+- wasla\apps\payments\orchestrator.py
+- wasla\apps\payments\services\payment_service.py
+- wasla\apps\payments\tests.py
+- wasla\apps\payments\views\api.py
+- wasla\apps\plugins\apps.py
+- wasla\apps\plugins\services\installation_service.py
+- wasla\apps\reviews\apps.py
+- wasla\apps\reviews\models.py
+- wasla\apps\reviews\views\api.py
+- wasla\apps\security\apps.py
+- wasla\apps\security\middleware\headers.py
+- wasla\apps\settlements\application\use_cases\approve_settlement.py
+- wasla\apps\settlements\application\use_cases\create_settlement.py
+- wasla\apps\settlements\application\use_cases\credit_order_payment.py
+- wasla\apps\settlements\application\use_cases\get_merchant_balance.py
+- wasla\apps\settlements\application\use_cases\get_settlement_detail.py
+- wasla\apps\settlements\application\use_cases\list_settlements.py
+- wasla\apps\settlements\application\use_cases\mark_settlement_paid.py
+- wasla\apps\settlements\application\use_cases\record_audit_log.py
+- wasla\apps\settlements\apps.py
+- wasla\apps\settlements\domain\fees.py
+- wasla\apps\settlements\infrastructure\repositories.py
+- wasla\apps\settlements\interfaces\api\views.py
+- wasla\apps\settlements\interfaces\web\views.py
+- wasla\apps\shipping\apps.py
+- wasla\apps\shipping\views\api.py
+- wasla\apps\sms\admin.py
+- wasla\apps\sms\application\use_cases\send_sms.py
+- wasla\apps\sms\apps.py
+- wasla\apps\sms\domain\policies.py
+- wasla\apps\sms\domain\ports.py
+- wasla\apps\sms\infrastructure\gateways\console.py
+- wasla\apps\sms\infrastructure\gateways\taqnyat.py
+- wasla\apps\sms\infrastructure\router.py
+- wasla\apps\sms\management\commands\send_sms.py
+- wasla\apps\sms\tests.py
+- wasla\apps\stores\apps.py
+- wasla\apps\stores\migrations\0002_store_storesettings_storesetupstep_and_more.py
+- wasla\apps\stores\views.py
+- wasla\apps\subscriptions\application\services\feature_gate.py
+- wasla\apps\subscriptions\apps.py
+- wasla\apps\subscriptions\tests.py
+- wasla\apps\system\application\use_cases\check_go_live.py
+- wasla\apps\system\apps.py
+- wasla\apps\system\domain\go_live_checks\ports.py
+- wasla\apps\system\infrastructure\system_checkers\infrastructure.py
+- wasla\apps\system\infrastructure\system_checkers\payments.py
+- wasla\apps\system\infrastructure\system_checkers\security.py
+- wasla\apps\system\infrastructure\system_checkers\settlements.py
+- wasla\apps\system\infrastructure\system_checkers\ux_i18n.py
+- wasla\apps\system\interfaces\api\views.py
+- wasla\apps\system\interfaces\web\views.py
+- wasla\apps\system\views.py
+- wasla\apps\tenants\admin.py
+- wasla\apps\tenants\application\flow_validation\scenarios.py
+- wasla\apps\tenants\application\interfaces\inventory_repository_port.py
+- wasla\apps\tenants\application\interfaces\order_repository_port.py
+- wasla\apps\tenants\application\policies\ownership.py
+- wasla\apps\tenants\application\use_cases\activate_domain.py
+- wasla\apps\tenants\application\use_cases\activate_store.py
+- wasla\apps\tenants\application\use_cases\add_custom_domain.py
+- wasla\apps\tenants\application\use_cases\create_store.py
+- wasla\apps\tenants\application\use_cases\disable_domain.py
+- wasla\apps\tenants\application\use_cases\get_domain_setup_instructions.py
+- wasla\apps\tenants\application\use_cases\get_merchant_dashboard_metrics.py
+- wasla\apps\tenants\application\use_cases\get_setup_progress.py
+- wasla\apps\tenants\application\use_cases\get_store_readiness.py
+- wasla\apps\tenants\application\use_cases\refresh_ssl_certificate.py
+- wasla\apps\tenants\application\use_cases\store_setup_wizard.py
+- wasla\apps\tenants\application\use_cases\update_payment_settings.py
+- wasla\apps\tenants\application\use_cases\update_shipping_settings.py
+- wasla\apps\tenants\application\use_cases\update_store_settings.py
+- wasla\apps\tenants\application\use_cases\user_flows\admin_flow.py
+- wasla\apps\tenants\application\use_cases\user_flows\buyer_flow.py
+- wasla\apps\tenants\application\use_cases\user_flows\merchant_flow.py
+- wasla\apps\tenants\application\use_cases\validate_custom_domain.py
+- wasla\apps\tenants\application\use_cases\verify_domain_ownership.py
+- wasla\apps\tenants\apps.py
+- wasla\apps\tenants\domain\policies.py
+- wasla\apps\tenants\domain\readiness.py
+- wasla\apps\tenants\infrastructure\dns_resolver.py
+- wasla\apps\tenants\infrastructure\http_challenge.py
+- wasla\apps\tenants\infrastructure\repositories\django_inventory_repository.py
+- wasla\apps\tenants\infrastructure\repositories\django_low_stock_repository.py
+- wasla\apps\tenants\infrastructure\repositories\django_order_repository.py
+- wasla\apps\tenants\infrastructure\repositories\django_visitor_repository.py
+- wasla\apps\tenants\infrastructure\reverse_proxy.py
+- wasla\apps\tenants\infrastructure\ssl_manager.py
+- wasla\apps\tenants\interfaces\api\permissions.py
+- wasla\apps\tenants\interfaces\web\decorators.py
+- wasla\apps\tenants\interfaces\web\forms.py
+- wasla\apps\tenants\interfaces\web\storefront_views.py
+- wasla\apps\tenants\interfaces\web\views.py
+- wasla\apps\tenants\management\commands\seed_sample.py
+- wasla\apps\tenants\management\commands\validate_flows.py
+- wasla\apps\tenants\migrations\0004_tenant_logo_tenant_primary_color_and_more.py
+- wasla\apps\tenants\services\audit_service.py
+- wasla\apps\tenants\services\domain_resolution.py
+- wasla\apps\tenants\signals.py
+- wasla\apps\tenants\tasks.py
+- wasla\apps\tenants\test_dashboard_metrics_usecase.py
+- wasla\apps\tenants\test_onboarding.py
+- wasla\apps\tenants\tests.py
+- wasla\apps\tenants\urls.py
+- wasla\apps\themes\application\use_cases\list_themes.py
+- wasla\apps\themes\application\use_cases\update_branding.py
+- wasla\apps\themes\apps.py
+- wasla\apps\themes\domain\policies.py
+- wasla\apps\themes\interfaces\api\views.py
+- wasla\apps\themes\interfaces\web\context_processors.py
+- wasla\apps\themes\interfaces\web\views.py
+- wasla\apps\themes\migrations\0001_initial.py
+- wasla\apps\visual_search\tests\test_repository.py
+- wasla\apps\wallet\apps.py
+- wasla\apps\webhooks\apps.py
+- wasla\apps\webhooks\interfaces\api\views.py
+- wasla\config\settings.py
+- wasla\config\urls.py
+- wasla\tests\test_registration_and_plan_flow.py
+- wasla\tests\test_store_setup_wizard_flow.py

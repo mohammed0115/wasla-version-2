@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block title %}{% if LANGUAGE_CODE == "ar" %}إعداد المتجر | الدفع{% else %}Store Setup | Payment{% endif %}{% endblock %}
+
+{% block body %}
+<section class="container setup-shell">
+  {% include "web/store/_wizard_header.html" with wizard_title="الخطوة 2 — الدفع" %}
+
+  <article class="card setup-card stack-16">
+    {% if LANGUAGE_CODE == "ar" %}
+      <p class="setup-subtitle">اختر مزود الدفع وأدخل مفاتيح التاجر (يمكن تعديلها لاحقًا).</p>
+    {% else %}
+      <p class="setup-subtitle">Choose your payment mode and merchant keys. You can update them later.</p>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="card setup-alert" role="alert">
+        {% for error in form.non_field_errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" class="setup-form stack-16" novalidate>
+      {% csrf_token %}
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.payment_mode.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}طريقة الدفع{% else %}Payment mode{% endif %}
+        </label>
+        {{ form.payment_mode }}
+        {% for error in form.payment_mode.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.provider_name.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}اسم مزود الدفع (Gateway){% else %}Provider name (gateway){% endif %}
+        </label>
+        {{ form.provider_name }}
+        {% for error in form.provider_name.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.merchant_key.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}مفتاح التاجر / API Key{% else %}Merchant key / API key{% endif %}
+        </label>
+        {{ form.merchant_key }}
+        {% for error in form.merchant_key.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="setup-field stack-8">
+        <label class="auth-label" for="{{ form.webhook_secret.id_for_label }}">
+          {% if LANGUAGE_CODE == "ar" %}Webhook secret{% else %}Webhook secret{% endif %}
+        </label>
+        {{ form.webhook_secret }}
+        {% for error in form.webhook_secret.errors %}
+          <p class="error" style="margin:0;">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <label class="setup-check-row" for="{{ form.is_enabled.id_for_label }}">
+        {{ form.is_enabled }}
+        <span>{% if LANGUAGE_CODE == "ar" %}تفعيل الدفع{% else %}Enable payments{% endif %}</span>
+      </label>
+
+      <div class="setup-actions">
+        <button class="btn btn-primary" type="submit">{% if LANGUAGE_CODE == "ar" %}حفظ والمتابعة{% else %}Save and continue{% endif %}</button>
+        <a class="btn btn-soft" href="{% url 'tenants:store_setup_step1' %}">{% if LANGUAGE_CODE == "ar" %}رجوع{% else %}Back{% endif %}</a>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}
