@@ -37,6 +37,14 @@ class Tenant(models.Model):
     def __str__(self) -> str:
         return self.name or self.slug
 
+    @property
+    def owner(self):
+        try:
+            profile = self.store_profile
+        except Exception:
+            return None
+        return getattr(profile, "owner", None)
+
     class Meta:
         indexes = [
             models.Index(fields=["is_active"]),

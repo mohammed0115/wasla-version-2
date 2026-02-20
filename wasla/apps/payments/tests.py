@@ -23,7 +23,7 @@ from apps.payments.models import (
 )
 from apps.settlements.models import LedgerEntry
 from apps.stores.models import Store
-from apps.tenants.models import StorePaymentSettings, Tenant, TenantMembership
+from apps.tenants.models import StorePaymentSettings, StoreProfile, Tenant
 from apps.webhooks.models import WebhookEvent
 
 
@@ -315,8 +315,9 @@ class PaymentWebhookAPITests(APITestCase):
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost", ".localhost"])
-class PaymentMerchantAccessTests(APITestCase):
+class PaymentMerchantAccessTests(TestCase):
     def setUp(self) -> None:
+        self.client = Client()
         User = get_user_model()
         self.user = User.objects.create_user(username="merchant-a", password="pass12345")
         self.other_user = User.objects.create_user(username="merchant-b", password="pass12345")
@@ -340,25 +341,23 @@ class PaymentMerchantAccessTests(APITestCase):
             status=Store.STATUS_ACTIVE,
             country="SA",
         )
-        TenantMembership.objects.create(
-            tenant=self.tenant_a,
-            user=self.user,
-            role=TenantMembership.ROLE_OWNER,
-            is_active=True,
-        )
-        StorePaymentSettings.objects.create(
-            tenant=self.tenant_b,
-            mode=StorePaymentSettings.MODE_DUMMY,
-            is_enabled=True,
-        )
-        PaymentProviderSettings.objects.create(
-            tenant=self.tenant_b,
-            provider_code="dummy",
-            display_name="Dummy",
-            is_enabled=True,
-            webhook_secret="dummy-secret",
-            credentials={},
-        )
+        StoreProfile.objects.create(tenant=self.tenant_a, owner=self.user)
+        StoreProfile.objects.create(tenant=self.tenant_b, owner=self.other_user)
+        for tenant in (self.tenant_a, self.tenant_b):
+            StorePaymentSettings.objects.create(
+                tenant=tenant,
+                mode=StorePaymentSettings.MODE_DUMMY,
+                is_enabled=True,
+            )
+            PaymentProviderSettings.objects.create(
+                tenant=tenant,
+                provider_code="dummy",
+                display_name="Dummy",
+                is_enabled=True,
+                webhook_secret="dummy-secret",
+                credentials={},
+            )
+        self.order_a = self._create_order(store_id=self.store_a.id, tenant_id=self.tenant_a.id)
         self.order_b = self._create_order(store_id=self.store_b.id, tenant_id=self.tenant_b.id)
 
     def test_anonymous_cannot_access_merchant_payment_api(self):
@@ -369,24 +368,39 @@ class PaymentMerchantAccessTests(APITestCase):
         }
         response = self.client.post(
             "/api/payments/initiate",
-            data=payload,
-            format="json",
+            data=json.dumps(payload),
+            content_type="application/json",
             HTTP_HOST=f"{self.store_b.slug}.localhost",
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_store_a_merchant_cannot_access_store_b_by_host(self):
-        self.client.force_authenticate(user=self.user)
+    def test_store_a_merchant_access_ok(self):
+        self.client.force_login(self.user)
         payload = {
-            "order_id": self.order_b.id,
+            "order_id": self.order_a.id,
             "provider_code": "dummy",
             "return_url": "https://example.com/return",
         }
         response = self.client.post(
             "/api/payments/initiate",
-            data=payload,
-            format="json",
-            HTTP_HOST=f"{self.store_b.slug}.localhost",
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_HOST=f"{self.store_a.slug}.localhost",
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_store_b_merchant_cannot_access_store_a_by_host(self):
+        self.client.force_login(self.other_user)
+        payload = {
+            "order_id": self.order_a.id,
+            "provider_code": "dummy",
+            "return_url": "https://example.com/return",
+        }
+        response = self.client.post(
+            "/api/payments/initiate",
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_HOST=f"{self.store_a.slug}.localhost",
         )
         self.assertEqual(response.status_code, 403)
 

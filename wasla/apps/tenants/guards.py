@@ -27,45 +27,23 @@ def require_tenant(request):
 
 
 def require_merchant(request):
+    store = require_store(request)
     user = getattr(request, "user", None)
     if not getattr(user, "is_authenticated", False):
         raise PermissionDenied("Authentication required.")
 
-    store = getattr(request, "store", None)
-    tenant = None
-    if store and getattr(store, "tenant", None):
-        tenant = store.tenant
-    else:
-        tenant = getattr(request, "tenant", None)
-
-    if not tenant:
+    tenant = getattr(store, "tenant", None)
+    if tenant is None:
         raise PermissionDenied("Tenant not found.")
 
-    if store and getattr(store, "tenant_id", None) and getattr(tenant, "id", None):
-        if store.tenant_id != tenant.id:
-            raise PermissionDenied("Tenant mismatch.")
+    owner = getattr(tenant, "owner", None)
+    if owner is None:
+        raise PermissionDenied("Merchant access denied.")
 
-    if getattr(user, "is_superuser", False):
-        return tenant
+    if owner != user:
+        raise PermissionDenied("Merchant access denied.")
 
-    profile_owner_id = None
-    try:
-        profile_owner_id = getattr(tenant.store_profile, "owner_id", None)
-    except Exception:
-        profile_owner_id = None
-    if profile_owner_id and getattr(user, "id", None) == profile_owner_id:
-        return tenant
-
-    from .models import TenantMembership
-
-    if TenantMembership.objects.filter(tenant=tenant, user=user, is_active=True).exists():
-        return tenant
-
-    user_tenant = getattr(user, "tenant", None)
-    if user_tenant and getattr(user_tenant, "id", None) == tenant.id:
-        return tenant
-
-    raise PermissionDenied("You do not have access to this store.")
+    return tenant
 
 
 def tenant_object_or_404(model, tenant, **lookup):
