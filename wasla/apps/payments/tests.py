@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
@@ -140,6 +140,7 @@ class PaymentWebhookIdempotencyTests(TestCase):
         )
         Inventory.objects.create(product=product, quantity=10, in_stock=True)
         order = Order.objects.create(
+            tenant_id=self.tenant.id,
             store_id=store_id,
             order_number="ORDER-1",
             customer=customer,
@@ -148,13 +149,18 @@ class PaymentWebhookIdempotencyTests(TestCase):
             status="pending",
             payment_status="pending",
         )
-        OrderItem.objects.create(order=order, product=product, quantity=1, price=Decimal("100.00"))
+        OrderItem.objects.create(
+            tenant_id=self.tenant.id,
+            order=order,
+            product=product,
+            quantity=1,
+            price=Decimal("100.00"),
+        )
         return order
 
 
 class PaymentWebhookAPITests(APITestCase):
     def setUp(self) -> None:
-        self.client = Client()
         self.tenant = Tenant.objects.create(slug="api-tenant", name="API Tenant")
         owner = get_user_model().objects.create_user(username="owner-pay-2", password="pass12345")
         self.store = Store.objects.create(
@@ -205,7 +211,7 @@ class PaymentWebhookAPITests(APITestCase):
         response = self.client.post(
             "/api/payments/webhooks/dummy",
             data=payload,
-            content_type="application/json",
+            format="json",
             HTTP_X_SIGNATURE=signature,
         )
         
@@ -229,7 +235,7 @@ class PaymentWebhookAPITests(APITestCase):
         response = self.client.post(
             "/api/payments/webhooks/dummy",
             data=payload,
-            content_type="application/json",
+            format="json",
             HTTP_X_SIGNATURE="invalid",
         )
         
@@ -261,7 +267,7 @@ class PaymentWebhookAPITests(APITestCase):
         response = self.client.post(
             "/api/payments/webhooks/sandbox",
             data=payload,
-            content_type="application/json",
+            format="json",
             HTTP_X_SIGNATURE=signature,
         )
         
@@ -289,6 +295,7 @@ class PaymentWebhookAPITests(APITestCase):
         )
         Inventory.objects.create(product=product, quantity=10, in_stock=True)
         order = Order.objects.create(
+            tenant_id=self.tenant.id,
             store_id=store_id,
             order_number="ORDER-1",
             customer=customer,
@@ -297,10 +304,17 @@ class PaymentWebhookAPITests(APITestCase):
             status="pending",
             payment_status="pending",
         )
-        OrderItem.objects.create(order=order, product=product, quantity=1, price=Decimal("100.00"))
+        OrderItem.objects.create(
+            tenant_id=self.tenant.id,
+            order=order,
+            product=product,
+            quantity=1,
+            price=Decimal("100.00"),
+        )
         return order
 
 
+@override_settings(ALLOWED_HOSTS=["testserver", "localhost", ".localhost"])
 class PaymentMerchantAccessTests(APITestCase):
     def setUp(self) -> None:
         User = get_user_model()
@@ -345,7 +359,7 @@ class PaymentMerchantAccessTests(APITestCase):
             webhook_secret="dummy-secret",
             credentials={},
         )
-        self.order_b = self._create_order(store_id=self.store_b.id)
+        self.order_b = self._create_order(store_id=self.store_b.id, tenant_id=self.tenant_b.id)
 
     def test_anonymous_cannot_access_merchant_payment_api(self):
         payload = {
@@ -376,7 +390,7 @@ class PaymentMerchantAccessTests(APITestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def _create_order(self, *, store_id: int) -> Order:
+    def _create_order(self, *, store_id: int, tenant_id: int) -> Order:
         customer = Customer.objects.create(
             store_id=store_id,
             email="buyer@example.com",
@@ -392,6 +406,7 @@ class PaymentMerchantAccessTests(APITestCase):
         )
         Inventory.objects.create(product=product, quantity=10, in_stock=True)
         order = Order.objects.create(
+            tenant_id=tenant_id,
             store_id=store_id,
             order_number=f"ORDER-{store_id}",
             customer=customer,
@@ -401,6 +416,7 @@ class PaymentMerchantAccessTests(APITestCase):
             payment_status="pending",
         )
         OrderItem.objects.create(
+            tenant_id=tenant_id,
             order=order,
             product=product,
             quantity=1,

@@ -27,7 +27,6 @@ class HandleWebhookEventCommand:
 
 class HandleWebhookEventUseCase:
     @staticmethod
-    @transaction.atomic
     def execute(cmd: HandleWebhookEventCommand) -> WebhookEvent:
         raw_body = cmd.raw_body or ""
         try:
@@ -45,80 +44,81 @@ class HandleWebhookEventUseCase:
                 event.save(update_fields=["processing_status", "processed_at"])
             raise
 
-        idempotency_key = f"{cmd.provider_code}:{tenant_id}:{verified.event_id}"
-        event = WebhookEvent.objects.select_for_update().filter(idempotency_key=idempotency_key).first()
-        if event and event.processing_status == WebhookEvent.STATUS_PROCESSED:
-            return event
+        with transaction.atomic():
+            idempotency_key = f"{cmd.provider_code}:{tenant_id}:{verified.event_id}"
+            event = WebhookEvent.objects.select_for_update().filter(idempotency_key=idempotency_key).first()
+            if event and event.processing_status == WebhookEvent.STATUS_PROCESSED:
+                return event
 
-        if not event:
-            event = WebhookEvent.objects.create(
+            if not event:
+                event = WebhookEvent.objects.create(
+                    provider_code=cmd.provider_code,
+                    event_id=verified.event_id,
+                    idempotency_key=idempotency_key,
+                    payload_json=cmd.payload,
+                    payload_raw=raw_body,
+                    processing_status=WebhookEvent.STATUS_PENDING,
+                )
+            elif not event.payload_raw and raw_body:
+                event.payload_raw = raw_body
+                event.save(update_fields=["payload_raw"])
+
+            PaymentEvent.objects.create(
                 provider_code=cmd.provider_code,
                 event_id=verified.event_id,
-                idempotency_key=idempotency_key,
                 payload_json=cmd.payload,
                 payload_raw=raw_body,
-                processing_status=WebhookEvent.STATUS_PENDING,
             )
-        elif not event.payload_raw and raw_body:
-            event.payload_raw = raw_body
-            event.save(update_fields=["payload_raw"])
 
-        PaymentEvent.objects.create(
-            provider_code=cmd.provider_code,
-            event_id=verified.event_id,
-            payload_json=cmd.payload,
-            payload_raw=raw_body,
-        )
+            intent = (
+                PaymentIntent.objects.select_for_update()
+                .filter(
+                    tenant_id=tenant_id,
+                    provider_code=cmd.provider_code,
+                    provider_reference=verified.intent_reference,
+                )
+                .first()
+            )
+            if not intent:
+                event.processing_status = WebhookEvent.STATUS_FAILED
+                event.processed_at = timezone.now()
+                event.save(update_fields=["processing_status", "processed_at"])
+                return event
 
-        intent = (
-            PaymentIntent.objects.select_for_update()
-            .filter(
+            intent_store_id = intent.store_id
+            order = (
+                Order.objects.for_tenant(intent_store_id)
+                .select_for_update()
+                .filter(id=intent.order_id)
+                .first()
+            )
+            if not order:
+                event.processing_status = WebhookEvent.STATUS_FAILED
+                event.processed_at = timezone.now()
+                event.save(update_fields=["processing_status", "processed_at"])
+                return event
+
+            tenant_ctx = TenantContext(
                 tenant_id=tenant_id,
-                provider_code=cmd.provider_code,
-                provider_reference=verified.intent_reference,
+                store_id=order.store_id,
+                currency=order.currency,
+                user_id=None,
+                session_key="",
             )
-            .first()
-        )
-        if not intent:
-            event.processing_status = WebhookEvent.STATUS_FAILED
+            if verified.status == "succeeded":
+                apply_payment_success(intent=intent, order=order, tenant_ctx=tenant_ctx)
+            elif verified.status == "failed":
+                apply_payment_failure(intent=intent, order=order, tenant_ctx=tenant_ctx)
+            elif verified.status in {"pending", "requires_action"}:
+                next_status = "requires_action" if verified.status == "requires_action" else "pending"
+                if intent.status != next_status:
+                    intent.status = next_status
+                    intent.save(update_fields=["status"])
+
+            event.processing_status = WebhookEvent.STATUS_PROCESSED
             event.processed_at = timezone.now()
             event.save(update_fields=["processing_status", "processed_at"])
             return event
-
-        intent_store_id = intent.store_id
-        order = (
-            Order.objects.for_tenant(intent_store_id)
-            .select_for_update()
-            .filter(id=intent.order_id)
-            .first()
-        )
-        if not order:
-            event.processing_status = WebhookEvent.STATUS_FAILED
-            event.processed_at = timezone.now()
-            event.save(update_fields=["processing_status", "processed_at"])
-            return event
-
-        tenant_ctx = TenantContext(
-            tenant_id=tenant_id,
-            store_id=order.store_id,
-            currency=order.currency,
-            user_id=None,
-            session_key="",
-        )
-        if verified.status == "succeeded":
-            apply_payment_success(intent=intent, order=order, tenant_ctx=tenant_ctx)
-        elif verified.status == "failed":
-            apply_payment_failure(intent=intent, order=order, tenant_ctx=tenant_ctx)
-        elif verified.status in {"pending", "requires_action"}:
-            next_status = "requires_action" if verified.status == "requires_action" else "pending"
-            if intent.status != next_status:
-                intent.status = next_status
-                intent.save(update_fields=["status"])
-
-        event.processing_status = WebhookEvent.STATUS_PROCESSED
-        event.processed_at = timezone.now()
-        event.save(update_fields=["processing_status", "processed_at"])
-        return event
 
     @staticmethod
     def _record_invalid_event(cmd: HandleWebhookEventCommand, *, raw_body: str) -> WebhookEvent:

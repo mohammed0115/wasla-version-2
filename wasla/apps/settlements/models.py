@@ -19,6 +19,7 @@ class LedgerAccount(models.Model):
     """Ledger account per store/currency."""
     objects = TenantManager()
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     store_id = models.IntegerField(db_index=True)
     currency = models.CharField(max_length=10, default="SAR")
     available_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -53,6 +54,7 @@ class Settlement(models.Model):
         (STATUS_FAILED, "Failed"),
     ]
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     store_id = models.IntegerField(db_index=True)
     period_start = models.DateField()
     period_end = models.DateField()
@@ -78,6 +80,7 @@ class SettlementItem(models.Model):
     """Per-order settlement line."""
     objects = TenantManager()
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     settlement = models.ForeignKey(Settlement, on_delete=models.CASCADE, related_name="items")
     order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="settlement_items")
     order_amount = models.DecimalField(max_digits=14, decimal_places=2)
@@ -108,6 +111,7 @@ class LedgerEntry(models.Model):
         (TYPE_CREDIT, "Credit"),
     ]
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     store_id = models.IntegerField(db_index=True)
     order = models.ForeignKey(
         "orders.Order",
@@ -147,6 +151,7 @@ class AuditLog(models.Model):
     objects = TenantManager()
 
     actor_id = models.IntegerField(null=True, blank=True)
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     store_id = models.IntegerField(null=True, blank=True, db_index=True)
     action = models.CharField(max_length=100)
     payload_json = models.JSONField(default=dict, blank=True)

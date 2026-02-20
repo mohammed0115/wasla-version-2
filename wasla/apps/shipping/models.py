@@ -13,6 +13,7 @@ from apps.tenants.managers import TenantManager
 class Shipment(models.Model):
     """Shipment record linked to an order."""
     objects = TenantManager()
+    TENANT_FIELD = "tenant_id"
 
     STATUS_CHOICES = [
         ("ready", "Ready"),
@@ -21,6 +22,7 @@ class Shipment(models.Model):
         ("cancelled", "Cancelled"),
     ]
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.ForeignKey(
         "orders.Order", on_delete=models.PROTECT, related_name="shipments"
     )

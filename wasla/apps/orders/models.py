@@ -30,6 +30,7 @@ class Order(models.Model):
     ]
 
     store_id = models.IntegerField(default=1, db_index=True)
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     order_number = models.CharField(max_length=32, unique=True)
     customer = models.ForeignKey(
         "customers.Customer", on_delete=models.PROTECT, related_name="orders"
@@ -58,6 +59,8 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """Line item belonging to an order."""
     objects = TenantManager()
+    TENANT_FIELD = "tenant_id"
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("catalog.Product", on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()

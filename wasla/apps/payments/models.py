@@ -13,6 +13,7 @@ from apps.tenants.managers import TenantManager
 class Payment(models.Model):
     """Payment record linked to an order."""
     objects = TenantManager()
+    TENANT_FIELD = "tenant_id"
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -20,6 +21,7 @@ class Payment(models.Model):
         ("failed", "Failed"),
     ]
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.ForeignKey(
         "orders.Order", on_delete=models.PROTECT, related_name="payments"
     )
@@ -42,6 +44,7 @@ class PaymentIntent(models.Model):
         ("failed", "Failed"),
     ]
 
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     store_id = models.IntegerField(db_index=True)
     order = models.ForeignKey(
         "orders.Order", on_delete=models.PROTECT, related_name="payment_intents"
@@ -146,6 +149,8 @@ class RefundRecord(models.Model):
     ]
 
     objects = TenantManager()
+    TENANT_FIELD = "tenant_id"
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
     payment_intent = models.ForeignKey(
         PaymentIntent, on_delete=models.PROTECT, related_name="refunds"
     )
