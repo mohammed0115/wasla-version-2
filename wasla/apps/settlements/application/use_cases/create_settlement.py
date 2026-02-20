@@ -13,6 +13,7 @@ from apps.settlements.domain.errors import SettlementError
 from apps.settlements.domain.fees import allocate_fees, resolve_fee_policy
 from apps.settlements.domain.policies import ensure_positive_amount
 from apps.settlements.models import Settlement, SettlementItem
+from apps.stores.models import Store
 from apps.analytics.application.telemetry import TelemetryService, actor_from_tenant_ctx
 from apps.analytics.domain.types import ObjectRef
 from apps.tenants.domain.tenant_context import TenantContext
@@ -36,6 +37,9 @@ class CreateSettlementUseCase:
 
         start_dt = timezone.make_aware(datetime.combine(cmd.period_start, time.min))
         end_dt = timezone.make_aware(datetime.combine(cmd.period_end, time.min))
+
+        store = Store.objects.filter(id=cmd.store_id).only("id", "tenant_id").first()
+        tenant_id = store.tenant_id if store and store.tenant_id else cmd.store_id
 
         settled_orders = SettlementItem.objects.filter(order_id=OuterRef("pk"))
         orders_qs = (
@@ -80,7 +84,7 @@ class CreateSettlementUseCase:
             net_total += net_amount
             items_payload.append(
                 SettlementItem(
-                    tenant_id=cmd.store_id,
+                    tenant_id=tenant_id,
                     settlement_id=0,
                     order_id=row["id"],
                     order_amount=order_amount,
@@ -90,7 +94,7 @@ class CreateSettlementUseCase:
             )
 
         settlement = Settlement.objects.create(
-            tenant_id=cmd.store_id,
+            tenant_id=tenant_id,
             store_id=cmd.store_id,
             period_start=cmd.period_start,
             period_end=cmd.period_end,
@@ -105,7 +109,7 @@ class CreateSettlementUseCase:
 
         SettlementItem.objects.bulk_create(items_payload)
         tenant_ctx = TenantContext(
-            tenant_id=cmd.store_id,
+            tenant_id=tenant_id,
             currency="SAR",
             user_id=None,
             session_key="",

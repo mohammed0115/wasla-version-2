@@ -1,0 +1,101 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Webhooks - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-arrow-down-square"></i> Webhook Events</h1>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Provider</label>
+                <select name="provider" class="form-select">
+                    <option value="">All</option>
+                    <option value="tap" {% if provider_filter == 'tap' %}selected{% endif %}>Tap</option>
+                    <option value="stripe" {% if provider_filter == 'stripe' %}selected{% endif %}>Stripe</option>
+                    <option value="paypal" {% if provider_filter == 'paypal' %}selected{% endif %}>PayPal</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="received" {% if status_filter == 'received' %}selected{% endif %}>Received</option>
+                    <option value="processed" {% if status_filter == 'processed' %}selected{% endif %}>Processed</option>
+                    <option value="ignored" {% if status_filter == 'ignored' %}selected{% endif %}>Ignored</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Provider</th>
+                        <th>Event ID</th>
+                        <th>Status</th>
+                        <th>Received</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for webhook in webhooks %}
+                    <tr>
+                        <td><small>{{ webhook.id|truncatechars:10 }}</small></td>
+                        <td><span class="badge bg-info">{{ webhook.provider|upper }}</span></td>
+                        <td><small><code>{{ webhook.event_id|truncatechars:16 }}</code></small></td>
+                        <td>
+                            <span class="badge 
+                                {% if webhook.status == 'processed' %}bg-success
+                                {% elif webhook.status == 'received' %}bg-info
+                                {% elif webhook.status == 'failed' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ webhook.status|upper }}
+                            </span>
+                        </td>
+                        <td>{{ webhook.received_at|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No webhooks found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if webhooks.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if webhooks.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ webhooks.previous_page_number }}&provider={{ provider_filter }}&status={{ status_filter }}">Previous</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ webhooks.number }} of {{ webhooks.paginator.num_pages }}</span>
+                </li>
+
+                {% if webhooks.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ webhooks.next_page_number }}&provider={{ provider_filter }}&status={{ status_filter }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -99,6 +99,113 @@ class SettlementItem(models.Model):
         return f"Settlement {self.settlement_id} - Order {self.order_id}"
 
 
+class SettlementRecord(models.Model):
+    """Per-successful-payment settlement record for Wasla fee accounting."""
+
+    STATUS_PENDING = "pending"
+    STATUS_INVOICED = "invoiced"
+    STATUS_PAID = "paid"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_INVOICED, "Invoiced"),
+        (STATUS_PAID, "Paid"),
+    ]
+
+    store = models.ForeignKey(
+        "stores.Store",
+        on_delete=models.CASCADE,
+        related_name="settlement_records",
+    )
+    order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.PROTECT,
+        related_name="settlement_records",
+    )
+    payment_attempt = models.OneToOneField(
+        "payments.PaymentAttempt",
+        on_delete=models.PROTECT,
+        related_name="settlement_record",
+    )
+    gross_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    wasla_fee = models.DecimalField(max_digits=14, decimal_places=2, default=1)
+    net_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["store", "status", "created_at"]),
+            models.Index(fields=["order"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"SettlementRecord {self.id} - attempt {self.payment_attempt_id}"
+
+
+class Invoice(models.Model):
+    STATUS_DRAFT = "draft"
+    STATUS_ISSUED = "issued"
+    STATUS_PAID = "paid"
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_ISSUED, "Issued"),
+        (STATUS_PAID, "Paid"),
+    ]
+
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="invoices",
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField()
+    total_operations = models.PositiveIntegerField(default=0)
+    total_wasla_fee = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("tenant", "year", "month"),
+                name="uq_invoice_tenant_year_month",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["tenant", "year", "month"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Invoice {self.tenant_id}-{self.year}-{self.month:02d}"
+
+
+class InvoiceLine(models.Model):
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    settlement = models.OneToOneField(
+        SettlementRecord,
+        on_delete=models.PROTECT,
+        related_name="invoice_line",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["invoice", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"InvoiceLine {self.invoice_id}:{self.settlement_id}"
+
+
 class LedgerEntry(models.Model):
     """Ledger entry for credits/debits."""
     objects = TenantManager()

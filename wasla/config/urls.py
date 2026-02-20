@@ -5,6 +5,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    
+    # Wasla Admin Portal
+    path("admin-portal/", include(("apps.admin_portal.urls", "admin_portal"), namespace="admin_portal")),
 
     # API Documentation - Swagger UI, ReDoc, and OpenAPI Schema
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

@@ -1,0 +1,42 @@
+{% extends "admin_portal/base.html" %}
+
+{% block title %}Login - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height: 100vh;">
+        <div class="col-md-5">
+            <div class="card shadow-lg">
+                <div class="card-header text-center py-4">
+                    <h3 class="mb-0"><i class="bi bi-shield-lock"></i> Wasla Admin Portal</h3>
+                </div>
+                <div class="card-body p-5">
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required autofocus>
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <p class="text-center text-muted mt-3">
+                <small>Staff access only</small>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

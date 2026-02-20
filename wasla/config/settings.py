@@ -163,16 +163,16 @@ INSTALLED_APPS = [
     "apps.emails.apps.EmailsConfig",
     "apps.webhooks.apps.WebhooksConfig",
     "apps.system.apps.SystemConfig",
-    "apps.stores.apps.StoresConfig"
-    ,"apps.visual_search.apps.VisualSearchConfig"
-    
-    
+    "apps.stores.apps.StoresConfig",
+    "apps.visual_search.apps.VisualSearchConfig",
+    "apps.admin_portal.apps.AdminPortalConfig",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "apps.tenants.middleware.TenantResolverMiddleware",
+    "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
     "apps.tenants.middleware.TenantLocaleMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",

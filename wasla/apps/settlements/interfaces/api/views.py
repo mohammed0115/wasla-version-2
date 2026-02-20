@@ -9,6 +9,12 @@ from apps.settlements.application.use_cases.approve_settlement import (
     ApproveSettlementCommand,
     ApproveSettlementUseCase,
 )
+from apps.settlements.application.use_cases.generate_monthly_invoice_draft import (
+    generate_monthly_invoice_draft,
+)
+from apps.settlements.application.use_cases.generate_monthly_report import (
+    generate_monthly_report,
+)
 from apps.settlements.application.use_cases.get_merchant_balance import (
     GetMerchantBalanceCommand,
     GetMerchantBalanceUseCase,
@@ -32,7 +38,7 @@ from apps.settlements.interfaces.api.serializers import (
     SettlementSerializer,
 )
 from apps.tenants.domain.tenant_context import TenantContext
-from apps.tenants.guards import require_store, require_tenant
+from apps.tenants.guards import require_merchant, require_store, require_tenant
 
 
 def _build_tenant_context(request) -> TenantContext:
@@ -110,3 +116,71 @@ class AdminMarkSettlementPaidAPI(APIView):
         except InvalidSettlementStateError as exc:
             return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_409_CONFLICT)
         return api_response(success=True, data=SettlementSerializer(settlement).data)
+
+
+class MerchantMonthlyReportAPI(APIView):
+    def get(self, request):
+        store = require_store(request)
+        require_merchant(request)
+        tenant = getattr(store, "tenant", None)
+        if not tenant:
+            return api_response(success=False, errors=["tenant_not_found"], status_code=status.HTTP_404_NOT_FOUND)
+
+        try:
+            year = int(request.query_params.get("year"))
+            month = int(request.query_params.get("month"))
+        except (TypeError, ValueError):
+            return api_response(success=False, errors=["invalid_year_or_month"], status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            report = generate_monthly_report(tenant_id=tenant.id, year=year, month=month)
+        except ValueError as exc:
+            return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
+
+        return api_response(
+            success=True,
+            data={
+                "tenant_id": report.tenant_id,
+                "year": report.year,
+                "month": report.month,
+                "total_operations": report.total_operations,
+                "total_wasla_fee": str(report.total_wasla_fee),
+                "settlement_ids": report.settlement_ids,
+            },
+        )
+
+
+class MerchantInvoiceDraftAPI(APIView):
+    def post(self, request):
+        store = require_store(request)
+        require_merchant(request)
+        tenant = getattr(store, "tenant", None)
+        if not tenant:
+            return api_response(success=False, errors=["tenant_not_found"], status_code=status.HTTP_404_NOT_FOUND)
+
+        try:
+            year = int(request.data.get("year"))
+            month = int(request.data.get("month"))
+        except (TypeError, ValueError):
+            return api_response(success=False, errors=["invalid_year_or_month"], status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = generate_monthly_invoice_draft(tenant_id=tenant.id, year=year, month=month)
+        except ValueError as exc:
+            return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
+
+        invoice = result.invoice
+        return api_response(
+            success=True,
+            data={
+                "invoice_id": invoice.id,
+                "tenant_id": invoice.tenant_id,
+                "year": invoice.year,
+                "month": invoice.month,
+                "status": invoice.status,
+                "total_operations": invoice.total_operations,
+                "total_wasla_fee": str(invoice.total_wasla_fee),
+                "created": result.created,
+            },
+            status_code=status.HTTP_201_CREATED if result.created else status.HTTP_200_OK,
+        )

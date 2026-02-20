@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Wasla Admin Portal{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --wasla-primary: #1F4FD8;
+            --wasla-secondary: #3B6EF5;
+            --wasla-accent: #F7941D;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 48px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background-color: var(--wasla-primary);
+        }
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 48px);
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .sidebar .nav-link {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0.75rem 1rem;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .sidebar .nav-link.active {
+            color: #fff;
+            background-color: var(--wasla-secondary);
+            border-left: 3px solid var(--wasla-accent);
+        }
+        .sidebar .nav-link i {
+            margin-right: 0.5rem;
+        }
+        .navbar-brand {
+            padding-top: .75rem;
+            padding-bottom: .75rem;
+            font-size: 1.25rem;
+            background-color: var(--wasla-primary);
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            color: white !important;
+            font-weight: 700;
+        }
+        .btn-primary {
+            background-color: var(--wasla-primary);
+            border-color: var(--wasla-primary);
+        }
+        .btn-primary:hover {
+            background-color: var(--wasla-secondary);
+            border-color: var(--wasla-secondary);
+        }
+        .badge-accent {
+            background-color: var(--wasla-accent);
+        }
+        .card-header {
+            background-color: var(--wasla-primary);
+            color: white;
+            font-weight: 600;
+        }
+        main {
+            margin-left: 240px;
+        }
+        .kpi-card {
+            border-left: 4px solid var(--wasla-accent);
+        }
+        .table thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid var(--wasla-primary);
+        }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="{% url 'admin_portal:dashboard' %}">
+            <i class="bi bi-shield-check"></i> Wasla Admin
+        </a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3 text-white" href="{% url 'admin_portal:logout' %}">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="sidebar-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'admin_portal:dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'tenants' %}active{% endif %}" href="{% url 'admin_portal:tenants' %}">
+                                <i class="bi bi-building"></i> Tenants
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'stores' %}active{% endif %}" href="{% url 'admin_portal:stores' %}">
+                                <i class="bi bi-shop"></i> Stores
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'payments' %}active{% endif %}" href="{% url 'admin_portal:payments' %}">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'settlements' %}active{% endif %}" href="{% url 'admin_portal:settlements' %}">
+                                <i class="bi bi-cash-stack"></i> Settlements
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'invoices' %}active{% endif %}" href="{% url 'admin_portal:invoices' %}">
+                                <i class="bi bi-file-earmark-text"></i> Invoices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'webhooks' %}active{% endif %}" href="{% url 'admin_portal:webhooks' %}">
+                                <i class="bi bi-arrow-down-square"></i> Webhooks
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="pt-4 pb-2">
+                    {% block content %}
+                    {% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,22 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Tenant Detail - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-building"></i> Tenant Detail</h1>
+    <a href="{% url 'admin_portal:tenants' %}" class="btn btn-outline-secondary btn-sm">Back</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">ID</dt><dd class="col-sm-9">{{ tenant.id }}</dd>
+            <dt class="col-sm-3">Name</dt><dd class="col-sm-9">{{ tenant.name }}</dd>
+            <dt class="col-sm-3">Slug</dt><dd class="col-sm-9"><code>{{ tenant.slug }}</code></dd>
+            <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{% if tenant.is_active %}Active{% else %}Inactive{% endif %}</dd>
+            <dt class="col-sm-3">Created</dt><dd class="col-sm-9">{{ tenant.created_at|date:"M d, Y H:i" }}</dd>
+        </dl>
+    </div>
+</div>
+{% endblock %}

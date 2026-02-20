@@ -1,0 +1,92 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Stores - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-shop"></i> Stores</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Slug</th>
+                        <th>Tenant</th>
+                        <th>Payments</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for store in stores %}
+                    <tr>
+                        <td><small>{{ store.id|truncatechars:10 }}</small></td>
+                        <td><strong>{{ store.name }}</strong></td>
+                        <td><code>{{ store.slug }}</code></td>
+                        <td>{{ store.tenant.name }}</td>
+                        <td><span class="badge bg-info">{{ store.payment_count }}</span></td>
+                        <td>{{ store.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if store.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif store.status == 'draft' %}
+                            <span class="badge bg-warning text-dark">Draft</span>
+                            {% elif store.status == 'suspended' %}
+                            <span class="badge bg-danger">Suspended</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ store.status|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_portal:store_detail' store.id %}">Details</a>
+                            <form method="post" action="{% url 'admin_portal:store_set_active' store.id %}" class="d-inline" onsubmit="return confirm('Confirm store status change?');">
+                                {% csrf_token %}
+                                {% if store.status == 'active' %}
+                                <input type="hidden" name="active" value="0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                                {% else %}
+                                <input type="hidden" name="active" value="1">
+                                <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No stores found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if stores.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if stores.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ stores.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ stores.number }} of {{ stores.paginator.num_pages }}</span>
+                </li>
+
+                {% if stores.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ stores.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

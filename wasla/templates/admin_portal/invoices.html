@@ -1,0 +1,89 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Invoices - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Invoices</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tenant</th>
+                        <th>Period</th>
+                        <th>Operations</th>
+                        <th>Wasla Fees</th>
+                        <th>Lines</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><small>{{ invoice.id|truncatechars:10 }}</small></td>
+                        <td><strong>{{ invoice.tenant.name }}</strong></td>
+                        <td>{{ invoice.year }}-{{ invoice.month|stringformat:"02d" }}</td>
+                        <td><strong>{{ invoice.total_operations }}</strong></td>
+                        <td class="text-primary">${{ invoice.total_wasla_fee|floatformat:2 }}</td>
+                        <td><span class="badge bg-secondary">{{ invoice.line_count }}</span></td>
+                        <td>
+                            <span class="badge 
+                                {% if invoice.status == 'draft' %}bg-warning text-dark
+                                {% elif invoice.status == 'issued' %}bg-primary
+                                {% elif invoice.status == 'paid' %}bg-success
+                                {% else %}bg-secondary{% endif %}">
+                                {{ invoice.status|upper }}
+                            </span>
+                        </td>
+                        <td>{{ invoice.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if invoice.status != 'paid' %}
+                            <form method="post" action="{% url 'admin_portal:invoice_mark_paid' invoice.id %}" class="d-inline" onsubmit="return confirm('Mark this invoice as paid?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">Mark Paid</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No invoices found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if invoices.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if invoices.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ invoices.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ invoices.number }} of {{ invoices.paginator.num_pages }}</span>
+                </li>
+
+                {% if invoices.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ invoices.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

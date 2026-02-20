@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from apps.cart.interfaces.api.responses import api_response
-from apps.payments.application.use_cases.handle_webhook_event import (
-    HandleWebhookEventCommand,
-    HandleWebhookEventUseCase,
-)
 from apps.payments.application.use_cases.initiate_payment import (
     InitiatePaymentCommand,
     InitiatePaymentUseCase,
 )
+from apps.payments.infrastructure.orchestrator import PaymentOrchestrator
 from apps.payments.interfaces.api.serializers import PaymentInitiateSerializer
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant, require_merchant
@@ -34,11 +32,6 @@ def _build_tenant_context(request) -> TenantContext:
         user_id=user_id,
         session_key=session_key,
     )
-
-
-def validate_signature(request) -> bool:
-    """TODO: implement provider-specific signature verification for webhooks."""
-    return True
 
 
 class PaymentInitiateAPI(APIView):
@@ -71,28 +64,18 @@ class PaymentInitiateAPI(APIView):
 
 class PaymentWebhookAPI(APIView):
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]
 
-    def post(self, request, provider_code: str):
-        if not validate_signature(request):
+    def post(self, request, provider: str):
+        if not PaymentOrchestrator.validate_webhook(provider=provider, request=request):
             return api_response(
                 success=False,
-                errors=["invalid_signature"],
+                errors=["invalid_or_missing_webhook_secret"],
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        raw_body = request.body.decode("utf-8", errors="ignore") if request.body else ""
-        payload = request.data if isinstance(request.data, dict) else {}
-        headers = {str(k): str(v) for k, v in request.headers.items()}
 
         try:
-            event = HandleWebhookEventUseCase.execute(
-                HandleWebhookEventCommand(
-                    provider_code=provider_code,
-                    headers=headers,
-                    payload=payload,
-                    raw_body=raw_body,
-                )
-            )
+            result = PaymentOrchestrator.process_webhook(provider=provider, request=request)
         except ValueError as exc:
             return api_response(
                 success=False,
@@ -102,10 +85,6 @@ class PaymentWebhookAPI(APIView):
 
         return api_response(
             success=True,
-            data={
-                "provider_code": event.provider_code,
-                "event_id": event.event_id,
-                "processing_status": event.processing_status,
-            },
+            data=result,
             status_code=status.HTTP_200_OK,
         )

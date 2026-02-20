@@ -1,0 +1,198 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Dashboard - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <div class="text-muted">
+        <i class="bi bi-person-circle"></i> {{ user.username }}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Tenants</h6>
+                        <h2 class="mb-0">{{ total_tenants }}</h2>
+                    </div>
+                    <div class="text-primary">
+                        <i class="bi bi-building" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Stores</h6>
+                        <h2 class="mb-0">{{ total_stores }}</h2>
+                    </div>
+                    <div class="text-primary">
+                        <i class="bi bi-shop" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Payments (30d)</h6>
+                        <h2 class="mb-0">{{ total_payments_30d }}</h2>
+                        <small class="text-success">{{ successful_payments_30d }} successful</small>
+                    </div>
+                    <div class="text-primary">
+                        <i class="bi bi-credit-card" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card kpi-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Revenue (30d)</h6>
+                        <h2 class="mb-0">${{ revenue_30d|floatformat:2 }}</h2>
+                    </div>
+                    <div class="text-success">
+                        <i class="bi bi-cash-stack" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ pending_settlements }}</h3>
+                <p class="text-muted mb-0">Pending Settlements</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ total_invoices }}</h3>
+                <p class="text-muted mb-0">Total Invoices</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ webhooks_30d }}</h3>
+                <p class="text-muted mb-0">Webhooks (30d)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-credit-card"></i> Recent Payments
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Store</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in recent_payments %}
+                            <tr>
+                                <td><small>{{ payment.id|truncatechars:8 }}</small></td>
+                                <td>{{ payment.store.name|default:"N/A" }}</td>
+                                <td>${{ payment.amount|floatformat:2 }}</td>
+                                <td>
+                                    <span class="badge status-badge 
+                                        {% if payment.status == 'paid' %}bg-success
+                                        {% elif payment.status == 'pending' %}bg-warning
+                                        {% elif payment.status == 'failed' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ payment.status|upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No recent payments</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-arrow-down-square"></i> Recent Webhooks
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Event ID</th>
+                                <th>Status</th>
+                                <th>Received</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for webhook in recent_webhooks %}
+                            <tr>
+                                <td><span class="badge bg-info">{{ webhook.provider|upper }}</span></td>
+                                <td><small>{{ webhook.event_id|truncatechars:12 }}</small></td>
+                                <td>
+                                    <span class="badge 
+                                        {% if webhook.status == 'processed' %}bg-success
+                                        {% elif webhook.status == 'received' %}bg-info
+                                        {% elif webhook.status == 'failed' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ webhook.status|upper }}
+                                    </span>
+                                </td>
+                                <td><small>{{ webhook.received_at|date:"M d, H:i" }}</small></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No recent webhooks</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

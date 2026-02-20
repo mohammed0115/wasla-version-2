@@ -67,6 +67,62 @@ class PaymentIntent(models.Model):
         return f"{self.provider_code}:{self.provider_reference or self.idempotency_key}"
 
 
+class PaymentAttempt(models.Model):
+    """Unified store-scoped payment attempt for provider orchestration."""
+
+    PROVIDER_TAP = "tap"
+    PROVIDER_STRIPE = "stripe"
+    PROVIDER_PAYPAL = "paypal"
+
+    PROVIDER_CHOICES = [
+        (PROVIDER_TAP, "Tap"),
+        (PROVIDER_STRIPE, "Stripe"),
+        (PROVIDER_PAYPAL, "PayPal"),
+    ]
+
+    STATUS_CREATED = "created"
+    STATUS_PENDING = "pending"
+    STATUS_PAID = "paid"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_REFUNDED = "refunded"
+
+    STATUS_CHOICES = [
+        (STATUS_CREATED, "Created"),
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PAID, "Paid"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_REFUNDED, "Refunded"),
+    ]
+
+    store = models.ForeignKey(
+        "stores.Store", on_delete=models.CASCADE, related_name="payment_attempts"
+    )
+    order = models.ForeignKey(
+        "orders.Order", on_delete=models.PROTECT, related_name="payment_attempts"
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    method = models.CharField(max_length=30)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=10, default="SAR")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CREATED)
+    provider_reference = models.CharField(max_length=120, blank=True, default="")
+    idempotency_key = models.CharField(max_length=64, unique=True)
+    raw_response = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["store", "provider", "status"]),
+            models.Index(fields=["provider", "provider_reference"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.provider_reference or self.idempotency_key}"
+
+
 class PaymentEvent(models.Model):
     provider_code = models.CharField(max_length=50)
     event_id = models.CharField(max_length=120)
@@ -84,17 +140,75 @@ class PaymentEvent(models.Model):
         return f"{self.provider_code}:{self.event_id}"
 
 
+class WebhookEvent(models.Model):
+    STATUS_RECEIVED = "received"
+    STATUS_IGNORED = "ignored"
+    STATUS_PROCESSED = "processed"
+    STATUS_FAILED = "failed"
+
+    STATUS_CHOICES = [
+        (STATUS_RECEIVED, "Received"),
+        (STATUS_IGNORED, "Ignored"),
+        (STATUS_PROCESSED, "Processed"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    provider = models.CharField(max_length=20)
+    event_id = models.CharField(max_length=120)
+    received_at = models.DateTimeField(auto_now_add=True)
+    payload = models.JSONField(default=dict, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_RECEIVED)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("provider", "event_id"),
+                name="uq_payment_webhook_provider_event",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["provider", "event_id"]),
+            models.Index(fields=["status", "received_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.event_id}"
+
+
 class PaymentProviderSettings(models.Model):
     """
     Multi-tenant payment provider configuration.
     Stores provider API keys, webhook secrets, and fee settings per tenant.
     """
+    PROVIDER_CHOICES = [
+        ("tap", "Tap"),
+        ("stripe", "Stripe"),
+        ("paypal", "PayPal"),
+    ]
+    MODE_CHOICES = [
+        ("sandbox", "Sandbox"),
+        ("prod", "Production"),
+    ]
+
+    store = models.ForeignKey(
+        "stores.Store",
+        on_delete=models.CASCADE,
+        related_name="payment_provider_settings",
+        null=True,
+        blank=True,
+    )
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
         related_name="payment_providers",
     )
     objects = TenantManager()
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, blank=True, default="")
+    public_key = models.CharField(max_length=255, blank=True, default="")
+    secret_key = models.CharField(max_length=255, blank=True, default="")
+    is_active = models.BooleanField(default=False)
+    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default="sandbox")
     provider_code = models.CharField(max_length=50)
     display_name = models.CharField(max_length=120, blank=True, default="")
     is_enabled = models.BooleanField(default=False)
@@ -121,14 +235,21 @@ class PaymentProviderSettings(models.Model):
                 fields=("tenant", "provider_code"),
                 name="uq_payment_provider_tenant_code",
             ),
+            models.UniqueConstraint(
+                fields=("store", "provider"),
+                name="uq_payment_provider_store_code",
+            ),
         ]
         indexes = [
             models.Index(fields=["tenant", "is_enabled"]),
             models.Index(fields=["provider_code", "is_enabled"]),
+            models.Index(fields=["store", "provider", "is_active"]),
         ]
 
     def __str__(self) -> str:
-        return f"{self.tenant_id}:{self.provider_code}"
+        provider_key = self.provider or self.provider_code
+        owner_key = self.store_id or self.tenant_id
+        return f"{owner_key}:{provider_key}"
 
 
 class RefundRecord(models.Model):

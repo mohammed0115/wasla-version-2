@@ -29,6 +29,11 @@ class TenantResolverMiddleware(MiddlewareMixin):
     """Resolve store based on subdomain and attach store + tenant to request."""
 
     def process_request(self, request):
+        if request.path.startswith("/admin-portal/"):
+            request.store = None
+            request.tenant = None
+            return None
+
         subdomain = extract_subdomain(request.get_host())
         if not subdomain:
             request.store = None

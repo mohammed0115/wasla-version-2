@@ -1,0 +1,88 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Tenants - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-building"></i> Tenants</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Slug</th>
+                        <th>Stores</th>
+                        <th>Payments</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tenant in tenants %}
+                    <tr>
+                        <td><small>{{ tenant.id|truncatechars:10 }}</small></td>
+                        <td><strong>{{ tenant.name }}</strong></td>
+                        <td><code>{{ tenant.slug }}</code></td>
+                        <td><span class="badge bg-primary">{{ tenant.store_count }}</span></td>
+                        <td><span class="badge bg-info">{{ tenant.payment_count }}</span></td>
+                        <td>{{ tenant.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if tenant.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_portal:tenant_detail' tenant.id %}">Details</a>
+                            <form method="post" action="{% url 'admin_portal:tenant_set_active' tenant.id %}" class="d-inline" onsubmit="return confirm('Confirm tenant status change?');">
+                                {% csrf_token %}
+                                {% if tenant.is_active %}
+                                <input type="hidden" name="active" value="0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                                {% else %}
+                                <input type="hidden" name="active" value="1">
+                                <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No tenants found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if tenants.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if tenants.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tenants.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ tenants.number }} of {{ tenants.paginator.num_pages }}</span>
+                </li>
+
+                {% if tenants.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tenants.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
