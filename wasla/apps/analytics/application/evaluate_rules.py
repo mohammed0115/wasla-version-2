@@ -17,9 +17,13 @@ class EvaluateRulesCommand:
 class EvaluateRulesUseCase:
     @staticmethod
     def execute(cmd: EvaluateRulesCommand) -> RiskScoreDTO | None:
-        order = Order.objects.filter(id=cmd.order_id, store_id=cmd.tenant_ctx.tenant_id).first()
+        order = (
+            Order.objects.for_tenant(cmd.tenant_ctx.store_id)
+            .filter(id=cmd.order_id)
+            .first()
+        )
         if not order:
             return None
-        result = evaluate_fraud_rules(tenant_id=cmd.tenant_ctx.tenant_id, order=order)
+        result = evaluate_fraud_rules(tenant_id=cmd.tenant_ctx.store_id, order=order)
         level = score_to_level(result.score)
         return RiskScoreDTO(order_id=order.id, score=result.score, level=level, reasons=result.reasons)

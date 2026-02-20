@@ -30,7 +30,7 @@ class AddToCartUseCase:
         quantity = ensure_positive_quantity(cmd.quantity)
         product = Product.objects.filter(
             id=cmd.product_id,
-            store_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             is_active=True,
         ).first()
         if not product:

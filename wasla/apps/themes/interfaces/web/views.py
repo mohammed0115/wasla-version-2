@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 from apps.tenants.interfaces.web.decorators import tenant_access_required
 from apps.themes.application.use_cases.list_themes import ListThemesUseCase
 from apps.themes.application.use_cases.update_branding import (
@@ -18,16 +19,22 @@ from apps.themes.models import StoreBranding
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
-        raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 @login_required
@@ -36,7 +43,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 def themes_list(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     themes = ListThemesUseCase.execute()
-    branding = StoreBranding.objects.filter(store_id=tenant_ctx.tenant_id).first()
+    branding = StoreBranding.objects.for_tenant(tenant_ctx.store_id).first()
 
     if request.method == "POST":
         theme_code = (request.POST.get("theme_code") or "").strip()
@@ -65,7 +72,7 @@ def themes_list(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def branding_edit(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
-    branding = StoreBranding.objects.filter(store_id=tenant_ctx.tenant_id).first()
+    branding = StoreBranding.objects.for_tenant(tenant_ctx.store_id).first()
     initial = {
         "theme_code": getattr(branding, "theme_code", ""),
         "primary_color": getattr(branding, "primary_color", ""),

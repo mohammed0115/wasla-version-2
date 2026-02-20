@@ -41,10 +41,9 @@ class OrderLifecycleService:
             order.shipments.exclude(status__in=["delivered", "cancelled"]).update(status="delivered")
 
         if resolved_new_status == "completed":
-            wallet = WalletService.get_or_create_wallet(order.store_id)
+            wallet = WalletService.get_or_create_wallet(order.store_id, tenant_id=order.tenant_id)
             reference = f"Order {order.order_number} completed"
             if not wallet.transactions.filter(transaction_type="credit", reference=reference).exists():
                 WalletService.credit(wallet, order.total_amount, reference)
 
         return order
-

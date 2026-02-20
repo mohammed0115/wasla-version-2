@@ -22,7 +22,7 @@ class ScoreTransactionUseCase:
     @transaction.atomic
     def execute(cmd: ScoreTransactionCommand) -> RiskScoreDTO:
         existing = RiskAssessment.objects.select_for_update().filter(
-            tenant_id=cmd.tenant_ctx.tenant_id, order_id=cmd.order_id
+            tenant_id=cmd.tenant_ctx.store_id, order_id=cmd.order_id
         ).first()
         if existing:
             return RiskScoreDTO(
@@ -32,14 +32,18 @@ class ScoreTransactionUseCase:
                 reasons=list(existing.reasons_json or []),
             )
 
-        order = Order.objects.filter(id=cmd.order_id, store_id=cmd.tenant_ctx.tenant_id).first()
+        order = (
+            Order.objects.for_tenant(cmd.tenant_ctx.store_id)
+            .filter(id=cmd.order_id)
+            .first()
+        )
         if not order:
             raise ValueError("Order not found.")
 
-        result = evaluate_fraud_rules(tenant_id=cmd.tenant_ctx.tenant_id, order=order)
+        result = evaluate_fraud_rules(tenant_id=cmd.tenant_ctx.store_id, order=order)
         level = score_to_level(result.score)
         assessment = RiskAssessment.objects.create(
-            tenant_id=cmd.tenant_ctx.tenant_id,
+            tenant_id=cmd.tenant_ctx.store_id,
             order_id=order.id,
             score=result.score,
             level=level,

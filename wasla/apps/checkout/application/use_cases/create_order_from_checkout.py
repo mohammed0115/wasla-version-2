@@ -29,13 +29,13 @@ class CreateOrderFromCheckoutUseCase:
     def execute(cmd: CreateOrderFromCheckoutCommand) -> Order:
         session = (
             CheckoutSession.objects.select_for_update()
-            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.tenant_id)
+            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.store_id)
             .first()
         )
         if not session:
             raise InvalidCheckoutStateError("Checkout session not found.")
         if session.order_id:
-            return Order.objects.get(id=session.order_id, store_id=cmd.tenant_ctx.tenant_id)
+            return Order.objects.for_tenant(cmd.tenant_ctx.store_id).get(id=session.order_id)
         if session.status != CheckoutSession.STATUS_PAYMENT:
             raise InvalidCheckoutStateError("Checkout is not ready for payment.")
 
@@ -51,7 +51,7 @@ class CreateOrderFromCheckoutUseCase:
             raise InvalidCheckoutStateError("Email is required.")
 
         customer, _ = Customer.objects.get_or_create(
-            store_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             email=email,
             defaults={"full_name": full_name or email, "is_active": True},
         )
@@ -73,7 +73,7 @@ class CreateOrderFromCheckoutUseCase:
         product_map = {
             p.id: p
             for p in Product.objects.filter(
-                store_id=cmd.tenant_ctx.tenant_id, id__in=[i["product_id"] for i in items]
+                store_id=cmd.tenant_ctx.store_id, id__in=[i["product_id"] for i in items]
             )
         }
         for item in items:
@@ -82,7 +82,12 @@ class CreateOrderFromCheckoutUseCase:
                 raise InvalidCheckoutStateError("Product not found for order.")
             item["product"] = product
 
-        order = OrderService.create_order(customer, items, store_id=cmd.tenant_ctx.tenant_id)
+        order = OrderService.create_order(
+            customer,
+            items,
+            store_id=cmd.tenant_ctx.store_id,
+            tenant_id=cmd.tenant_ctx.tenant_id,
+        )
 
         totals = session.totals_json or {}
         total_amount = Decimal(str(totals.get("total") or order.total_amount))

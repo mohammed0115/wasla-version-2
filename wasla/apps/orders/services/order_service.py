@@ -13,7 +13,7 @@ from .pricing_service import PricingService
 class OrderService:
     @staticmethod
     @transaction.atomic
-    def create_order(customer, items, store_id: int | None = None):
+    def create_order(customer, items, store_id: int | None = None, tenant=None, tenant_id: int | None = None):
         resolved_store_id = store_id if store_id is not None else getattr(customer, "store_id", 1)
         customer_store_id = getattr(customer, "store_id", resolved_store_id)
         if customer_store_id != resolved_store_id:
@@ -32,11 +32,11 @@ class OrderService:
         else:
             next_month_start = month_start.replace(month=month_start.month + 1)
 
-        current_orders = Order.objects.filter(
-            store_id=resolved_store_id,
-            created_at__gte=month_start,
-            created_at__lt=next_month_start,
-        ).count()
+        current_orders = (
+            Order.objects.for_tenant(resolved_store_id)
+            .filter(created_at__gte=month_start, created_at__lt=next_month_start)
+            .count()
+        )
         SubscriptionEntitlementService.assert_within_limit(
             store_id=resolved_store_id,
             limit_field="max_orders_monthly",
@@ -45,7 +45,9 @@ class OrderService:
         )
 
         total = PricingService.calculate_total(items)
+        resolved_tenant_id = tenant_id or (getattr(tenant, "id", None) if tenant is not None else None)
         order = Order.objects.create(
+            tenant_id=resolved_tenant_id,
             store_id=resolved_store_id,
             order_number=str(uuid.uuid4())[:12],
             customer=customer,
@@ -54,6 +56,7 @@ class OrderService:
         )
         for item in items:
             OrderItem.objects.create(
+                tenant_id=order.tenant_id,
                 order=order,
                 product=item["product"],
                 quantity=item["quantity"],

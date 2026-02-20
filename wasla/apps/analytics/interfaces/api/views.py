@@ -10,19 +10,28 @@ from apps.analytics.application.track_event import TrackEventCommand, TrackEvent
 from apps.analytics.domain.types import EventDTO
 from apps.cart.interfaces.api.responses import api_response
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 
 
 def _build_tenant_context(request) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
+    if not store_id:
         raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 class TrackEventAPI(APIView):
@@ -41,7 +50,7 @@ class TrackEventAPI(APIView):
             ip_address=request.META.get("REMOTE_ADDR", ""),
         )
         try:
-            TrackEventUseCase.execute(TrackEventCommand(tenant_id=tenant_ctx.tenant_id, event=event))
+            TrackEventUseCase.execute(TrackEventCommand(tenant_id=tenant_ctx.store_id, event=event))
         except Exception as exc:
             return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
         return api_response(success=True, data={"tracked": True})

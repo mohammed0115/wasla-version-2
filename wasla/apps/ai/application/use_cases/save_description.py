@@ -30,7 +30,7 @@ class SaveProductDescriptionUseCase:
     @transaction.atomic
     def execute(cmd: SaveProductDescriptionCommand) -> SaveProductDescriptionResult:
         product = Product.objects.select_for_update().filter(
-            id=cmd.product_id, store_id=cmd.tenant_ctx.tenant_id
+            id=cmd.product_id, store_id=cmd.tenant_ctx.store_id
         ).first()
         if not product:
             return SaveProductDescriptionResult(product=None, saved=False, reason="product_not_found")

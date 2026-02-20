@@ -48,7 +48,8 @@ def recommend_for_cart(*, tenant_id: int, cart_id: int, limit: int = 8) -> list[
 
 def recommend_for_home(*, tenant_id: int, limit: int = 8) -> list[int]:
     top_sellers = (
-        OrderItem.objects.filter(order__store_id=tenant_id, order__payment_status="paid")
+        OrderItem.objects.for_tenant(tenant_id)
+        .filter(order__payment_status="paid")
         .values("product_id")
         .annotate(total_qty=Sum("quantity"))
         .order_by("-total_qty")
@@ -89,7 +90,7 @@ def recommend_for_home(*, tenant_id: int, limit: int = 8) -> list[int]:
         return [pid for pid in ordered_ids if pid in active_ids][:limit]
 
     recent = (
-        Order.objects.filter(store_id=tenant_id)
+        Order.objects.for_tenant(tenant_id)
         .order_by("-created_at")
         .values_list("id", flat=True)[:10]
     )

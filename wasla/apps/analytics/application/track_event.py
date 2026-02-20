@@ -72,7 +72,7 @@ def track_from_tenant_ctx(
         object_id=object_id,
         properties=properties or {},
     )
-    safe_track_event(tenant_id=tenant_ctx.tenant_id, event=event)
+    safe_track_event(tenant_id=tenant_ctx.store_id, event=event)
 
 
 def track_platform_event(

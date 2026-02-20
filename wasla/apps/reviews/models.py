@@ -7,13 +7,15 @@ EN: Product reviews with moderation statuses (pending/approved/rejected).
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 from apps.catalog.models import Product
 from apps.customers.models import Customer
 
 
 class Review(models.Model):
     """A rating/comment left by a customer for a product."""
-
+    objects = TenantManager()
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("approved", "Approved"),

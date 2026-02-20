@@ -25,7 +25,7 @@ class SaveShippingAddressUseCase:
     def execute(cmd: SaveShippingAddressCommand) -> CheckoutSession:
         session = (
             CheckoutSession.objects.select_for_update()
-            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.tenant_id)
+            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.store_id)
             .first()
         )
         if not session:

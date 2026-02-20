@@ -22,7 +22,7 @@ class ExportOrdersCSVCommand:
 class ExportOrdersCSVUseCase:
     @staticmethod
     def execute(cmd: ExportOrdersCSVCommand):
-        qs = Order.objects.filter(store_id=cmd.tenant_ctx.tenant_id).order_by("-created_at")
+        qs = Order.objects.for_tenant(cmd.tenant_ctx.store_id).order_by("-created_at")
         if cmd.status:
             qs = qs.filter(status=cmd.status)
         if cmd.date_from:

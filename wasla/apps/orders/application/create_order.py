@@ -1,5 +1,5 @@
 from core.application.usecase import UseCase, UseCaseResult
-from core.domain.order_status import OrderStatus
+from apps.orders.domain.order_status import OrderStatus
 
 
 class CreateOrder(UseCase):

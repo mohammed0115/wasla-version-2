@@ -29,19 +29,26 @@ from apps.payments.application.use_cases.initiate_payment import (
 )
 from apps.payments.application.facade import PaymentGatewayFacade
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
-        raise CheckoutError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if getattr(request, "user", None) and request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 def _store_session_id(request: HttpRequest, session_id: int) -> None:
@@ -159,16 +166,19 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
 @require_GET
 def order_confirmation(request: HttpRequest, order_number: str) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
-    order = Order.objects.filter(
-        store_id=tenant_ctx.tenant_id, order_number=order_number
-    ).first()
+    order = (
+        Order.objects.for_tenant(tenant_ctx.store_id)
+        .filter(order_number=order_number)
+        .first()
+    )
     intent_reference = request.GET.get("intent") or ""
     provider_code = request.GET.get("provider") or ""
 
-    payment_intent_qs = PaymentIntent.objects.filter(
-        store_id=tenant_ctx.tenant_id,
-        order=order,
-    ) if order else PaymentIntent.objects.none()
+    payment_intent_qs = (
+        PaymentIntent.objects.for_tenant(tenant_ctx.store_id).filter(order=order)
+        if order
+        else PaymentIntent.objects.none()
+    )
     if intent_reference:
         payment_intent_qs = payment_intent_qs.filter(provider_reference=intent_reference)
     if provider_code:
@@ -191,7 +201,11 @@ def order_confirmation(request: HttpRequest, order_number: str) -> HttpResponse:
 @require_GET
 def order_tracking(request: HttpRequest, order_number: str) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
-    order = Order.objects.filter(store_id=tenant_ctx.tenant_id, order_number=order_number).first()
+    order = (
+        Order.objects.for_tenant(tenant_ctx.store_id)
+        .filter(order_number=order_number)
+        .first()
+    )
     shipment = order.shipments.order_by("-created_at").first() if order else None
 
     status_to_step = {

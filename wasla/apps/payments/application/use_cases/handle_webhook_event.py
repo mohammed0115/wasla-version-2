@@ -70,18 +70,28 @@ class HandleWebhookEventUseCase:
             payload_raw=raw_body,
         )
 
-        intent = PaymentIntent.objects.select_for_update().filter(
-            provider_code=cmd.provider_code,
-            provider_reference=verified.intent_reference,
-            store_id=tenant_id,
-        ).first()
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(
+                tenant_id=tenant_id,
+                provider_code=cmd.provider_code,
+                provider_reference=verified.intent_reference,
+            )
+            .first()
+        )
         if not intent:
             event.processing_status = WebhookEvent.STATUS_FAILED
             event.processed_at = timezone.now()
             event.save(update_fields=["processing_status", "processed_at"])
             return event
 
-        order = Order.objects.select_for_update().filter(id=intent.order_id, store_id=intent.store_id).first()
+        intent_store_id = intent.store_id
+        order = (
+            Order.objects.for_tenant(intent_store_id)
+            .select_for_update()
+            .filter(id=intent.order_id)
+            .first()
+        )
         if not order:
             event.processing_status = WebhookEvent.STATUS_FAILED
             event.processed_at = timezone.now()
@@ -89,7 +99,8 @@ class HandleWebhookEventUseCase:
             return event
 
         tenant_ctx = TenantContext(
-            tenant_id=order.store_id,
+            tenant_id=tenant_id,
+            store_id=order.store_id,
             currency=order.currency,
             user_id=None,
             session_key="",

@@ -18,22 +18,33 @@ from apps.tenants.interfaces.web.decorators import resolve_tenant_for_request
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
+    store = getattr(request, "store", None)
     tenant = getattr(request, "tenant", None)
+    if not tenant and store and getattr(store, "tenant", None):
+        tenant = store.tenant
+        request.tenant = tenant
     tenant_id = getattr(tenant, "id", None)
+    store_id = getattr(store, "id", None)
 
-    if not tenant_id and getattr(request, "user", None) and request.user.is_authenticated:
+    if not store_id and getattr(request, "user", None) and request.user.is_authenticated:
         resolved_tenant = resolve_tenant_for_request(request)
         tenant = resolved_tenant or tenant
         tenant_id = getattr(tenant, "id", None)
 
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
+    if not tenant_id or not store_id:
         raise CartError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if getattr(request, "user", None) and request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 @require_GET
@@ -42,8 +53,8 @@ def product_detail(request: HttpRequest, store_slug: str, product_id: int) -> Ht
         tenant_ctx = _build_tenant_context(request)
     except CartError:
         raise Http404
-    tenant = getattr(request, "tenant", None)
-    if tenant and tenant.slug != store_slug:
+    store = getattr(request, "store", None)
+    if store and store.slug != store_slug:
         return redirect("tenants:storefront_home")
     try:
         product = GetProductUseCase.execute(GetProductCommand(tenant_ctx=tenant_ctx, product_id=product_id))

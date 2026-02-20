@@ -172,7 +172,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "apps.tenants.middleware.TenantMiddleware",
+    "apps.tenants.middleware.TenantResolverMiddleware",
     "apps.tenants.middleware.TenantLocaleMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",

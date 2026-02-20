@@ -4,6 +4,8 @@ Theme & Branding models.
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Theme(models.Model):
     code = models.CharField(max_length=50, unique=True)
@@ -20,6 +22,7 @@ def branding_logo_upload_to(instance: "StoreBranding", filename: str) -> str:
 
 
 class StoreBranding(models.Model):
+    objects = TenantManager()
     store_id = models.IntegerField(db_index=True)
     theme_code = models.CharField(max_length=50, blank=True, default="")
     logo_path = models.ImageField(upload_to=branding_logo_upload_to, blank=True, null=True)

@@ -22,7 +22,7 @@ class RecommendProductsUseCase:
     @staticmethod
     def execute(cmd: RecommendProductsCommand) -> RecommendationSnapshot:
         context = (cmd.context or "").upper()
-        tenant_id = cmd.tenant_ctx.tenant_id
+        tenant_id = cmd.tenant_ctx.store_id
         object_id = cmd.object_id
 
         recommended: list[int] = []

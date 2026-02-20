@@ -39,8 +39,8 @@ class CreateSettlementUseCase:
 
         settled_orders = SettlementItem.objects.filter(order_id=OuterRef("pk"))
         orders_qs = (
-            Order.objects.filter(
-                store_id=cmd.store_id,
+            Order.objects.for_tenant(cmd.store_id)
+            .filter(
                 payment_status="paid",
                 created_at__gte=start_dt,
                 created_at__lt=end_dt,
@@ -52,8 +52,8 @@ class CreateSettlementUseCase:
         order_rows = list(orders_qs.values("id", "total_amount"))
         if not order_rows:
             existing = (
-                Settlement.objects.filter(
-                    store_id=cmd.store_id,
+                Settlement.objects.for_tenant(cmd.store_id)
+                .filter(
                     period_start=cmd.period_start,
                     period_end=cmd.period_end,
                 )
@@ -80,6 +80,7 @@ class CreateSettlementUseCase:
             net_total += net_amount
             items_payload.append(
                 SettlementItem(
+                    tenant_id=cmd.store_id,
                     settlement_id=0,
                     order_id=row["id"],
                     order_amount=order_amount,
@@ -89,6 +90,7 @@ class CreateSettlementUseCase:
             )
 
         settlement = Settlement.objects.create(
+            tenant_id=cmd.store_id,
             store_id=cmd.store_id,
             period_start=cmd.period_start,
             period_end=cmd.period_end,

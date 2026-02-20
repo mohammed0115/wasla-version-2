@@ -14,6 +14,7 @@ class ShippingService:
             raise ValueError("Shipment allowed only for processing orders")
 
         shipment = Shipment.objects.create(
+            tenant_id=getattr(order, "store_id", None),
             order=order,
             carrier=carrier,
             status="ready"

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class ProductEmbedding(models.Model):
+    objects = TenantManager()
     store_id = models.IntegerField(db_index=True)
     product = models.OneToOneField(
         "catalog.Product",

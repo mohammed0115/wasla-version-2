@@ -12,9 +12,12 @@ EN:
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Order(models.Model):
     """Store-scoped order with a simple status lifecycle."""
+    objects = TenantManager()
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -54,7 +57,7 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     """Line item belonging to an order."""
-
+    objects = TenantManager()
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("catalog.Product", on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()

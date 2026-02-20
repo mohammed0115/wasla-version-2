@@ -45,8 +45,8 @@ class VisualSearchUseCase:
             image_bytes = cmd.image_file.read() if cmd.image_file else b''
             query_vector = provider.embed_image(image_bytes=image_bytes).vector
             query_attrs = extract_image_attributes(image_bytes) if image_bytes else {}
-            _ensure_embeddings(cmd.tenant_ctx.tenant_id, provider_code=getattr(provider, "code", ""))
-            raw_results = search_similar(store_id=cmd.tenant_ctx.tenant_id, vector=query_vector, top_n=max(cmd.top_n * 5, cmd.top_n))
+            _ensure_embeddings(cmd.tenant_ctx.store_id, provider_code=getattr(provider, "code", ""))
+            raw_results = search_similar(store_id=cmd.tenant_ctx.store_id, vector=query_vector, top_n=max(cmd.top_n * 5, cmd.top_n))
             filtered = _apply_filters(
                 raw_results,
                 price_min=cmd.price_min,
@@ -73,7 +73,7 @@ class VisualSearchUseCase:
             ]
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="SEARCH",
                     provider=getattr(provider, "code", ""),
                     latency_ms=int((monotonic() - started) * 1000),
@@ -96,7 +96,7 @@ class VisualSearchUseCase:
         except Exception:
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="SEARCH",
                     provider=getattr(provider, "code", ""),
                     latency_ms=int((monotonic() - started) * 1000),
@@ -270,4 +270,3 @@ def _ensure_embeddings(store_id: int, provider_code: str, limit: int = 200) -> N
 
     if changed and faiss_available():
         faiss_build_index(store_id=store_id)
-

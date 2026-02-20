@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 
 from django.test import TestCase, Client
+from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from apps.catalog.models import Product, Inventory
@@ -21,13 +22,24 @@ from apps.payments.models import (
     PaymentProviderSettings,
 )
 from apps.settlements.models import LedgerEntry
-from apps.tenants.models import StorePaymentSettings, Tenant
+from apps.stores.models import Store
+from apps.tenants.models import StorePaymentSettings, Tenant, TenantMembership
 from apps.webhooks.models import WebhookEvent
 
 
 class PaymentWebhookIdempotencyTests(TestCase):
     def setUp(self) -> None:
-        self.tenant = Tenant.objects.create(slug="store-1", name="Store 1")
+        self.tenant = Tenant.objects.create(slug="tenant-1", name="Tenant 1")
+        owner = get_user_model().objects.create_user(username="owner-pay-1", password="pass12345")
+        self.store = Store.objects.create(
+            owner=owner,
+            tenant=self.tenant,
+            name="Store 1",
+            slug="store-1",
+            subdomain="store-1",
+            status=Store.STATUS_ACTIVE,
+            country="SA",
+        )
         StorePaymentSettings.objects.create(
             tenant=self.tenant,
             mode=StorePaymentSettings.MODE_DUMMY,
@@ -41,9 +53,10 @@ class PaymentWebhookIdempotencyTests(TestCase):
             webhook_secret="dummy-secret",
             credentials={},
         )
-        self.order = self._create_order(store_id=self.tenant.id)
+        self.order = self._create_order(store_id=self.store.id)
         self.intent = PaymentIntent.objects.create(
-            store_id=self.tenant.id,
+            tenant_id=self.tenant.id,
+            store_id=self.store.id,
             order=self.order,
             provider_code="dummy",
             amount=self.order.total_amount,
@@ -81,6 +94,10 @@ class PaymentWebhookIdempotencyTests(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.intent.status, "succeeded")
         self.assertEqual(self.order.payment_status, "paid")
+        payment = Payment.objects.first()
+        self.assertIsNotNone(payment)
+        self.assertEqual(payment.tenant_id, self.tenant.id)
+        self.assertEqual(self.intent.tenant_id, self.tenant.id)
 
     def test_webhook_rejects_invalid_signature(self):
         payload = {
@@ -131,19 +148,24 @@ class PaymentWebhookIdempotencyTests(TestCase):
             status="pending",
             payment_status="pending",
         )
-        OrderItem.objects.create(
-            order=order,
-            product=product,
-            quantity=1,
-            price=Decimal("100.00"),
-        )
+        OrderItem.objects.create(order=order, product=product, quantity=1, price=Decimal("100.00"))
         return order
 
 
 class PaymentWebhookAPITests(APITestCase):
     def setUp(self) -> None:
         self.client = Client()
-        self.tenant = Tenant.objects.create(slug="api-store", name="API Store")
+        self.tenant = Tenant.objects.create(slug="api-tenant", name="API Tenant")
+        owner = get_user_model().objects.create_user(username="owner-pay-2", password="pass12345")
+        self.store = Store.objects.create(
+            owner=owner,
+            tenant=self.tenant,
+            name="API Store",
+            slug="api-store",
+            subdomain="api-store",
+            status=Store.STATUS_ACTIVE,
+            country="SA",
+        )
         StorePaymentSettings.objects.create(
             tenant=self.tenant,
             mode=StorePaymentSettings.MODE_DUMMY,
@@ -158,9 +180,10 @@ class PaymentWebhookAPITests(APITestCase):
                 webhook_secret=f"{provider_code}-secret",
                 credentials={},
             )
-        self.order = self._create_order(store_id=self.tenant.id)
+        self.order = self._create_order(store_id=self.store.id)
         self.intent = PaymentIntent.objects.create(
-            store_id=self.tenant.id,
+            tenant_id=self.tenant.id,
+            store_id=self.store.id,
             order=self.order,
             provider_code="dummy",
             amount=self.order.total_amount,
@@ -216,7 +239,8 @@ class PaymentWebhookAPITests(APITestCase):
 
     def test_webhook_api_sandbox_provider(self):
         sandbox_intent = PaymentIntent.objects.create(
-            store_id=self.tenant.id,
+            tenant_id=self.tenant.id,
+            store_id=self.store.id,
             order=self.order,
             provider_code="sandbox",
             amount=self.order.total_amount,
@@ -267,6 +291,109 @@ class PaymentWebhookAPITests(APITestCase):
         order = Order.objects.create(
             store_id=store_id,
             order_number="ORDER-1",
+            customer=customer,
+            total_amount=Decimal("100.00"),
+            currency="SAR",
+            status="pending",
+            payment_status="pending",
+        )
+        OrderItem.objects.create(order=order, product=product, quantity=1, price=Decimal("100.00"))
+        return order
+
+
+class PaymentMerchantAccessTests(APITestCase):
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(username="merchant-a", password="pass12345")
+        self.other_user = User.objects.create_user(username="merchant-b", password="pass12345")
+        self.tenant_a = Tenant.objects.create(slug="tenant-a", name="Tenant A")
+        self.tenant_b = Tenant.objects.create(slug="tenant-b", name="Tenant B")
+        self.store_a = Store.objects.create(
+            owner=self.user,
+            tenant=self.tenant_a,
+            name="Store A",
+            slug="store-a",
+            subdomain="store-a",
+            status=Store.STATUS_ACTIVE,
+            country="SA",
+        )
+        self.store_b = Store.objects.create(
+            owner=self.other_user,
+            tenant=self.tenant_b,
+            name="Store B",
+            slug="store-b",
+            subdomain="store-b",
+            status=Store.STATUS_ACTIVE,
+            country="SA",
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant_a,
+            user=self.user,
+            role=TenantMembership.ROLE_OWNER,
+            is_active=True,
+        )
+        StorePaymentSettings.objects.create(
+            tenant=self.tenant_b,
+            mode=StorePaymentSettings.MODE_DUMMY,
+            is_enabled=True,
+        )
+        PaymentProviderSettings.objects.create(
+            tenant=self.tenant_b,
+            provider_code="dummy",
+            display_name="Dummy",
+            is_enabled=True,
+            webhook_secret="dummy-secret",
+            credentials={},
+        )
+        self.order_b = self._create_order(store_id=self.store_b.id)
+
+    def test_anonymous_cannot_access_merchant_payment_api(self):
+        payload = {
+            "order_id": self.order_b.id,
+            "provider_code": "dummy",
+            "return_url": "https://example.com/return",
+        }
+        response = self.client.post(
+            "/api/payments/initiate",
+            data=payload,
+            format="json",
+            HTTP_HOST=f"{self.store_b.slug}.localhost",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_store_a_merchant_cannot_access_store_b_by_host(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            "order_id": self.order_b.id,
+            "provider_code": "dummy",
+            "return_url": "https://example.com/return",
+        }
+        response = self.client.post(
+            "/api/payments/initiate",
+            data=payload,
+            format="json",
+            HTTP_HOST=f"{self.store_b.slug}.localhost",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def _create_order(self, *, store_id: int) -> Order:
+        customer = Customer.objects.create(
+            store_id=store_id,
+            email="buyer@example.com",
+            full_name="Buyer",
+        )
+        product = Product.objects.create(
+            store_id=store_id,
+            sku=f"SKU-{store_id}",
+            name="Product",
+            price=Decimal("100.00"),
+            description_ar="",
+            description_en="",
+        )
+        Inventory.objects.create(product=product, quantity=10, in_stock=True)
+        order = Order.objects.create(
+            store_id=store_id,
+            order_number=f"ORDER-{store_id}",
             customer=customer,
             total_amount=Decimal("100.00"),
             currency="SAR",

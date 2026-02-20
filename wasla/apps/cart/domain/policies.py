@@ -13,7 +13,7 @@ def ensure_positive_quantity(quantity: int) -> int:
 
 
 def assert_cart_access(cart, tenant_ctx: TenantContext) -> None:
-    if cart.store_id != tenant_ctx.tenant_id:
+    if cart.store_id != tenant_ctx.store_id:
         raise CartAccessDeniedError("Cart does not belong to tenant.")
     if tenant_ctx.user_id:
         if cart.user_id != tenant_ctx.user_id:

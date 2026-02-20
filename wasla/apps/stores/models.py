@@ -45,7 +45,14 @@ class Store(models.Model):
         related_name="stores",
         help_text="User who owns/manages this store"
     )
-    
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="stores",
+        db_index=True,
+    )
     # Basic information
     name = models.CharField(max_length=255, help_text="Store display name")
     slug = models.SlugField(max_length=255, unique=True, help_text="URL-safe identifier")

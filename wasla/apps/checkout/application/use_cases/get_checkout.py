@@ -19,11 +19,11 @@ class GetCheckoutUseCase:
     @staticmethod
     def execute(cmd: GetCheckoutCommand) -> CheckoutSummary:
         session = CheckoutSession.objects.filter(
-            id=cmd.session_id, store_id=cmd.tenant_ctx.tenant_id
+            id=cmd.session_id, store_id=cmd.tenant_ctx.store_id
         ).first()
         if not session:
             raise InvalidCheckoutStateError("Checkout session not found.")
 
-        methods = list_shipping_methods(tenant_id=cmd.tenant_ctx.tenant_id)
+        methods = list_shipping_methods(tenant_id=cmd.tenant_ctx.store_id)
         totals = session.totals_json or {}
         return CheckoutSummary(session_id=session.id, status=session.status, totals=totals, shipping_methods=methods)

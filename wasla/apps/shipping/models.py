@@ -7,9 +7,12 @@ EN: Shipments linked to orders (carrier + tracking + status).
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Shipment(models.Model):
     """Shipment record linked to an order."""
+    objects = TenantManager()
 
     STATUS_CHOICES = [
         ("ready", "Ready"),

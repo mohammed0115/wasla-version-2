@@ -8,7 +8,7 @@ def branding_meta(request):
     tenant_id = getattr(tenant, "id", None)
     if not tenant_id:
         return {}
-    branding = StoreBranding.objects.filter(store_id=tenant_id).first()
+    branding = StoreBranding.objects.for_tenant(tenant_id).first()
     theme = None
     if branding and branding.theme_code:
         theme = Theme.objects.filter(code=branding.theme_code, is_active=True).first()

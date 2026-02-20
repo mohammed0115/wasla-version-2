@@ -17,11 +17,12 @@ class GetSettlementDetailCommand:
 class GetSettlementDetailUseCase:
     @staticmethod
     def execute(cmd: GetSettlementDetailCommand) -> SettlementDetail:
-        settlement = Settlement.objects.filter(id=cmd.settlement_id, store_id=cmd.store_id).first()
+        settlement = Settlement.objects.for_tenant(cmd.store_id).filter(id=cmd.settlement_id).first()
         if not settlement:
             raise SettlementNotFoundError("Settlement not found.")
         items = (
-            SettlementItem.objects.select_related("order")
+            SettlementItem.objects.for_tenant(cmd.store_id)
+            .select_related("order")
             .filter(settlement_id=settlement.id)
             .order_by("id")
         )

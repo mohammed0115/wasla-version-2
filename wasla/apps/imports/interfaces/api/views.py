@@ -21,19 +21,28 @@ from apps.imports.application.use_cases.validate_import_job import (
 from apps.imports.domain.errors import ImportErrorBase
 from apps.imports.models import ImportRowError
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 
 
 def _build_tenant_context(request) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
+    if not store_id:
         raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 class ImportStartAPI(APIView):
@@ -78,7 +87,7 @@ class ImportStatusAPI(APIView):
         tenant_ctx = _build_tenant_context(request)
         try:
             job = GetImportJobStatusUseCase.execute(
-                GetImportJobStatusCommand(import_job_id=job_id, store_id=tenant_ctx.tenant_id)
+                GetImportJobStatusCommand(import_job_id=job_id, store_id=tenant_ctx.store_id)
             )
         except ImportErrorBase as exc:
             return api_response(success=False, errors=[exc.message_key], status_code=status.HTTP_404_NOT_FOUND)

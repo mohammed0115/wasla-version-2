@@ -19,7 +19,7 @@ class GetProductUseCase:
     def execute(cmd: GetProductCommand) -> Product:
         product = Product.objects.filter(
             id=cmd.product_id,
-            store_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             is_active=True,
         ).first()
         if not product:

@@ -26,9 +26,12 @@ class InitiatePaymentUseCase:
     @staticmethod
     @transaction.atomic
     def execute(cmd: InitiatePaymentCommand) -> PaymentRedirect:
-        order = Order.objects.select_for_update().filter(
-            id=cmd.order_id, store_id=cmd.tenant_ctx.tenant_id
-        ).first()
+        order = (
+            Order.objects.for_tenant(cmd.tenant_ctx.store_id)
+            .select_for_update()
+            .filter(id=cmd.order_id)
+            .first()
+        )
         if not order:
             raise ValueError("Order not found.")
         if order.payment_status == "paid":
@@ -37,7 +40,8 @@ class InitiatePaymentUseCase:
         gateway = PaymentGatewayFacade.get(cmd.provider_code, tenant_id=cmd.tenant_ctx.tenant_id)
         idempotency_key = f"{gateway.code}:{order.id}"
         intent, _ = PaymentIntent.objects.get_or_create(
-            store_id=cmd.tenant_ctx.tenant_id,
+            tenant_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             order=order,
             provider_code=gateway.code,
             idempotency_key=idempotency_key,

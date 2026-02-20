@@ -65,8 +65,8 @@
       <div class="vs-grid">
         {% for item in results %}
           <article class="vs-item">
-            {% if request.tenant and request.tenant.slug %}
-              <a class="vs-item-link" href="{% url 'cart_web:product_detail' store_slug=request.tenant.slug product_id=item.product_id %}">
+            {% if request.store and request.store.slug %}
+              <a class="vs-item-link" href="{% url 'cart_web:product_detail' store_slug=request.store.slug product_id=item.product_id %}">
                 {% if item.image_url %}
                   <img src="{{ item.image_url }}" alt="{{ item.title }}">
                 {% else %}

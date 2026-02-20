@@ -17,7 +17,7 @@ class GetMerchantBalanceUseCase:
     @staticmethod
     def execute(cmd: GetMerchantBalanceCommand) -> BalanceSummary:
         account = get_ledger_account(
-            store_id=cmd.tenant_ctx.tenant_id, currency=cmd.tenant_ctx.currency
+            store_id=cmd.tenant_ctx.store_id, currency=cmd.tenant_ctx.currency
         )
         if not account:
             return BalanceSummary(

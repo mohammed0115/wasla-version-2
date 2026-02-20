@@ -25,6 +25,7 @@ from apps.ai.application.use_cases.visual_search import VisualSearchCommand, Vis
 from apps.catalog.models import Product
 from apps.subscriptions.application.services.feature_gate import FeatureGateService
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 from apps.tenants.interfaces.web.decorators import tenant_access_required
 
 
@@ -33,16 +34,24 @@ AI_WEB_RATE_PERIOD_SECONDS = 60
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
+    if not store_id:
         raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 def _allow_ai_request(store_id: int, feature: str) -> bool:
@@ -83,14 +92,14 @@ def ai_tools(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     gate_response = _require_feature_or_upgrade(
         request,
-        tenant_ctx.tenant_id,
+        tenant_ctx.store_id,
         FeatureGateService.AI_TOOLS,
         _("AI tools"),
     )
     if gate_response is not None:
         return gate_response
 
-    products = Product.objects.filter(store_id=tenant_ctx.tenant_id).order_by("-id")[:50]
+    products = Product.objects.filter(store_id=tenant_ctx.store_id).order_by("-id")[:50]
     return render(request, "dashboard/ai/tools.html", {"products": products, "tenant": getattr(request, "tenant", None)})
 
 
@@ -101,20 +110,20 @@ def ai_generate_description(request: HttpRequest, product_id: int) -> HttpRespon
     tenant_ctx = _build_tenant_context(request)
     gate_response = _require_feature_or_upgrade(
         request,
-        tenant_ctx.tenant_id,
+        tenant_ctx.store_id,
         FeatureGateService.AI_TOOLS,
         _("AI tools"),
     )
     if gate_response is not None:
         return gate_response
 
-    if not _allow_ai_request(tenant_ctx.tenant_id, "description"):
+    if not _allow_ai_request(tenant_ctx.store_id, "description"):
         messages.error(request, _("AI rate limit exceeded. Please try again shortly."))
         return redirect("ai_web:dashboard_ai_tools")
 
     action = (request.POST.get("action") or "generate").strip().lower()
     language = (request.POST.get("language") or "ar").strip().lower() or "ar"
-    product = Product.objects.filter(id=product_id, store_id=tenant_ctx.tenant_id).first()
+    product = Product.objects.filter(id=product_id, store_id=tenant_ctx.store_id).first()
     if not product:
         messages.error(request, _("Product not found."))
         return redirect("ai_web:dashboard_ai_tools")
@@ -172,19 +181,19 @@ def ai_categorize_product(request: HttpRequest, product_id: int) -> HttpResponse
     tenant_ctx = _build_tenant_context(request)
     gate_response = _require_feature_or_upgrade(
         request,
-        tenant_ctx.tenant_id,
+        tenant_ctx.store_id,
         FeatureGateService.AI_TOOLS,
         _("AI tools"),
     )
     if gate_response is not None:
         return gate_response
 
-    if not _allow_ai_request(tenant_ctx.tenant_id, "category"):
+    if not _allow_ai_request(tenant_ctx.store_id, "category"):
         messages.error(request, _("AI rate limit exceeded. Please try again shortly."))
         return redirect("ai_web:dashboard_ai_tools")
 
     action = (request.POST.get("action") or "suggest").strip().lower()
-    product = Product.objects.filter(id=product_id, store_id=tenant_ctx.tenant_id).first()
+    product = Product.objects.filter(id=product_id, store_id=tenant_ctx.store_id).first()
     if not product:
         messages.error(request, _("Product not found."))
         return redirect("ai_web:dashboard_ai_tools")
@@ -219,7 +228,7 @@ def ai_categorize_product(request: HttpRequest, product_id: int) -> HttpResponse
         messages.error(request, _("Content blocked by safety rules."))
         return redirect("ai_web:dashboard_ai_tools")
 
-    products = Product.objects.filter(store_id=tenant_ctx.tenant_id).order_by("-id")[:50]
+    products = Product.objects.filter(store_id=tenant_ctx.store_id).order_by("-id")[:50]
     return render(
         request,
         "dashboard/ai/tools.html",
@@ -238,7 +247,7 @@ def ai_visual_search(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     gate_response = _require_feature_or_upgrade(
         request,
-        tenant_ctx.tenant_id,
+        tenant_ctx.store_id,
         FeatureGateService.AI_VISUAL_SEARCH,
         _("AI visual search"),
     )
@@ -246,7 +255,7 @@ def ai_visual_search(request: HttpRequest) -> HttpResponse:
         return gate_response
 
     if request.method == "POST":
-        if not _allow_ai_request(tenant_ctx.tenant_id, "search"):
+        if not _allow_ai_request(tenant_ctx.store_id, "search"):
             messages.error(request, _("AI rate limit exceeded. Please try again shortly."))
             return redirect("ai_web:dashboard_ai_tools")
 

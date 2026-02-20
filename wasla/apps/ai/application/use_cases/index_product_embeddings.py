@@ -32,7 +32,7 @@ class IndexProductEmbeddingsUseCase:
         provider = get_provider()
         started = monotonic()
 
-        qs = Product.objects.filter(store_id=cmd.tenant_ctx.tenant_id, is_active=True).exclude(image="")
+        qs = Product.objects.filter(store_id=cmd.tenant_ctx.store_id, is_active=True).exclude(image="")
         if cmd.product_ids:
             qs = qs.filter(id__in=cmd.product_ids)
 
@@ -62,7 +62,7 @@ class IndexProductEmbeddingsUseCase:
                 attrs = extract_image_attributes(image_bytes) if image_bytes else {}
 
                 upsert_embedding(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     product_id=p.id,
                     vector=emb.vector,
                     provider=getattr(emb, "provider", ""),
@@ -78,7 +78,7 @@ class IndexProductEmbeddingsUseCase:
         latency_ms = int((monotonic() - started) * 1000)
         LogAIRequestUseCase.execute(
             LogAIRequestCommand(
-                store_id=cmd.tenant_ctx.tenant_id,
+                store_id=cmd.tenant_ctx.store_id,
                 feature="SEARCH",
                 provider=getattr(provider, "code", ""),
                 latency_ms=latency_ms,

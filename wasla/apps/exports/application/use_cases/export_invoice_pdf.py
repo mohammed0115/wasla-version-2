@@ -18,7 +18,7 @@ class ExportInvoicePDFCommand:
 class ExportInvoicePDFUseCase:
     @staticmethod
     def execute(cmd: ExportInvoicePDFCommand) -> bytes:
-        order = Order.objects.filter(id=cmd.order_id, store_id=cmd.tenant_ctx.tenant_id).first()
+        order = Order.objects.for_tenant(cmd.tenant_ctx.store_id).filter(id=cmd.order_id).first()
         if not order:
             raise ExportNotFoundError("Order not found.")
         return InvoicePDFExporter.render(order)

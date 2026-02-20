@@ -62,11 +62,11 @@ class PaymentOrchestrator:
             raise ValueError(f"Provider {provider_code} not available for this store")
 
         # Check for existing pending payment
-        existing = PaymentIntent.objects.filter(
-            order=order,
-            provider_code=provider_code,
-            status="pending",
-        ).first()
+        existing = (
+            PaymentIntent.objects.for_tenant(tenant_ctx.store_id)
+            .filter(order=order, provider_code=provider_code, status="pending")
+            .first()
+        )
 
         if existing:
             raise ValueError("Payment already in progress for this order")
@@ -76,7 +76,8 @@ class PaymentOrchestrator:
 
         # Get or create payment intent
         intent, created = PaymentIntent.objects.get_or_create(
-            store_id=tenant_ctx.tenant_id,
+            tenant_id=tenant_ctx.tenant_id,
+            store_id=tenant_ctx.store_id,
             order=order,
             provider_code=provider_code,
             idempotency_key=idempotency_key,
@@ -151,7 +152,7 @@ class PaymentOrchestrator:
 
         # Get provider settings
         settings = PaymentProviderSettings.objects.filter(
-            tenant_id=intent.store_id,
+            tenant_id=intent.tenant_id or intent.store_id,
             provider_code=intent.provider_code,
             is_enabled=True,
         ).first()
@@ -181,6 +182,7 @@ class PaymentOrchestrator:
 
         # Create refund record
         refund = RefundRecord.objects.create(
+            tenant_id=intent.tenant_id or intent.store_id,
             payment_intent=intent,
             amount=amount,
             currency=intent.currency,

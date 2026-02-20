@@ -29,7 +29,7 @@ class StartCheckoutUseCase:
 
         session = (
             CheckoutSession.objects.select_for_update()
-            .filter(cart_id=cart_summary.cart_id, store_id=cmd.tenant_ctx.tenant_id)
+            .filter(cart_id=cart_summary.cart_id, store_id=cmd.tenant_ctx.store_id)
             .order_by("-id")
             .first()
         )
@@ -38,7 +38,7 @@ class StartCheckoutUseCase:
 
         totals = compute_totals(subtotal=cart_summary.subtotal, shipping_fee=Decimal("0"))
         created = CheckoutSession.objects.create(
-            store_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             cart_id=cart_summary.cart_id,
             status=CheckoutSession.STATUS_ADDRESS,
             totals_json={k: str(v) for k, v in totals.items()},

@@ -16,6 +16,7 @@ class PaymentService:
         OrderService.validate_stock(order)
 
         payment = Payment.objects.create(
+            tenant_id=order.tenant_id or order.store_id,
             order=order,
             method=method,
             status="pending",

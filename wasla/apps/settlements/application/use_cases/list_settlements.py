@@ -14,4 +14,4 @@ class ListSettlementsCommand:
 class ListSettlementsUseCase:
     @staticmethod
     def execute(cmd: ListSettlementsCommand):
-        return list_settlements_for_store(cmd.tenant_ctx.tenant_id)
+        return list_settlements_for_store(cmd.tenant_ctx.store_id)

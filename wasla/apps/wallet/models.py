@@ -12,9 +12,12 @@ EN:
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Wallet(models.Model):
     """Wallet per store."""
+    objects = TenantManager()
 
     store_id = models.IntegerField()
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -27,7 +30,7 @@ class Wallet(models.Model):
 
 class WalletTransaction(models.Model):
     """Wallet ledger entry (credit/debit)."""
-
+    objects = TenantManager()
     TRANSACTION_TYPES = [
         ("credit", "Credit"),
         ("debit", "Debit"),

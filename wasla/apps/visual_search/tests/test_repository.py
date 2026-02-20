@@ -31,11 +31,13 @@ class DjangoVisualSearchRepositoryTests(TestCase):
         )
 
         ProductEmbedding.objects.create(
+            tenant_id=self.tenant_1.id,
             store_id=self.tenant_1.id,
             product=self.product_1,
             similarity_hint=0.95,
         )
         ProductEmbedding.objects.create(
+            tenant_id=self.tenant_2.id,
             store_id=self.tenant_2.id,
             product=self.product_2,
             similarity_hint=0.99,

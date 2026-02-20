@@ -12,6 +12,8 @@ EN:
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Plugin(models.Model):
     """Plugin metadata available in the app store."""
@@ -28,6 +30,7 @@ class Plugin(models.Model):
 
 class InstalledPlugin(models.Model):
     """Installed plugin for a specific store (tenant)."""
+    objects = TenantManager()
 
     STATUS_CHOICES = [
         ("installed", "Installed"),

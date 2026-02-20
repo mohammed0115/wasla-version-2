@@ -30,7 +30,7 @@ class GenerateProductDescriptionCommand:
 class GenerateProductDescriptionUseCase:
     @staticmethod
     def execute(cmd: GenerateProductDescriptionCommand) -> DescriptionResult:
-        product = Product.objects.filter(id=cmd.product_id, store_id=cmd.tenant_ctx.tenant_id).first()
+        product = Product.objects.filter(id=cmd.product_id, store_id=cmd.tenant_ctx.store_id).first()
         if not product:
             return DescriptionResult(
                 description="",
@@ -50,7 +50,7 @@ class GenerateProductDescriptionUseCase:
         if not is_prompt_allowed(safe_name):
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="DESCRIPTION",
                     provider="",
                     latency_ms=0,
@@ -94,7 +94,7 @@ class GenerateProductDescriptionUseCase:
                 warnings.append("description_trimmed")
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="DESCRIPTION",
                     provider=result.provider,
                     latency_ms=int((monotonic() - started) * 1000),
@@ -124,7 +124,7 @@ class GenerateProductDescriptionUseCase:
         except Exception:
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="DESCRIPTION",
                     provider=getattr(provider, "code", ""),
                     latency_ms=int((monotonic() - started) * 1000),

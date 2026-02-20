@@ -51,7 +51,7 @@ class MvpDataIntegrityScenario:
             )
 
         invalid_orders = (
-            Order.objects.filter(store_id=tenant_id)
+            Order.objects.for_tenant(tenant_id)
             .exclude(customer__store_id=tenant_id)
             .values_list("id", "order_number", "customer_id", "customer__store_id")[:100]
         )
@@ -71,7 +71,7 @@ class MvpDataIntegrityScenario:
             )
 
         invalid_items = (
-            OrderItem.objects.filter(order__store_id=tenant_id)
+            OrderItem.objects.for_tenant(tenant_id)
             .exclude(product__store_id=tenant_id)
             .values_list("id", "order_id", "product_id", "product__store_id")[:100]
         )
@@ -91,7 +91,8 @@ class MvpDataIntegrityScenario:
             )
 
         invalid_reviews = (
-            Review.objects.filter(product__store_id=tenant_id, customer__isnull=False)
+            Review.objects.for_tenant(tenant_id)
+            .filter(product__store_id=tenant_id, customer__isnull=False)
             .exclude(customer__store_id=tenant_id)
             .values_list("id", "product_id", "customer_id", "customer__store_id")[:100]
         )
@@ -176,9 +177,10 @@ class MvpServiceSmokeFlowScenario:
                 customer,
                 items=[{"product": product, "quantity": 1, "price": product.price}],
                 store_id=tenant_id,
+                tenant_id=tenant_id,
             )
 
-            wallet = WalletService.get_or_create_wallet(tenant_id)
+            wallet = WalletService.get_or_create_wallet(tenant_id, tenant_id=tenant_id)
             starting_balance = wallet.balance
 
             payment = PaymentService.initiate_payment(order, method="card")
@@ -258,4 +260,3 @@ class MvpServiceSmokeFlowScenario:
             tenant_slug=tenant.slug,
             issues=tuple(issues),
         )
-

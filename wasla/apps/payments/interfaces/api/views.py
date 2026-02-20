@@ -14,23 +14,37 @@ from apps.payments.application.use_cases.initiate_payment import (
 )
 from apps.payments.interfaces.api.serializers import PaymentInitiateSerializer
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant, require_merchant
 
 
 def _build_tenant_context(request) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
-        raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
+
+
+def validate_signature(request) -> bool:
+    """TODO: implement provider-specific signature verification for webhooks."""
+    return True
 
 
 class PaymentInitiateAPI(APIView):
     def post(self, request):
+        require_store(request)
+        require_merchant(request)
         serializer = PaymentInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         tenant_ctx = _build_tenant_context(request)
@@ -60,6 +74,12 @@ class PaymentWebhookAPI(APIView):
     permission_classes = []
 
     def post(self, request, provider_code: str):
+        if not validate_signature(request):
+            return api_response(
+                success=False,
+                errors=["invalid_signature"],
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         raw_body = request.body.decode("utf-8", errors="ignore") if request.body else ""
         payload = request.data if isinstance(request.data, dict) else {}
         headers = {str(k): str(v) for k, v in request.headers.items()}

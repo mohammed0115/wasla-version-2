@@ -18,6 +18,7 @@ class RecordAuditLogUseCase:
     def execute(cmd: RecordAuditLogCommand) -> AuditLog:
         return AuditLog.objects.create(
             actor_id=cmd.actor_id,
+            tenant_id=cmd.store_id,
             store_id=cmd.store_id,
             action=cmd.action,
             payload_json=cmd.payload or {},

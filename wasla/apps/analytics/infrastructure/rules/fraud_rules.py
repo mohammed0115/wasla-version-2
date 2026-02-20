@@ -24,7 +24,7 @@ def evaluate_fraud_rules(*, tenant_id: int, order: Order) -> FraudRuleResult:
     reasons: list[str] = []
 
     avg_amount = (
-        Order.objects.filter(store_id=tenant_id)
+        Order.objects.for_tenant(tenant_id)
         .exclude(id=order.id)
         .aggregate(avg_amount=Avg("total_amount"))
         .get("avg_amount")
@@ -33,11 +33,14 @@ def evaluate_fraud_rules(*, tenant_id: int, order: Order) -> FraudRuleResult:
         score += 40
         reasons.append("high_order_amount")
 
-    recent_failed = PaymentIntent.objects.filter(
-        store_id=tenant_id,
-        status="failed",
-        created_at__gte=timezone.now() - timedelta(minutes=15),
-    ).count()
+    recent_failed = (
+        PaymentIntent.objects.for_tenant(tenant_id)
+        .filter(
+            status="failed",
+            created_at__gte=timezone.now() - timedelta(minutes=15),
+        )
+        .count()
+    )
     if recent_failed >= 3:
         score += 25
         reasons.append("many_failed_payments")

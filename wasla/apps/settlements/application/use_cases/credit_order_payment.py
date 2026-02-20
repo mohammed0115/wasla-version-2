@@ -32,7 +32,8 @@ class CreditOrderPaymentUseCase:
         if order.payment_status != "paid" and order.status != "paid":
             raise LedgerError("Order is not paid.")
 
-        existing = LedgerEntry.objects.filter(order_id=order.id).first()
+        tenant_id = order.tenant_id or order.store_id
+        existing = LedgerEntry.objects.for_tenant(tenant_id).filter(order_id=order.id).first()
         if existing:
             return existing
 
@@ -42,6 +43,7 @@ class CreditOrderPaymentUseCase:
             raise LedgerError("Currency mismatch for ledger account.")
 
         entry = LedgerEntry.objects.create(
+            tenant_id=tenant_id,
             store_id=order.store_id,
             order=order,
             entry_type=LedgerEntry.TYPE_CREDIT,

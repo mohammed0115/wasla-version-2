@@ -9,20 +9,29 @@ from apps.analytics.application.assign_variant import AssignVariantCommand, Assi
 from apps.analytics.application.report_kpis import ReportKpisCommand, ReportKpisUseCase
 from apps.analytics.models import Event, Experiment, ExperimentAssignment
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 from apps.tenants.interfaces.web.decorators import tenant_access_required
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
-    tenant = getattr(request, "tenant", None)
-    tenant_id = getattr(tenant, "id", None)
+    store = require_store(request)
+    tenant = require_tenant(request)
+    tenant_id = tenant.id
+    store_id = store.id
     currency = getattr(tenant, "currency", "SAR")
-    if not tenant_id:
+    if not store_id:
         raise ValueError("Tenant context is required.")
     if not request.session.session_key:
         request.session.save()
     session_key = request.session.session_key
     user_id = request.user.id if request.user.is_authenticated else None
-    return TenantContext(tenant_id=tenant_id, currency=currency, user_id=user_id, session_key=session_key)
+    return TenantContext(
+        tenant_id=tenant_id,
+        store_id=store_id,
+        currency=currency,
+        user_id=user_id,
+        session_key=session_key,
+    )
 
 
 @login_required
@@ -31,7 +40,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 def analytics_events(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     event_name = (request.GET.get("event_name") or "").strip()
-    qs = Event.objects.filter(tenant_id=tenant_ctx.tenant_id).order_by("-occurred_at")
+    qs = Event.objects.filter(tenant_id=tenant_ctx.store_id).order_by("-occurred_at")
     if event_name:
         qs = qs.filter(event_name=event_name)
     events = qs[:200]
@@ -61,7 +70,7 @@ def analytics_experiment_detail(request: HttpRequest, key: str) -> HttpResponse:
     if not experiment:
         return render(request, "dashboard/analytics/experiment_detail.html", {"experiment": None})
     assignments = (
-        ExperimentAssignment.objects.filter(experiment=experiment, tenant_id=tenant_ctx.tenant_id)
+        ExperimentAssignment.objects.filter(experiment=experiment, tenant_id=tenant_ctx.store_id)
         .values("variant")
         .order_by("variant")
     )

@@ -7,9 +7,12 @@ EN: Represents payment attempts linked to orders (success/failed/pending).
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class Payment(models.Model):
     """Payment record linked to an order."""
+    objects = TenantManager()
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -31,6 +34,7 @@ class Payment(models.Model):
 
 
 class PaymentIntent(models.Model):
+    objects = TenantManager()
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("requires_action", "Requires action"),
@@ -87,6 +91,7 @@ class PaymentProviderSettings(models.Model):
         on_delete=models.CASCADE,
         related_name="payment_providers",
     )
+    objects = TenantManager()
     provider_code = models.CharField(max_length=50)
     display_name = models.CharField(max_length=120, blank=True, default="")
     is_enabled = models.BooleanField(default=False)
@@ -140,6 +145,7 @@ class RefundRecord(models.Model):
         (STATUS_FAILED, "Failed"),
     ]
 
+    objects = TenantManager()
     payment_intent = models.ForeignKey(
         PaymentIntent, on_delete=models.PROTECT, related_name="refunds"
     )

@@ -38,6 +38,7 @@ class MarkSettlementPaidUseCase:
         if settlement.status != Settlement.STATUS_APPROVED:
             raise InvalidSettlementStateError("Settlement must be approved before payment.")
 
+        tenant_id = settlement.tenant_id or settlement.store_id
         account = get_or_create_ledger_account(store_id=settlement.store_id)
         if account.available_balance < settlement.net_amount:
             raise InvalidSettlementStateError("Insufficient available balance.")
@@ -46,6 +47,7 @@ class MarkSettlementPaidUseCase:
         account.save(update_fields=["available_balance"])
 
         LedgerEntry.objects.create(
+            tenant_id=tenant_id,
             store_id=settlement.store_id,
             settlement=settlement,
             entry_type=LedgerEntry.TYPE_DEBIT,
@@ -67,7 +69,7 @@ class MarkSettlementPaidUseCase:
             )
         )
         tenant_ctx = TenantContext(
-            tenant_id=settlement.store_id,
+            tenant_id=tenant_id,
             currency=account.currency,
             user_id=None,
             session_key="",

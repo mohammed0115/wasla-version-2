@@ -16,6 +16,6 @@ class ReportKpisCommand:
 class ReportKpisUseCase:
     @staticmethod
     def execute(cmd: ReportKpisCommand) -> dict:
-        qs = Event.objects.filter(tenant_id=cmd.tenant_ctx.tenant_id)
+        qs = Event.objects.filter(tenant_id=cmd.tenant_ctx.store_id)
         by_name = list(qs.values("event_name").annotate(total=Count("id")).order_by("-total")[:20])
         return {"events_total": qs.count(), "events_by_name": by_name}

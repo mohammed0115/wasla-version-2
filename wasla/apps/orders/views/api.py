@@ -10,16 +10,14 @@ from ..serializers import OrderCreateInputSerializer, OrderSerializer
 from apps.analytics.application.telemetry import TelemetryService, actor_from_request
 from apps.analytics.domain.types import ObjectRef
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.guards import require_store, require_tenant
 
 
 class OrderCreateAPI(APIView):
     def post(self, request, customer_id):
-        tenant = getattr(request, "tenant", None)
-        tenant_id = getattr(tenant, "id", None) if tenant is not None else None
-        if isinstance(tenant_id, int):
-            customer = get_object_or_404(Customer, id=customer_id, store_id=tenant_id)
-        else:
-            customer = get_object_or_404(Customer, id=customer_id)
+        store = require_store(request)
+        tenant = require_tenant(request)
+        customer = get_object_or_404(Customer, id=customer_id, store_id=store.id)
         input_serializer = OrderCreateInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
@@ -40,12 +38,19 @@ class OrderCreateAPI(APIView):
             )
 
         try:
-            order = OrderService.create_order(customer, items, store_id=customer.store_id)
+            order = OrderService.create_order(
+                customer,
+                items,
+                store_id=customer.store_id,
+                tenant=tenant,
+                tenant_id=tenant.id,
+            )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         tenant_ctx = TenantContext(
-            tenant_id=customer.store_id,
+            tenant_id=tenant.id,
+            store_id=customer.store_id,
             currency=getattr(order, "currency", "SAR") or "SAR",
             user_id=request.user.id if getattr(request, "user", None) and request.user.is_authenticated else None,
             session_key=getattr(getattr(request, "session", None), "session_key", None),

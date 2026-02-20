@@ -26,8 +26,8 @@ class UpdateBrandingUseCase:
     @staticmethod
     @transaction.atomic
     def execute(cmd: UpdateBrandingCommand) -> StoreBranding:
-        if not cmd.tenant_ctx.tenant_id:
-            raise ValueError("Tenant context is required.")
+        if not cmd.tenant_ctx.store_id:
+            raise ValueError("Store context is required.")
 
         theme_code = (cmd.theme_code or "").strip()
         if theme_code:
@@ -42,7 +42,10 @@ class UpdateBrandingUseCase:
         )
         font_family = validate_font_family(cmd.font_family)
 
-        branding, _ = StoreBranding.objects.get_or_create(store_id=cmd.tenant_ctx.tenant_id)
+        branding, _ = StoreBranding.objects.get_or_create(
+            tenant_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
+        )
         if theme_code:
             branding.theme_code = theme_code
         if cmd.logo_file:

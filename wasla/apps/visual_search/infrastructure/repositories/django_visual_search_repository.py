@@ -23,7 +23,8 @@ class DjangoVisualSearchRepository:
         query_hash = self._embedding_hash(embedding_vector)
 
         queryset = (
-            ProductEmbedding.objects.select_related("product")
+            ProductEmbedding.objects.for_tenant(tenant_id)
+            .select_related("product")
             .only(
                 "store_id",
                 "similarity_hint",
@@ -37,7 +38,6 @@ class DjangoVisualSearchRepository:
                 "product__is_active",
             )
             .filter(
-                store_id=tenant_id,
                 product__store_id=tenant_id,
                 product__is_active=True,
             )

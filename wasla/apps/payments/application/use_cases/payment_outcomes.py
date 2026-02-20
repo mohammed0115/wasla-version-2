@@ -39,6 +39,7 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
     ).exists()
     if not exists:
         Payment.objects.create(
+            tenant_id=order.tenant_id or order.store_id,
             order=order,
             method=intent.provider_code,
             status="success",
@@ -96,7 +97,7 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
 
     if not was_paid:
         NotifyMerchantOrderPlacedUseCase.execute(
-            NotifyMerchantOrderPlacedCommand(order_id=order.id, tenant_id=tenant_ctx.tenant_id)
+            NotifyMerchantOrderPlacedCommand(order_id=order.id, tenant_id=tenant_ctx.store_id)
         )
         TelemetryService.track(
             event_name="payment.succeeded",

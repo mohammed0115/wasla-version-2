@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from ..models import SubscriptionPlan
 from ..services.subscription_service import SubscriptionService
 from ..serializers import SubscriptionPlanSerializer, StoreSubscriptionSerializer
+from apps.tenants.guards import require_store, require_tenant
 
 class PlanListAPI(APIView):
     def get(self, request):
@@ -14,10 +15,10 @@ class PlanListAPI(APIView):
 
 class SubscribeStoreAPI(APIView):
     def post(self, request, store_id):
-        tenant = getattr(request, "tenant", None)
-        tenant_id = getattr(tenant, "id", None) if tenant is not None else None
-        if isinstance(tenant_id, int) and tenant_id != store_id:
-            return Response({"detail": "Tenant mismatch."}, status=status.HTTP_403_FORBIDDEN)
+        store = require_store(request)
+        tenant = require_tenant(request)
+        if int(store.id) != int(store_id):
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
         plan = get_object_or_404(
             SubscriptionPlan,
@@ -25,7 +26,7 @@ class SubscribeStoreAPI(APIView):
             is_active=True,
         )
         try:
-            sub = SubscriptionService.subscribe_store(store_id, plan)
+            sub = SubscriptionService.subscribe_store(store.id, plan)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(StoreSubscriptionSerializer(sub).data, status=status.HTTP_201_CREATED)

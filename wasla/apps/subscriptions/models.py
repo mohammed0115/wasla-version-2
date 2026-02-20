@@ -12,6 +12,8 @@ EN:
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class SubscriptionPlan(models.Model):
     """A subscription plan with optional usage limits."""
@@ -50,6 +52,7 @@ class SubscriptionPlan(models.Model):
 
 class StoreSubscription(models.Model):
     """Subscription instance for a store."""
+    objects = TenantManager()
 
     STATUS_CHOICES = [
         ("active", "Active"),

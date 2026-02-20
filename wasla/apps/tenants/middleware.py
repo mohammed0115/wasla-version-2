@@ -15,11 +15,46 @@ EN:
 """
 
 from django.conf import settings
+from django.http import Http404
 from django.db.utils import OperationalError, ProgrammingError
 from django.utils import translation
+from django.utils.deprecation import MiddlewareMixin
 
 from .models import Tenant
+from .infrastructure.subdomain_resolver import extract_subdomain
 from .services.domain_resolution import resolve_tenant_by_host
+
+
+class TenantResolverMiddleware(MiddlewareMixin):
+    """Resolve store based on subdomain and attach store + tenant to request."""
+
+    def process_request(self, request):
+        subdomain = extract_subdomain(request.get_host())
+        if not subdomain:
+            request.store = None
+            request.tenant = None
+            return None
+
+        from apps.stores.models import Store
+
+        store_qs = Store.objects.select_related("tenant").filter(slug=subdomain)
+        try:
+            Store._meta.get_field("is_active")
+            store_qs = store_qs.filter(is_active=True)
+        except Exception:
+            try:
+                Store._meta.get_field("status")
+                store_qs = store_qs.filter(status=Store.STATUS_ACTIVE)
+            except Exception:
+                pass
+
+        store = store_qs.first()
+        if not store:
+            raise Http404("Store not found")
+
+        request.store = store
+        request.tenant = store.tenant
+        return None
 
 
 class TenantMiddleware:

@@ -41,7 +41,8 @@ class DjangoOrderRepository(OrderRepositoryPort):
     def sum_sales_today(self, store_id: int, tz: str) -> Decimal:
         start_today, end_today = self._today_utc_bounds(tz)
         return (
-            Order.objects.filter(store_id=store_id, created_at__gte=start_today, created_at__lt=end_today)
+            Order.objects.for_tenant(store_id)
+            .filter(created_at__gte=start_today, created_at__lt=end_today)
             .exclude(status__in=["canceled", "cancelled"])
             .aggregate(total=Sum("total_amount"))
             .get("total")
@@ -51,7 +52,8 @@ class DjangoOrderRepository(OrderRepositoryPort):
     def count_orders_today(self, store_id: int, tz: str) -> int:
         start_today, end_today = self._today_utc_bounds(tz)
         return (
-            Order.objects.filter(store_id=store_id, created_at__gte=start_today, created_at__lt=end_today)
+            Order.objects.for_tenant(store_id)
+            .filter(created_at__gte=start_today, created_at__lt=end_today)
             .exclude(status__in=["canceled", "cancelled"])
             .count()
         )
@@ -59,7 +61,8 @@ class DjangoOrderRepository(OrderRepositoryPort):
     def sum_revenue_last_7_days(self, store_id: int, tz: str) -> Decimal:
         start_7d, end_7d = self._last_7_days_utc_bounds(tz)
         return (
-            Order.objects.filter(store_id=store_id, created_at__gte=start_7d, created_at__lt=end_7d)
+            Order.objects.for_tenant(store_id)
+            .filter(created_at__gte=start_7d, created_at__lt=end_7d)
             .exclude(status__in=["canceled", "cancelled"])
             .aggregate(total=Sum("total_amount"))
             .get("total")
@@ -70,7 +73,8 @@ class DjangoOrderRepository(OrderRepositoryPort):
         start_7d, end_7d = self._last_7_days_utc_bounds(tz)
         tzinfo = self._tzinfo(tz)
         grouped_rows = (
-            Order.objects.filter(store_id=store_id, created_at__gte=start_7d, created_at__lt=end_7d)
+            Order.objects.for_tenant(store_id)
+            .filter(created_at__gte=start_7d, created_at__lt=end_7d)
             .exclude(status__in=["canceled", "cancelled"])
             .annotate(local_date=TruncDate("created_at", tzinfo=tzinfo))
             .values("local_date")
@@ -104,7 +108,7 @@ class DjangoOrderRepository(OrderRepositoryPort):
 
     def recent_orders(self, store_id: int, limit: int = 10) -> list[RecentOrderRowDTO]:
         rows = list(
-            Order.objects.filter(store_id=store_id)
+            Order.objects.for_tenant(store_id)
             .select_related("customer")
             .only("id", "created_at", "total_amount", "status", "customer_name", "customer__full_name")
             .order_by("-created_at")[:limit]

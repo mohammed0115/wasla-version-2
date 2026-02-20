@@ -63,7 +63,7 @@ class TelemetryService:
     ) -> None:
         try:
             tenant_id = (
-                tenant_ctx.tenant_id
+                (tenant_ctx.store_id or tenant_ctx.tenant_id)
                 if tenant_ctx is not None
                 else int(getattr(settings, "ANALYTICS_PLATFORM_TENANT_ID", 0) or 0)
             )

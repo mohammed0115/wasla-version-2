@@ -76,12 +76,14 @@ class SubscriptionLimitEnforcementTests(TestCase):
             customer,
             [{"product": product, "quantity": 1, "price": product.price}],
             store_id=self.tenant.id,
+            tenant_id=self.tenant.id,
         )
         with self.assertRaises(SubscriptionLimitExceededError):
             OrderService.create_order(
                 customer,
                 [{"product": product, "quantity": 1, "price": product.price}],
                 store_id=self.tenant.id,
+                tenant_id=self.tenant.id,
             )
 
     def test_no_subscription_blocks_product_create(self):

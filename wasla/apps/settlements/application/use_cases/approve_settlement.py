@@ -38,6 +38,7 @@ class ApproveSettlementUseCase:
         if settlement.status != Settlement.STATUS_CREATED:
             raise InvalidSettlementStateError("Settlement is not in a creatable state.")
 
+        tenant_id = settlement.tenant_id or settlement.store_id
         account = get_or_create_ledger_account(store_id=settlement.store_id)
         if account.pending_balance < settlement.gross_amount:
             raise InvalidSettlementStateError("Insufficient pending balance.")
@@ -47,6 +48,7 @@ class ApproveSettlementUseCase:
         account.save(update_fields=["pending_balance", "available_balance"])
 
         LedgerEntry.objects.create(
+            tenant_id=tenant_id,
             store_id=settlement.store_id,
             settlement=settlement,
             entry_type=LedgerEntry.TYPE_DEBIT,
@@ -55,6 +57,7 @@ class ApproveSettlementUseCase:
             description="Settlement approved (pending cleared)",
         )
         LedgerEntry.objects.create(
+            tenant_id=tenant_id,
             store_id=settlement.store_id,
             settlement=settlement,
             entry_type=LedgerEntry.TYPE_CREDIT,
@@ -76,7 +79,7 @@ class ApproveSettlementUseCase:
             )
         )
         tenant_ctx = TenantContext(
-            tenant_id=settlement.store_id,
+            tenant_id=tenant_id,
             currency=account.currency,
             user_id=None,
             session_key="",

@@ -41,18 +41,21 @@ class ConfirmPaymentUseCase:
             payload_raw=cmd.raw_body or "",
         )
 
-        intent = PaymentIntent.objects.select_for_update().filter(
-            store_id=cmd.tenant_ctx.tenant_id,
-            provider_code=gateway.code,
-            provider_reference=verified.intent_reference,
-        ).first()
+        intent = (
+            PaymentIntent.objects.for_tenant(cmd.tenant_ctx.store_id)
+            .select_for_update()
+            .filter(provider_code=gateway.code, provider_reference=verified.intent_reference)
+            .first()
+        )
         if not intent:
             raise ValueError("Payment intent not found.")
 
-        order = Order.objects.select_for_update().filter(
-            id=intent.order_id,
-            store_id=cmd.tenant_ctx.tenant_id,
-        ).first()
+        order = (
+            Order.objects.for_tenant(cmd.tenant_ctx.store_id)
+            .select_for_update()
+            .filter(id=intent.order_id)
+            .first()
+        )
         if not order:
             raise ValueError("Order not found.")
 

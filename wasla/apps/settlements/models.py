@@ -12,9 +12,12 @@ EN:
 
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class LedgerAccount(models.Model):
     """Ledger account per store/currency."""
+    objects = TenantManager()
 
     store_id = models.IntegerField(db_index=True)
     currency = models.CharField(max_length=10, default="SAR")
@@ -36,6 +39,7 @@ class LedgerAccount(models.Model):
 
 class Settlement(models.Model):
     """Settlement for a time period."""
+    objects = TenantManager()
 
     STATUS_CREATED = "created"
     STATUS_APPROVED = "approved"
@@ -72,6 +76,7 @@ class Settlement(models.Model):
 
 class SettlementItem(models.Model):
     """Per-order settlement line."""
+    objects = TenantManager()
 
     settlement = models.ForeignKey(Settlement, on_delete=models.CASCADE, related_name="items")
     order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="settlement_items")
@@ -93,6 +98,7 @@ class SettlementItem(models.Model):
 
 class LedgerEntry(models.Model):
     """Ledger entry for credits/debits."""
+    objects = TenantManager()
 
     TYPE_DEBIT = "debit"
     TYPE_CREDIT = "credit"
@@ -138,6 +144,7 @@ class LedgerEntry(models.Model):
 
 class AuditLog(models.Model):
     """Audit log for admin actions."""
+    objects = TenantManager()
 
     actor_id = models.IntegerField(null=True, blank=True)
     store_id = models.IntegerField(null=True, blank=True, db_index=True)

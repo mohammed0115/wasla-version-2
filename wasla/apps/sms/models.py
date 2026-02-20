@@ -3,6 +3,8 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from apps.tenants.managers import TenantManager
+
 
 class TenantSmsSettings(models.Model):
     PROVIDER_CONSOLE = "console"
@@ -18,6 +20,7 @@ class TenantSmsSettings(models.Model):
         on_delete=models.CASCADE,
         related_name="sms_settings",
     )
+    objects = TenantManager()
     provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, default=PROVIDER_CONSOLE)
     is_enabled = models.BooleanField(default=False)
     sender_name = models.CharField(max_length=50, blank=True, default="")
@@ -55,6 +58,7 @@ class SmsMessageLog(models.Model):
         blank=True,
         related_name="sms_logs",
     )
+    objects = TenantManager()
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -83,4 +87,3 @@ class SmsMessageLog(models.Model):
 
     def __str__(self) -> str:
         return f"SmsMessageLog(provider={self.provider}, status={self.status}, created_at={self.created_at})"
-

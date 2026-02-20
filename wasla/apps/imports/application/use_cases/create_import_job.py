@@ -23,22 +23,22 @@ class CreateImportJobUseCase:
     @staticmethod
     @transaction.atomic
     def execute(cmd: CreateImportJobCommand) -> ImportJob:
-        if not cmd.tenant_ctx.tenant_id:
+        if not cmd.tenant_ctx.store_id:
             raise ImportValidationError("Tenant context missing.", message_key="import.tenant.required")
 
         validate_csv_file(cmd.uploaded_file)
 
         job = ImportJob.objects.create(
-            store_id=cmd.tenant_ctx.tenant_id,
+            store_id=cmd.tenant_ctx.store_id,
             created_by_id=cmd.actor_id,
             status=ImportJob.STATUS_CREATED,
             source_type=ImportJob.SOURCE_CSV,
         )
 
         try:
-            path = save_import_csv(store_id=cmd.tenant_ctx.tenant_id, job_id=job.id, uploaded_file=cmd.uploaded_file)
+            path = save_import_csv(store_id=cmd.tenant_ctx.store_id, job_id=job.id, uploaded_file=cmd.uploaded_file)
             save_import_images(
-                store_id=cmd.tenant_ctx.tenant_id,
+                store_id=cmd.tenant_ctx.store_id,
                 job_id=job.id,
                 image_files=cmd.image_files,
             )

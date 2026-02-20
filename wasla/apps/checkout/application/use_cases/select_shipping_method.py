@@ -28,7 +28,7 @@ class SelectShippingMethodUseCase:
     def execute(cmd: SelectShippingMethodCommand) -> CheckoutSession:
         session = (
             CheckoutSession.objects.select_for_update()
-            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.tenant_id)
+            .filter(id=cmd.session_id, store_id=cmd.tenant_ctx.store_id)
             .first()
         )
         if not session:
@@ -38,7 +38,7 @@ class SelectShippingMethodUseCase:
         if not session.shipping_address_json:
             raise InvalidCheckoutStateError("Shipping address is required.")
 
-        available = list_shipping_methods(tenant_id=cmd.tenant_ctx.tenant_id)
+        available = list_shipping_methods(tenant_id=cmd.tenant_ctx.store_id)
         chosen = next((m for m in available if m.code == cmd.method_code), None)
         if not chosen:
             raise InvalidCheckoutStateError("Shipping method not available.")

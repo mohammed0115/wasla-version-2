@@ -23,7 +23,7 @@ class CategorizeProductCommand:
 class CategorizeProductUseCase:
     @staticmethod
     def execute(cmd: CategorizeProductCommand) -> CategoryResult:
-        product = Product.objects.filter(id=cmd.product_id, store_id=cmd.tenant_ctx.tenant_id).first()
+        product = Product.objects.filter(id=cmd.product_id, store_id=cmd.tenant_ctx.store_id).first()
         if not product:
             TelemetryService.track(
                 event_name="ai.categorization_suggested",
@@ -45,7 +45,7 @@ class CategorizeProductUseCase:
                 fallback_reason="product_not_found",
             )
 
-        categories = list(Category.objects.filter(store_id=cmd.tenant_ctx.tenant_id).order_by("name"))
+        categories = list(Category.objects.filter(store_id=cmd.tenant_ctx.store_id).order_by("name"))
         if not categories:
             TelemetryService.track(
                 event_name="ai.categorization_suggested",
@@ -71,7 +71,7 @@ class CategorizeProductUseCase:
         if not is_prompt_allowed(product.name):
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="CATEGORY",
                     provider="",
                     latency_ms=0,
@@ -106,7 +106,7 @@ class CategorizeProductUseCase:
             match = next((c for c in categories if c.name == result.label), None)
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="CATEGORY",
                     provider=result.provider,
                     latency_ms=int((monotonic() - started) * 1000),
@@ -140,7 +140,7 @@ class CategorizeProductUseCase:
         except Exception:
             LogAIRequestUseCase.execute(
                 LogAIRequestCommand(
-                    store_id=cmd.tenant_ctx.tenant_id,
+                    store_id=cmd.tenant_ctx.store_id,
                     feature="CATEGORY",
                     provider=getattr(provider, "code", ""),
                     latency_ms=int((monotonic() - started) * 1000),
