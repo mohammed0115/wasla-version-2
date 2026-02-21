@@ -7,6 +7,9 @@ from apps.customers.models import Customer
 from apps.catalog.models import Product
 from ..services.order_service import OrderService
 from ..serializers import OrderCreateInputSerializer, OrderSerializer
+from ..models import OrderItem, Order
+from django.db.models import Sum, F, Count
+from django.utils import timezone
 from apps.analytics.application.telemetry import TelemetryService, actor_from_request
 from apps.analytics.domain.types import ObjectRef
 from apps.tenants.domain.tenant_context import TenantContext
@@ -65,3 +68,60 @@ class OrderCreateAPI(APIView):
         )
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+class SalesReportAPI(APIView):
+    """Basic sales reporting for merchant dashboard (Phase 3).
+
+    Query params:
+      - days: integer (default 30)
+    """
+
+    def get(self, request):
+        store = require_store(request)
+        tenant = require_tenant(request)
+
+        try:
+            days = int(request.query_params.get("days", 30))
+        except ValueError:
+            days = 30
+        days = max(1, min(days, 365))
+
+        since = timezone.now() - timezone.timedelta(days=days)
+
+        orders_qs = Order.objects.filter(
+            store_id=store.id,
+            tenant_id=tenant.id,
+            status="paid",
+            created_at__gte=since,
+        )
+
+        agg = orders_qs.aggregate(
+            orders_count=Count("id"),
+            revenue=Sum("total_amount"),
+        )
+        orders_count = int(agg.get("orders_count") or 0)
+        revenue = agg.get("revenue") or 0
+        avg_order_value = (revenue / orders_count) if orders_count else 0
+
+        top_products = (
+            OrderItem.objects.filter(order__in=orders_qs)
+            .values("product_id", "product__name")
+            .annotate(
+                qty=Sum("quantity"),
+                revenue=Sum(F("quantity") * F("price")),
+            )
+            .order_by("-revenue")[:10]
+        )
+
+        return Response(
+            {
+                "store_id": store.id,
+                "tenant_id": tenant.id,
+                "period_days": days,
+                "orders_count": orders_count,
+                "revenue": str(revenue),
+                "avg_order_value": str(avg_order_value),
+                "top_products": list(top_products),
+            }
+        )

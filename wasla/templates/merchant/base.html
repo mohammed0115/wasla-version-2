@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Merchant Dashboard" %} • Wasla{% endblock %}
+
+{% block body %}
+  <div class="merchant-shell" style="min-height:100vh; display:grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 24px;">
+    <aside class="card" style="height: fit-content; position: sticky; top: 24px;">
+      <div class="card-body">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+          <div class="badge">{% trans "Merchant" %}</div>
+          {% if merchant_store %}
+            <div style="font-weight:700;">{{ merchant_store.name }}</div>
+          {% else %}
+            <div style="font-weight:700;">{% trans "Your Store" %}</div>
+          {% endif %}
+        </div>
+
+        <nav style="display:flex; flex-direction:column; gap: 8px;">
+          <a class="btn btn-soft" href="{{ nav.dashboard }}">{% trans "Dashboard" %}</a>
+          <a class="btn btn-soft" href="{{ nav.products }}">{% trans "Products" %}</a>
+          <a class="btn btn-soft" href="{{ nav.categories }}">{% trans "Categories" %}</a>
+          <a class="btn btn-soft" href="{{ nav.orders }}">{% trans "Orders" %}</a>
+        </nav>
+
+        <div style="margin-top: 16px;">
+          <a class="btn" href="/">{% trans "Back to site" %}</a>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      {% if messages %}
+        <div style="display:flex; flex-direction:column; gap: 8px; margin-bottom: 16px;">
+          {% for message in messages %}
+            <div class="card" style="padding:12px;">
+              <strong>{{ message.tags|title }}</strong> — {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% block merchant_content %}{% endblock %}
+    </main>
+  </div>
+{% endblock %}

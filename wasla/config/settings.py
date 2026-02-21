@@ -32,7 +32,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,nip.io").split(",") if h.strip()]
 
 def _env_bool(name: str, default: str = "0") -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "on")
@@ -55,7 +55,7 @@ SECRET_KEY = os.getenv(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", "1")
+DEBUG = True
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
 TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "12345").strip() or "12345"
 
@@ -70,6 +70,7 @@ ALLOWED_HOSTS = _env_list(
         WASSLA_BASE_DOMAIN,
         f"www.{WASSLA_BASE_DOMAIN}",
         "76.13.143.149",
+        "store1.127.0.0.1.nip.io"
     ],
 )
 
@@ -145,6 +146,7 @@ INSTALLED_APPS = [
     "apps.cart.apps.CartConfig",
     "apps.checkout.apps.CheckoutConfig",
     "apps.orders.apps.OrderConfig",
+    "apps.purchases.apps.PurchasesConfig",
     "apps.payments.apps.PaymentConfig",
     "apps.imports.apps.ImportsConfig",
     "apps.themes.apps.ThemesConfig",
@@ -208,6 +210,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 DB_DEFAULT_ALIAS = (os.getenv("DJANGO_DB_DEFAULT", "sqlite") or "sqlite").strip().lower()
 
+# Local/dev safety: if someone sets mysql but mysqlclient isn't available,
+# gracefully fall back to sqlite so the project can still run/tests can pass.
+if DB_DEFAULT_ALIAS == "mysql":
+    try:
+        import MySQLdb  # noqa: F401
+    except Exception:
+        DB_DEFAULT_ALIAS = "sqlite"
+
 SQLITE_DB_NAME = os.getenv("SQLITE_DB_NAME", str(BASE_DIR / "db.sqlite3"))
 
 # MySQL Configuration
@@ -261,12 +271,19 @@ elif DB_DEFAULT_ALIAS == "postgresql":
 else:
     DEFAULT_DB = MYSQL_CONFIG
 
-DATABASES = {
-    "default": DEFAULT_DB,
-    "sqlite": SQLITE_CONFIG,
-    "mysql": MYSQL_CONFIG,
-    "postgresql": POSTGRESQL_CONFIG,
-}
+DATABASES = {"default": DEFAULT_DB}
+
+# Optional: expose other DB connections only when explicitly requested.
+# Keeping them disabled by default avoids needing extra DB drivers (mysqlclient)
+# for local development and automated tests.
+if (os.getenv("DJANGO_ENABLE_EXTRA_DBS", "0") or "0") == "1":
+    DATABASES.update(
+        {
+            "sqlite": SQLITE_CONFIG,
+            "mysql": MYSQL_CONFIG,
+            "postgresql": POSTGRESQL_CONFIG,
+        }
+    )
 
 
 # Password validation

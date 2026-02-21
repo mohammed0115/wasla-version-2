@@ -1,0 +1,81 @@
+{% extends "merchant/base.html" %}
+{% load i18n %}
+
+{% block merchant_content %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;">{% trans "Products" %}</h2>
+      <p style="margin:6px 0 0; opacity:.8;">{% trans "Create, edit, and manage your store products." %}</p>
+    </div>
+    <a class="btn" href="{% url 'stores:merchant_product_create' %}">{% trans "Add product" %}</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      {% if products %}
+        <div style="overflow:auto;">
+          <table class="table" style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="text-align:left;">
+                <th style="padding:10px;">{% trans "Product" %}</th>
+                <th style="padding:10px;">{% trans "Price" %}</th>
+                <th style="padding:10px;">{% trans "Status" %}</th>
+                <th style="padding:10px;">{% trans "Categories" %}</th>
+                <th style="padding:10px; width: 200px;">{% trans "Actions" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in products %}
+                <tr>
+                  <td style="padding:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      {% if p.image %}
+                        <img src="{{ p.image.url }}" alt="" style="width:44px; height:44px; object-fit:cover; border-radius:10px;" />
+                      {% else %}
+                        <div style="width:44px; height:44px; border-radius:10px; background:rgba(0,0,0,.06);"></div>
+                      {% endif %}
+                      <div>
+                        <div style="font-weight:700;">{{ p.name }}</div>
+                        <div style="opacity:.75; font-size: 13px;">#{{ p.id }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="padding:10px;">{{ p.price }} {{ p.currency }}</td>
+                  <td style="padding:10px;">
+                    {% if p.is_active %}
+                      <span class="badge">{% trans "Active" %}</span>
+                    {% else %}
+                      <span class="badge" style="opacity:.7;">{% trans "Hidden" %}</span>
+                    {% endif %}
+                  </td>
+                  <td style="padding:10px;">
+                    {% for c in p.categories.all %}
+                      <span class="badge" style="margin-right:6px;">{{ c.name }}</span>
+                    {% empty %}
+                      <span style="opacity:.7;">—</span>
+                    {% endfor %}
+                  </td>
+                  <td style="padding:10px;">
+                    <a class="btn btn-soft" href="{% url 'stores:merchant_product_edit' p.id %}">{% trans "Edit" %}</a>
+                    <form method="post" action="{% url 'stores:merchant_product_delete' p.id %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this product?')">{% trans "Delete" %}</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align:center; padding: 28px 12px;">
+          <div style="font-weight:700; font-size:18px;">{% trans "No products yet" %}</div>
+          <div style="opacity:.8; margin-top: 6px;">{% trans "Create your first product to start selling." %}</div>
+          <div style="margin-top: 14px;">
+            <a class="btn" href="{% url 'stores:merchant_product_create' %}">{% trans "Add product" %}</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

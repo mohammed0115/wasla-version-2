@@ -1,0 +1,78 @@
+{% extends "merchant/base.html" %}
+{% load i18n %}
+
+{% block merchant_content %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;">{% trans "Order" %} #{{ order.id }}</h2>
+      <p style="margin:6px 0 0; opacity:.8;">{% trans "Update status and review customer details." %}</p>
+    </div>
+    <a class="btn btn-soft" href="{% url 'stores:merchant_orders' %}">{% trans "Back" %}</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 340px; gap: 16px; align-items:start;">
+    <div class="card">
+      <div class="card-body">
+        <h3 style="margin-top:0;">{% trans "Details" %}</h3>
+        <div style="display:grid; grid-template-columns: 160px 1fr; gap: 10px;">
+          <div style="opacity:.75;">{% trans "Customer" %}</div>
+          <div>{{ order.customer_email|default:"—" }}</div>
+
+          <div style="opacity:.75;">{% trans "Total" %}</div>
+          <div style="font-weight:700;">{{ order.total_amount }} {{ order.currency }}</div>
+
+          <div style="opacity:.75;">{% trans "Status" %}</div>
+          <div><span class="badge">{{ order.get_status_display }}</span></div>
+
+          <div style="opacity:.75;">{% trans "Payment" %}</div>
+          <div>{{ order.get_payment_status_display }}</div>
+
+          <div style="opacity:.75;">{% trans "Shipping address" %}</div>
+          <div>{{ order.shipping_address|default:"—" }}</div>
+
+          <div style="opacity:.75;">{% trans "Created" %}</div>
+          <div>{{ order.created_at|date:"Y-m-d H:i" }}</div>
+        </div>
+
+        <hr style="margin: 16px 0; opacity:.15;" />
+        <h3 style="margin:0 0 10px;">{% trans "Items" %}</h3>
+        {% if order.items %}
+          <pre style="margin:0; white-space:pre-wrap; background:rgba(0,0,0,.04); padding:12px; border-radius:12px;">{{ order.items|safe }}</pre>
+        {% else %}
+          <div style="opacity:.75;">—</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 style="margin-top:0;">{% trans "Actions" %}</h3>
+
+        <form method="post" action="{% url 'stores:merchant_order_change_status' order.id %}" style="display:grid; gap:10px;">
+          {% csrf_token %}
+          <label style="font-weight:700;">{% trans "Change status" %}</label>
+          <select class="input" name="status" required>
+            <option value="">—</option>
+            {% for s in allowed_statuses %}
+              <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" type="submit">{% trans "Update" %}</button>
+        </form>
+
+        <hr style="margin: 16px 0; opacity:.15;" />
+
+        <form method="post" action="{% url 'stores:merchant_order_refund' order.id %}">
+          {% csrf_token %}
+          <button class="btn btn-soft" type="submit" onclick="return confirm('Apply refund placeholder?')">
+            {% trans "Refund (placeholder)" %}
+          </button>
+        </form>
+
+        <div style="opacity:.75; margin-top: 10px; font-size: 13px;">
+          {% trans "Refund is a placeholder for V2. Payment gateway integration comes later." %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

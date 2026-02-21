@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
@@ -122,6 +123,21 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
             "currency": getattr(existing, "currency", "SAR") or "SAR",
             "language": getattr(existing, "language", "ar") or "ar",
         }
+    elif request.method != "POST":
+        suggested_name = ""
+        try:
+            suggested_name = (request.user.get_full_name() or "").strip()
+        except Exception:
+            suggested_name = ""
+        if not suggested_name:
+            suggested_name = (getattr(request.user, "first_name", "") or "").strip()
+        suggested_slug_source = suggested_name or (getattr(request.user, "username", "") or "")
+        suggested_slug = slugify(suggested_slug_source)
+        initial = {}
+        if suggested_name:
+            initial["name"] = suggested_name
+        if suggested_slug:
+            initial["slug"] = suggested_slug
 
     form = StoreInfoSetupForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():

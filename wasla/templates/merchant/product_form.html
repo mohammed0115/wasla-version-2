@@ -1,0 +1,87 @@
+{% extends "merchant/base.html" %}
+{% load i18n %}
+
+{% block merchant_content %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;">
+        {% if mode == 'edit' %}{% trans "Edit product" %}{% else %}{% trans "Create product" %}{% endif %}
+      </h2>
+      <p style="margin:6px 0 0; opacity:.8;">{% trans "Keep it simple for V2. You can extend fields later." %}</p>
+    </div>
+    <a class="btn btn-soft" href="{% url 'stores:merchant_products' %}">{% trans "Back" %}</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" style="display:grid; gap:14px; max-width: 760px;">
+        {% csrf_token %}
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Name" %}</label>
+          <input class="input" type="text" name="name" value="{{ product.name|default:'' }}" required />
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 160px 120px; gap: 12px;">
+          <div>
+            <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Price" %}</label>
+            <input class="input" type="number" step="0.01" name="price" value="{{ product.price|default:'' }}" required />
+          </div>
+          <div>
+            <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Currency" %}</label>
+            <input class="input" type="text" name="currency" value="{{ product.currency|default:'SAR' }}" />
+          </div>
+          <div style="display:flex; align-items:end; gap:10px;">
+            <label style="display:flex; align-items:center; gap:8px; margin:0; font-weight:700;">
+              <input type="checkbox" name="is_active" {% if product.is_active or mode == 'create' %}checked{% endif %} />
+              {% trans "Active" %}
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Description" %}</label>
+          <textarea class="input" name="description" rows="5">{{ product.description|default:'' }}</textarea>
+        </div>
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Categories" %}</label>
+          <div style="display:flex; gap: 10px; align-items:center; flex-wrap:wrap;">
+            <select class="input" name="categories" multiple style="min-height: 120px; min-width: 320px;">
+              {% for c in categories %}
+                {% if selected_category_ids %}
+                  <option value="{{ c.id }}" {% if c.id in selected_category_ids %}selected{% endif %}>{{ c.name }}</option>
+                {% else %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <a class="btn btn-soft" href="{% url 'stores:merchant_category_create' %}">{% trans "Add category" %}</a>
+          </div>
+          <div style="opacity:.75; margin-top: 6px; font-size: 13px;">{% trans "Hold Ctrl/⌘ to select multiple categories." %}</div>
+        </div>
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Image" %}</label>
+          {% if product.image %}
+            <div style="display:flex; align-items:center; gap: 12px; margin-bottom: 8px;">
+              <img src="{{ product.image.url }}" alt="" style="width:72px; height:72px; object-fit:cover; border-radius: 14px;" />
+              <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" name="clear_image" />
+                {% trans "Remove current image" %}
+              </label>
+            </div>
+          {% endif %}
+          <input type="file" name="image" accept="image/*" />
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn" type="submit">
+            {% if mode == 'edit' %}{% trans "Save changes" %}{% else %}{% trans "Create" %}{% endif %}
+          </button>
+          <a class="btn btn-soft" href="{% url 'stores:merchant_products' %}">{% trans "Cancel" %}</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "merchant/base.html" %}
+{% load i18n %}
+
+{% block merchant_content %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;">{% trans "Categories" %}</h2>
+      <p style="margin:6px 0 0; opacity:.8;">{% trans "Organize products for better browsing and search." %}</p>
+    </div>
+    <a class="btn" href="{% url 'stores:merchant_category_create' %}">{% trans "Add category" %}</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      {% if categories %}
+        <table class="table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="text-align:left;">
+              <th style="padding:10px;">{% trans "Name" %}</th>
+              <th style="padding:10px;">{% trans "Slug" %}</th>
+              <th style="padding:10px; width: 200px;">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in categories %}
+              <tr>
+                <td style="padding:10px; font-weight:700;">{{ c.name }}</td>
+                <td style="padding:10px; opacity:.8;">{{ c.slug|default:"—" }}</td>
+                <td style="padding:10px;">
+                  <a class="btn btn-soft" href="{% url 'stores:merchant_category_edit' c.id %}">{% trans "Edit" %}</a>
+                  <form method="post" action="{% url 'stores:merchant_category_delete' c.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this category?')">{% trans "Delete" %}</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div style="text-align:center; padding: 28px 12px;">
+          <div style="font-weight:700; font-size:18px;">{% trans "No categories yet" %}</div>
+          <div style="opacity:.8; margin-top: 6px;">{% trans "Create categories to keep products organized." %}</div>
+          <div style="margin-top: 14px;">
+            <a class="btn" href="{% url 'stores:merchant_category_create' %}">{% trans "Add category" %}</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

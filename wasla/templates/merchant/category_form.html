@@ -1,0 +1,40 @@
+{% extends "merchant/base.html" %}
+{% load i18n %}
+
+{% block merchant_content %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0;">
+        {% if mode == 'edit' %}{% trans "Edit category" %}{% else %}{% trans "Create category" %}{% endif %}
+      </h2>
+      <p style="margin:6px 0 0; opacity:.8;">{% trans "Categories help customers filter and discover products." %}</p>
+    </div>
+    <a class="btn btn-soft" href="{% url 'stores:merchant_categories' %}">{% trans "Back" %}</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" style="display:grid; gap:14px; max-width: 560px;">
+        {% csrf_token %}
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Name" %}</label>
+          <input class="input" type="text" name="name" value="{{ category.name|default:'' }}" required />
+        </div>
+
+        <div>
+          <label style="display:block; font-weight:700; margin-bottom:6px;">{% trans "Slug" %}</label>
+          <input class="input" type="text" name="slug" value="{{ category.slug|default:'' }}" placeholder="e.g. shoes" />
+          <div style="opacity:.75; margin-top: 6px; font-size: 13px;">{% trans "Optional. Useful for clean URLs later." %}</div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn" type="submit">
+            {% if mode == 'edit' %}{% trans "Save changes" %}{% else %}{% trans "Create" %}{% endif %}
+          </button>
+          <a class="btn btn-soft" href="{% url 'stores:merchant_categories' %}">{% trans "Cancel" %}</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

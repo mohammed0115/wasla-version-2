@@ -64,7 +64,7 @@ def auth_page(request: HttpRequest) -> HttpResponse:
                 # If persona not completed, continue
                 if hasattr(user, "profile") and not user.profile.persona_completed:
                     return redirect("accounts:persona_welcome")
-                return redirect("home")
+                return redirect("tenants:dashboard_home")
             active_tab = "login"
 
         elif action == "register":

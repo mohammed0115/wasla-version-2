@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
@@ -29,7 +31,7 @@ urlpatterns = [
     path("", include(("apps.imports.interfaces.web.urls", "imports_web"), namespace="imports_web")),
     path("", include(("apps.themes.interfaces.web.urls", "themes_web"), namespace="themes_web")),
     path("", include(("apps.settlements.interfaces.web.urls", "settlements_web"), namespace="settlements_web")),
-    path("", include("apps.stores.urls")),
+    path("", include(("apps.stores.urls", "stores"), namespace="stores")),
     path("", include(("apps.tenants.urls", "tenants"), namespace="tenants")),
     path("", include(("apps.plugins.urls", "plugins"), namespace="plugins")),
 
@@ -42,7 +44,11 @@ urlpatterns = [
     path("api/", include(("apps.exports.interfaces.api.urls", "exports_api"), namespace="exports_api")),
     path("api/", include(("apps.imports.interfaces.api.urls", "imports_api"), namespace="imports_api")),
     path("api/", include(("apps.orders.urls", "orders_api"), namespace="orders_api")),
+    path("api/", include(("apps.purchases.urls", "purchases_api"), namespace="purchases_api")),
     path("api/", include(("apps.payments.interfaces.api.urls", "payments_api"), namespace="payments_api")),
     path("api/", include(("apps.settlements.interfaces.api.urls", "settlements_api"), namespace="settlements_api")),
     path("api/", include(("apps.themes.interfaces.api.urls", "themes_api"), namespace="themes_api")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,33 +1,397 @@
-.wasla-hero {
-  border-radius: var(--radius);
-  padding: 24px 16px;
-  background: linear-gradient(135deg, #1F4FD8, #F28C28);
-  color: var(--white);
+/* Hero Banner — Wassla (keep brand colors from app.css variables) */
+
+.hero{
+  position: relative;
+  overflow: hidden;
+  padding: clamp(3rem, 6vw, 5.5rem) 0;
+  background:
+    radial-gradient(1200px 500px at 15% 10%, rgba(59,110,245,.18), transparent 55%),
+    radial-gradient(900px 450px at 85% 35%, rgba(242,140,40,.14), transparent 55%),
+    linear-gradient(180deg, rgba(31,79,216,.05), transparent 60%);
 }
 
-.wasla-hero__title {
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.65), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(255,255,255,.45), transparent 45%),
+    radial-gradient(circle at 60% 80%, rgba(255,255,255,.35), transparent 45%);
+  pointer-events:none;
+  opacity:.55;
+}
+
+.hero__container{
+  position: relative;
+  z-index: 1;
+}
+
+.hero__grid{
+  display:grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items:center;
+}
+
+@media (max-width: 992px){
+  .hero__grid{ grid-template-columns: 1fr; }
+  .hero__right{ order: -1; }
+}
+
+.hero__badge{
+  display:inline-flex;
+  align-items:center;
+  gap:.6rem;
+  padding:.5rem .8rem;
+  border:1px solid rgba(31,79,216,.18);
+  background: rgba(255,255,255,.65);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(31,79,216,.08);
+  width: fit-content;
+}
+
+.hero__badge-dot{
+  width:.55rem;
+  height:.55rem;
+  border-radius:999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(242,140,40,.15);
+}
+
+.hero__badge-muted{ color: var(--text-muted); }
+.hero__badge-sep{ color: rgba(0,0,0,.25); }
+
+.hero__title{
   margin: 0;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: clamp(2rem, 4.3vw, 3.25rem);
+  line-height: 1.12;
+  letter-spacing: -.02em;
 }
 
-.wasla-hero__subtitle {
-  margin-top: 8px;
-  margin-bottom: 0;
+.hero__subtitle{
+  margin:0;
+  max-width: 56ch;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
 }
 
-.wasla-hero__cta {
-  margin-top: 16px;
-  display: flex;
-  gap: 8px;
+.hero__actions{
+  display:flex;
+  gap:.75rem;
+  flex-wrap: wrap;
+  align-items:center;
+}
+
+.hero__stats{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:.75rem;
+}
+
+@media (max-width: 520px){
+  .hero__stats{ grid-template-columns: 1fr; }
+}
+
+.hero__stat{
+  padding: .85rem .9rem;
+  border: 1px solid rgba(31,79,216,.12);
+  background: rgba(255,255,255,.72);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15,23,42,.06);
+}
+
+.hero__stat-kpi{
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -.02em;
+}
+
+.hero__stat-label{
+  color: var(--text-muted);
+  font-size: .9rem;
+  margin-top: .15rem;
+}
+
+.hero__chips{
+  display:flex;
+  gap:.5rem;
   flex-wrap: wrap;
 }
 
-.wasla-hero__panel {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--white);
-  color: var(--text);
+.hero__chip{
+  padding: .45rem .7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(31,79,216,.14);
+  background: rgba(255,255,255,.66);
+  color: #0f172a;
+  font-size: .9rem;
+}
+
+.hero__right{
+  display:flex;
+  justify-content:center;
+}
+
+.hero__mock{
+  position: relative;
+  width: min(440px, 100%);
+  border-radius: 26px;
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
+  border: 1px solid rgba(31,79,216,.14);
+  box-shadow:
+    0 40px 80px rgba(15,23,42,.12),
+    0 10px 30px rgba(31,79,216,.08);
+  overflow:hidden;
+}
+
+.hero__mock-top{
+  display:flex;
+  justify-content:flex-end;
+  gap:.5rem;
+  padding:.35rem .35rem .6rem;
+}
+
+.hero__mock-pill{
+  width: 46px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.08);
+}
+.hero__mock-pill--thin{ width: 18px; }
+
+.hero__mock-body{
+  border-radius: 18px;
+  padding: 1rem;
+  background:
+    radial-gradient(600px 220px at 0% 0%, rgba(59,110,245,.18), transparent 55%),
+    radial-gradient(600px 220px at 100% 30%, rgba(242,140,40,.14), transparent 55%),
+    rgba(248,250,252,.95);
+  border: 1px solid rgba(15,23,42,.06);
+}
+
+.hero__mock-header{
+  display:flex;
+  align-items:center;
+  gap:.8rem;
+  margin-bottom: 1rem;
+}
+
+.hero__mock-logo{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 14px 30px rgba(31,79,216,.22);
+}
+
+.hero__mock-lines{ flex:1; }
+.hero__mock-line{
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.1);
+  margin-bottom:.45rem;
+}
+.hero__mock-line--short{ width: 60%; margin-bottom:0; opacity:.75; }
+
+.hero__mock-card{
+  border-radius: 16px;
+  padding: .9rem;
+  border: 1px solid rgba(15,23,42,.06);
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 16px 35px rgba(15,23,42,.06);
+}
+
+.hero__mock-card--primary{
+  background: linear-gradient(135deg, rgba(31,79,216,.12), rgba(59,110,245,.08));
+  border-color: rgba(31,79,216,.18);
+}
+
+.hero__mock-card--accent{
+  background: linear-gradient(135deg, rgba(242,140,40,.12), rgba(242,140,40,.06));
+  border-color: rgba(242,140,40,.22);
+}
+
+.hero__mock-card--soft{
+  background: rgba(255,255,255,.85);
+}
+
+.hero__mock-card-title{
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.hero__mock-card-sub{
+  margin-top: .25rem;
+  font-size: .88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.hero__mock-row{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin-top: .75rem;
+}
+
+@media (max-width: 520px){
+  .hero__mock-row{ grid-template-columns: 1fr; }
+}
+
+.hero__mock-footer{
+  display:flex;
+  gap:.6rem;
+  margin-top: 1rem;
+}
+
+.hero__mock-cta{
+  height: 38px;
+  flex:1;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 16px 30px rgba(31,79,216,.18);
+}
+.hero__mock-cta--outline{
+  background: rgba(255,255,255,.8);
+  border: 1px solid rgba(31,79,216,.18);
+  box-shadow: none;
+}
+
+.hero__glow{
+  position:absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  filter: blur(28px);
+  opacity: .55;
+  pointer-events:none;
+}
+
+.hero__glow--a{
+  right:-70px;
+  top:-70px;
+  background: rgba(59,110,245,.55);
+}
+
+.hero__glow--b{
+  left:-80px;
+  bottom:-90px;
+  background: rgba(242,140,40,.45);
+}
+
+/* Feature strip */
+.hero-features{
+  padding: 2.5rem 0 4rem;
+}
+
+.hero-features__grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 992px){
+  .hero-features__grid{ grid-template-columns: 1fr; }
+}
+
+.hero-feature{
+  border: 1px solid rgba(31,79,216,.12);
+  background: rgba(255,255,255,.85);
+  border-radius: 18px;
+  padding: 1.15rem 1.1rem;
+  box-shadow: 0 18px 45px rgba(15,23,42,.06);
+}
+
+.hero-feature__icon{
+  font-size: 1.35rem;
+  width: 46px;
+  height: 46px;
+  display:grid;
+  place-items:center;
+  border-radius: 16px;
+  background: rgba(31,79,216,.08);
+  border: 1px solid rgba(31,79,216,.12);
+  margin-bottom: .85rem;
+}
+
+.hero-feature__title{
+  margin:0 0 .35rem;
+  font-size: 1.05rem;
+  letter-spacing: -.01em;
+}
+
+.hero-feature__text{
+  margin:0;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.hero-features__actions{
+  margin-top: 1.25rem;
+  display:flex;
+  justify-content:center;
+}
+
+/* =========================================
+   V2 Pro — Data Flow Animation (text → mock)
+   - No color changes (uses existing CSS variables)
+   - Respects prefers-reduced-motion
+========================================= */
+
+.hero__grid{ position: relative; }
+
+.hero__flow{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index: 0; /* behind content */
+}
+
+.hero__flow-svg{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+.hero__flow-path{
+  fill:none;
+  stroke: url(#waslaFlowGrad);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 10 10;
+  opacity: .9;
+  animation: hero-flow-dash 10s linear infinite;
+}
+
+.hero__flow-dot{
+  fill: var(--accent);
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.18));
+  opacity: .95;
+}
+
+.hero__flow-dot--small{ opacity: .65; }
+
+@keyframes hero-flow-dash{
+  from{ stroke-dashoffset: 0; }
+  to{ stroke-dashoffset: -160; }
+}
+
+/* Keep the animation subtle and avoid clutter on small screens */
+@media (max-width: 900px){
+  .hero__flow{ display:none; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .hero__flow-path{ animation: none; }
+  .hero__flow-dot, .hero__flow-dot--small{ display:none; }
+}
+
+.hero__left,
+.hero__right{
+  position: relative;
+  z-index: 1;
 }

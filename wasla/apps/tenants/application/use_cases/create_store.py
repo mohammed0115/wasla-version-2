@@ -12,6 +12,7 @@ from apps.tenants.domain.errors import (
 )
 from apps.tenants.domain.policies import validate_hex_color, validate_store_name, validate_tenant_slug
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
+from apps.stores.models import Store, StoreSettings, StoreSetupStep
 from apps.tenants.services.audit_service import TenantAuditService
 
 
@@ -61,7 +62,22 @@ class CreateStoreUseCase:
         if existing_owned:
             return CreateStoreResult(tenant=existing_owned, created=False)
 
-        store_name = validate_store_name(cmd.name)
+        raw_name = (cmd.name or "").strip()
+        if not raw_name:
+            user_full_name = ""
+            try:
+                user_full_name = (cmd.user.get_full_name() or "").strip()
+            except Exception:
+                user_full_name = ""
+            raw_name = (
+                user_full_name
+                or getattr(cmd.user, "first_name", "") or ""
+            ).strip()
+            if not raw_name:
+                raw_name = (getattr(cmd.user, "username", "") or "").strip()
+        if not raw_name:
+            raw_name = "Merchant Store"
+        store_name = validate_store_name(raw_name)
         slug = validate_tenant_slug(cmd.slug)
         if Tenant.objects.filter(slug=slug).exists():
             raise StoreSlugAlreadyTakenError("This store slug is already taken.")
@@ -81,6 +97,9 @@ class CreateStoreUseCase:
             setup_step=2,
             setup_completed=False,
         )
+        if not tenant.subdomain:
+            tenant.subdomain = slug
+            tenant.save(update_fields=["subdomain"])
 
         try:
             TenantMembership.objects.create(
@@ -121,6 +140,39 @@ class CreateStoreUseCase:
                     "is_setup_complete": False,
                 },
             )
+
+        store = Store.objects.filter(owner=cmd.user).order_by("id").first()
+        if store and store.tenant_id is None:
+            updates = []
+            store.tenant = tenant
+            updates.append("tenant")
+            if not store.slug:
+                store.slug = slug
+                updates.append("slug")
+            if not store.subdomain:
+                store.subdomain = slug
+                updates.append("subdomain")
+            if store.status != Store.STATUS_ACTIVE:
+                store.status = Store.STATUS_ACTIVE
+                updates.append("status")
+            if store.name != store_name and not store.name:
+                store.name = store_name
+                updates.append("name")
+            store.save(update_fields=updates or None)
+        elif not store:
+            if Store.objects.filter(slug=slug).exists() or Store.objects.filter(subdomain=slug).exists():
+                raise StoreSlugAlreadyTakenError("This store slug is already taken.")
+            store = Store.objects.create(
+                owner=cmd.user,
+                tenant=tenant,
+                name=store_name,
+                slug=slug,
+                subdomain=slug,
+                status=Store.STATUS_ACTIVE,
+            )
+        if store:
+            StoreSettings.objects.get_or_create(store=store)
+            StoreSetupStep.objects.get_or_create(store=store)
 
         basic_plan = SubscriptionPlan.objects.filter(name="Basic", is_active=True).first()
         if basic_plan:

@@ -58,6 +58,47 @@ class Inventory(models.Model):
     product = models.OneToOneField(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     in_stock = models.BooleanField(default=True)
+    # Alert threshold used in merchant dashboard.
+    low_stock_threshold = models.PositiveIntegerField(default=5)
 
     def __str__(self) -> str:
         return f"{self.product} - qty={self.quantity}"
+
+
+class StockMovement(models.Model):
+    """Lightweight stock ledger (Phase 3).
+
+    Notes:
+    - store_id for tenancy isolation (same as Product.store_id)
+    - quantity is always positive; direction via movement_type
+    """
+
+    TYPE_IN = "IN"
+    TYPE_OUT = "OUT"
+    TYPE_ADJUST = "ADJUST"
+    TYPE_CHOICES = [
+        (TYPE_IN, "In"),
+        (TYPE_OUT, "Out"),
+        (TYPE_ADJUST, "Adjustment"),
+    ]
+
+    store_id = models.IntegerField(default=1, db_index=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_movements")
+    movement_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    quantity = models.PositiveIntegerField()
+    reason = models.CharField(max_length=255, blank=True, default="")
+
+    # Optional references (keep as ints to avoid circular imports)
+    order_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+    purchase_order_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["store_id", "created_at"]),
+            models.Index(fields=["store_id", "product"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"store={self.store_id} product={self.product_id} {self.movement_type} {self.quantity}"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+import ipaddress
 
 
 def extract_subdomain(host: str) -> Optional[str]:
@@ -22,6 +23,12 @@ def extract_subdomain(host: str) -> Optional[str]:
 
     if not host:
         return None
+
+    try:
+        ipaddress.ip_address(host)
+        return None
+    except ValueError:
+        pass
 
     if host == "localhost":
         return None

@@ -3,7 +3,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.catalog.models import Inventory
+from apps.catalog.models import Inventory, StockMovement
 from apps.subscriptions.services.entitlement_service import SubscriptionEntitlementService
 
 from ..models import Order, OrderItem
@@ -99,6 +99,16 @@ class OrderService:
             ).update(quantity=F("quantity") - item.quantity)
             if updated == 0:
                 raise ValueError(f"Insufficient stock for '{item.product}'")
+
+            # Stock ledger entry (Phase 3)
+            StockMovement.objects.create(
+                store_id=order.store_id,
+                product=item.product,
+                movement_type=StockMovement.TYPE_OUT,
+                quantity=item.quantity,
+                reason="order_paid",
+                order_id=order.id,
+            )
 
         for inventory in Inventory.objects.filter(product_id__in=[i.product_id for i in items]).select_related(
             "product"
