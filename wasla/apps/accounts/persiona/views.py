@@ -12,38 +12,45 @@ from apps.stores.models import Plan
 from apps.tenants.models import Tenant, TenantMembership, StoreProfile
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
 from apps.subscriptions.models import SubscriptionPlan, StoreSubscription
+from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
 
 # ---------
 # Helpers
 # ---------
-def ensure_default_plans() -> list[Plan]:
-    """Create default plans (Salla-like) if DB is empty."""
-    if Plan.objects.exists():
-        return list(Plan.objects.all().order_by("price_monthly"))
+def ensure_default_subscription_plans() -> list[SubscriptionPlan]:
+    """Create default subscription plans only if table is empty."""
+    if SubscriptionPlan.objects.exists():
+        return list(
+            SubscriptionPlan.objects.filter(is_active=True).order_by("price", "name", "billing_cycle")
+        )
 
-    plans = [
-        Plan(name="وصلة بيسك", price_monthly=0, price_yearly=0, is_free=True, is_popular=False),
-        Plan(name="وصلة بلس", price_monthly=99, price_yearly=99*12*0.84, is_free=False, is_popular=True),
-        Plan(name="وصلة برو", price_monthly=299, price_yearly=299*12*0.84, is_free=False, is_popular=False),
-    ]
-    Plan.objects.bulk_create(plans)
-    return list(Plan.objects.all().order_by("price_monthly"))
-
-
-def ensure_subscription_plan(plan: Plan, billing_cycle: str) -> SubscriptionPlan:
-    """Mirror Plan into subscriptions.SubscriptionPlan (MVP)."""
-    name = f"{plan.name} ({billing_cycle})"
-    price = plan.price_monthly if billing_cycle == "monthly" else plan.price_yearly
-    sub_plan, _ = SubscriptionPlan.objects.get_or_create(
-        name=name,
-        defaults={
-            "price": price,
-            "billing_cycle": billing_cycle,
+    defaults = [
+        {
+            "name": "Basic",
+            "price": 0,
+            "billing_cycle": "monthly",
             "features": [],
             "is_active": True,
         },
+        {
+            "name": "Plus",
+            "price": 99,
+            "billing_cycle": "monthly",
+            "features": ["custom_domain"],
+            "is_active": True,
+        },
+        {
+            "name": "Pro",
+            "price": 299,
+            "billing_cycle": "monthly",
+            "features": ["custom_domain", "ai_tools", "ai_visual_search"],
+            "is_active": True,
+        },
+    ]
+    SubscriptionPlan.objects.bulk_create([SubscriptionPlan(**row) for row in defaults])
+    return list(
+        SubscriptionPlan.objects.filter(is_active=True).order_by("price", "name", "billing_cycle")
     )
-    return sub_plan
 
 
 def ensure_tenant_for_user(user) -> Tenant:
@@ -100,26 +107,30 @@ def persona_plans(request):
         * Tenant + TenantMembership (owner)
         * StoreSubscription (subscriptions app) linked by store_id=tenant.id
     """
-    plans = ensure_default_plans()
+    plans = ensure_default_subscription_plans()
+    if not plans:
+        plans = list(
+            SubscriptionPlan.objects.filter(is_active=True).order_by("price", "name", "billing_cycle")
+        )
 
     if request.method == "POST":
         plan_id = (request.POST.get("plan_id") or "").strip()
-        billing_cycle = (request.POST.get("billing_cycle") or "monthly").strip()
-        if billing_cycle not in ("monthly", "yearly"):
-            billing_cycle = "monthly"
-
-        chosen = next((p for p in plans if str(p.id) == str(plan_id)), None)
+        chosen = SubscriptionPlan.objects.filter(id=plan_id, is_active=True).first()
         if not chosen:
-            # Safer default for onboarding monetization flow: paid popular plan first.
-            chosen = next((p for p in plans if p.is_popular and not p.is_free), None)
+            chosen = (
+                SubscriptionPlan.objects.filter(is_active=True)
+                .order_by("price", "id")
+                .first()
+            )
         if not chosen:
-            chosen = next((p for p in plans if not p.is_free), None)
-        if not chosen:
-            chosen = plans[0]
+            return redirect("accounts:persona_plans")
 
         with transaction.atomic():
-            # save on profile
-            request.user.profile.plan = chosen
+            # save on profile (best-effort mapping to legacy Plan)
+            base_name = (chosen.name or "").split("(")[0].strip()
+            legacy_plan = Plan.objects.filter(name__iexact=base_name).first()
+            if legacy_plan:
+                request.user.profile.plan = legacy_plan
             request.user.profile.persona_completed = True
             request.user.profile.save(update_fields=["plan", "persona_completed"])
 
@@ -127,24 +138,27 @@ def persona_plans(request):
             tenant = ensure_tenant_for_user(request.user)
 
             # subscription (MVP)
-            sub_plan = ensure_subscription_plan(chosen, billing_cycle)
+            is_free = float(getattr(chosen, "price", 0) or 0) <= 0
             StoreSubscription.objects.update_or_create(
                 store_id=tenant.id,
                 defaults={
-                    "plan": sub_plan,
-                    "status": "active",
+                    "plan": chosen,
+                    "status": "active" if is_free else "pending",
                     "start_date": timezone.now().date(),
-                    "end_date": (timezone.now().date() + datetime.timedelta(days=30 if billing_cycle=="monthly" else 365)),
+                    "end_date": (
+                        timezone.now().date()
+                        + datetime.timedelta(days=30 if chosen.billing_cycle == "monthly" else 365)
+                    ),
                 },
             )
 
-            request.session["persona_billing_cycle"] = billing_cycle
+            request.session["persona_billing_cycle"] = chosen.billing_cycle
             request.session["persona_plan_id"] = chosen.id
 
         # Next step after choosing plan:
         # - Free plan: go مباشرة إلى لوحة التحكم
         # - Paid plan: go to payment setup first
-        if chosen.is_free:
+        if float(getattr(chosen, "price", 0) or 0) <= 0:
             return redirect("tenants:dashboard_home")
         return redirect("tenants:dashboard_setup_payment")
 
@@ -184,20 +198,15 @@ def persona_business(request):
     user's profile (category_sub) to keep data without adding new DB fields.
     """
 
-    choices = [
-        "ملابس وإكسسوارات",
-        "عطور وتجميل",
-        "إلكترونيات",
-        "مأكولات ومشروبات",
-        "منتجات رقمية",
-        "خدمات",
-        "أخرى",
-    ]
+    categories = get_global_categories()
+    if not categories:
+        categories = ensure_global_categories()
+    choices = [category.name for category in categories]
 
     if request.method == "POST":
         selected = (request.POST.get("business_category") or "").strip()
         if selected not in choices:
-            selected = "أخرى" if selected else choices[0]
+            selected = choices[0] if choices else ""
 
         request.session["persona_business_category"] = selected
 

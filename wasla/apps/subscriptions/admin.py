@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import StoreSubscription, SubscriptionPlan
+from .models import StoreSubscription, SubscriptionPlan, PaymentTransaction
 
 
 @admin.register(SubscriptionPlan)
@@ -15,6 +15,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         "max_orders_monthly",
         "max_staff_users",
     )
+    list_editable = ("is_active",)
     list_filter = ("billing_cycle", "is_active")
     search_fields = ("name",)
     ordering = ("id",)
@@ -25,4 +26,22 @@ class StoreSubscriptionAdmin(admin.ModelAdmin):
     list_display = ("id", "store_id", "plan", "status", "start_date", "end_date", "created_at")
     list_filter = ("status", "plan")
     search_fields = ("store_id", "plan__name")
+    ordering = ("-created_at",)
+
+
+@admin.register(PaymentTransaction)
+class PaymentTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tenant",
+        "plan",
+        "amount",
+        "currency",
+        "method",
+        "status",
+        "reference",
+        "created_at",
+    )
+    list_filter = ("status", "method", "plan")
+    search_fields = ("tenant__slug", "tenant__name", "reference")
     ordering = ("-created_at",)

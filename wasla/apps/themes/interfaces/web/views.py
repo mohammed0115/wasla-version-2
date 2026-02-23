@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 from apps.themes.application.use_cases.list_themes import ListThemesUseCase
 from apps.themes.application.use_cases.update_branding import (
     UpdateBrandingCommand,
@@ -38,7 +38,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_http_methods(["GET", "POST"])
 def themes_list(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -68,7 +68,7 @@ def themes_list(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_http_methods(["GET", "POST"])
 def branding_edit(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)

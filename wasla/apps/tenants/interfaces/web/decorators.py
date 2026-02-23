@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from functools import wraps
 
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.decorators import login_required
+
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.domain.errors import StoreAccessDeniedError, StoreInactiveError
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
+from apps.subscriptions.models import StoreSubscription
 
 
 def resolve_tenant_for_request(request: HttpRequest) -> Tenant | None:
@@ -68,10 +70,92 @@ def tenant_access_required(view_func):
         try:
             EnsureTenantOwnershipPolicy.ensure_can_access(user=request.user, tenant=tenant)
         except (StoreAccessDeniedError, StoreInactiveError) as exc:
-            raise PermissionDenied(str(exc)) from exc
+            return render(
+                request,
+                "dashboard/access_denied.html",
+                {"message": str(exc)},
+                status=403,
+            )
 
         request.session["store_id"] = tenant.id
         request.tenant = tenant
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def _latest_subscription(tenant_id: int) -> StoreSubscription | None:
+    return (
+        StoreSubscription.objects.filter(store_id=tenant_id)
+        .select_related("plan")
+        .order_by("-created_at", "-end_date")
+        .first()
+    )
+
+
+def merchant_dashboard_required(view_func):
+    """Require tenant ownership + active subscription + published store."""
+
+    @login_required
+    def _wrapped(request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        tenant = resolve_tenant_for_request(request)
+        if not tenant:
+            return redirect("tenants:dashboard_setup_store")
+
+        try:
+            EnsureTenantOwnershipPolicy.ensure_can_access(user=request.user, tenant=tenant)
+        except (StoreAccessDeniedError, StoreInactiveError) as exc:
+            return render(
+                request,
+                "dashboard/access_denied.html",
+                {"message": str(exc)},
+                status=403,
+            )
+
+        request.session["store_id"] = tenant.id
+        request.tenant = tenant
+
+        subscription = _latest_subscription(tenant.id)
+        if subscription is None:
+            return redirect("accounts:persona_plans")
+        if subscription.status != "active":
+            return redirect("tenants:payment_required")
+        if not getattr(tenant, "is_published", False):
+            return redirect("tenants:pending_activation")
+
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def merchant_subscription_required(view_func):
+    """Require tenant ownership + active subscription (no publish requirement)."""
+
+    @login_required
+    def _wrapped(request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        tenant = resolve_tenant_for_request(request)
+        if not tenant:
+            return redirect("tenants:dashboard_setup_store")
+
+        try:
+            EnsureTenantOwnershipPolicy.ensure_can_access(user=request.user, tenant=tenant)
+        except (StoreAccessDeniedError, StoreInactiveError) as exc:
+            return render(
+                request,
+                "dashboard/access_denied.html",
+                {"message": str(exc)},
+                status=403,
+            )
+
+        request.session["store_id"] = tenant.id
+        request.tenant = tenant
+
+        subscription = _latest_subscription(tenant.id)
+        if subscription is None:
+            return redirect("accounts:persona_plans")
+        if subscription.status != "active":
+            return redirect("tenants:payment_required")
+
         return view_func(request, *args, **kwargs)
 
     return _wrapped

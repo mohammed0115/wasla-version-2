@@ -43,7 +43,7 @@
           <label class="auth-label" for="{{ form.slug.id_for_label }}">{% if LANGUAGE_CODE == "ar" %}رابط المتجر (النطاق الفرعي){% else %}Store slug (subdomain){% endif %}</label>
           <div class="setup-slug-row">
             {{ form.slug }}
-            <span class="setup-slug-suffix">.wasla.site</span>
+            <span class="setup-slug-suffix">.{{ base_domain|default:"wasla.site" }}</span>
           </div>
           {% for error in form.slug.errors %}
             <p class="error" style="margin:0;">{{ error }}</p>

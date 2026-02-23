@@ -1,0 +1,77 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Domains" %}{% endblock %}
+{% block page_subtitle %}{% trans "Connect a custom domain to your store." %}{% endblock %}
+
+{% block content %}
+  <div class="card dash__section">
+    <div class="dash__section-header">
+      <h2 class="dash__section-title">{% trans "Subdomain" %}</h2>
+    </div>
+    <p class="dash__section-note">
+      {% trans "Your default store address is" %} <strong>{{ tenant.slug }}.{{ base_domain }}</strong>
+    </p>
+  </div>
+
+  <div class="card dash__section" style="margin-top:16px;">
+    <div class="dash__section-header">
+      <h2 class="dash__section-title">{% trans "Add custom domain" %}</h2>
+    </div>
+    <form method="post" action="{% url 'tenants:custom_domain_add' %}" style="display:grid; gap:12px; max-width:520px;">
+      {% csrf_token %}
+      {{ form.domain }}
+      <button class="btn btn-primary" type="submit">{% trans "Add domain" %}</button>
+    </form>
+    <p class="dash__section-note" style="margin-top:10px;">
+      {% trans "After adding, point your DNS to this server and verify." %}
+    </p>
+  </div>
+
+  <div class="card dash__section" style="margin-top:16px;">
+    <div class="dash__section-header">
+      <h2 class="dash__section-title">{% trans "Connected domains" %}</h2>
+    </div>
+    <div class="dash__table-wrap">
+      <table class="dash__table">
+        <thead>
+          <tr>
+            <th>{% trans "Domain" %}</th>
+            <th>{% trans "Status" %}</th>
+            <th>{% trans "Verification" %}</th>
+            <th class="dash__cell-end">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for domain in domains %}
+            <tr>
+              <td><strong>{{ domain.domain }}</strong></td>
+              <td>{{ domain.get_status_display }}</td>
+              <td>
+                {% if domain.verification_token %}
+                  <small>{{ verification_prefix }}/{{ domain.verification_token }}</small>
+                {% else %}
+                  <small>—</small>
+                {% endif %}
+              </td>
+              <td class="dash__cell-end">
+                <form method="post" action="{% url 'tenants:custom_domain_verify' domain.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="btn btn-soft" type="submit">{% trans "Verify" %}</button>
+                </form>
+                <form method="post" action="{% url 'tenants:custom_domain_disable' domain.id %}" style="display:inline;" onsubmit="return confirm('{% trans "Disable this domain?" %}');">
+                  {% csrf_token %}
+                  <button class="btn btn-soft" type="submit">{% trans "Disable" %}</button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4">{% trans "No custom domains yet." %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

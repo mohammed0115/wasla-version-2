@@ -1,0 +1,51 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}New Manual Payment - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-plus-circle"></i> New Manual Payment</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-6">
+                {{ form.tenant.label_tag }}
+                {{ form.tenant }}
+                {% for error in form.tenant.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.plan.label_tag }}
+                {{ form.plan }}
+                {% for error in form.plan.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+                {{ form.amount.label_tag }}
+                {{ form.amount }}
+                {% for error in form.amount.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+                {{ form.currency.label_tag }}
+                {{ form.currency }}
+                {% for error in form.currency.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+                {{ form.status.label_tag }}
+                {{ form.status }}
+                {% for error in form.status.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-12">
+                {{ form.reference.label_tag }}
+                {{ form.reference }}
+                {% for error in form.reference.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Create Payment</button>
+                <a class="btn btn-outline-secondary" href="{% url 'admin_portal:payment_transactions' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

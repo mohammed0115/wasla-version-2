@@ -24,7 +24,7 @@ from apps.imports.interfaces.web.forms import ImportStartForm
 from apps.imports.models import ImportJob, ImportRowError
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
@@ -49,7 +49,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def import_index(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -59,7 +59,7 @@ def import_index(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_POST
 def import_start(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -88,7 +88,7 @@ def import_start(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def import_job_detail(request: HttpRequest, job_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)

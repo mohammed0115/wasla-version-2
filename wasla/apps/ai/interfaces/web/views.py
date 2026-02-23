@@ -26,7 +26,7 @@ from apps.catalog.models import Product
 from apps.subscriptions.application.services.feature_gate import FeatureGateService
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 
 
 AI_WEB_RATE_LIMIT = 10
@@ -74,7 +74,7 @@ def _render_upgrade_required(request: HttpRequest, feature_name: str) -> HttpRes
             "feature_name": feature_name,
             "tenant": getattr(request, "tenant", None),
         },
-        status=403,
+        status=200,
     )
 
 
@@ -86,7 +86,7 @@ def _require_feature_or_upgrade(request: HttpRequest, tenant_id: int, feature_ke
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def ai_tools(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -104,7 +104,7 @@ def ai_tools(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_POST
 def ai_generate_description(request: HttpRequest, product_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -175,7 +175,7 @@ def ai_generate_description(request: HttpRequest, product_id: int) -> HttpRespon
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_POST
 def ai_categorize_product(request: HttpRequest, product_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -241,7 +241,7 @@ def ai_categorize_product(request: HttpRequest, product_id: int) -> HttpResponse
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_http_methods(["GET", "POST"])
 def ai_visual_search(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)

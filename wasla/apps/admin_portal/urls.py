@@ -11,12 +11,16 @@ urlpatterns = [
     path('tenants/', views.tenants_view, name='tenants'),
     path('tenants/<int:tenant_id>/', views.tenant_detail_view, name='tenant_detail'),
     path('tenants/<int:tenant_id>/set-active/', views.tenant_set_active_view, name='tenant_set_active'),
+    path('tenants/<int:tenant_id>/publish/', views.tenant_publish_view, name='tenant_publish'),
 
     path('stores/', views.stores_view, name='stores'),
     path('stores/<int:store_id>/', views.store_detail_view, name='store_detail'),
     path('stores/<int:store_id>/set-active/', views.store_set_active_view, name='store_set_active'),
 
     path('payments/', views.payments_view, name='payments'),
+    path('subscriptions/', views.subscription_list_view, name='subscriptions'),
+    path('payments/manual/', views.payment_transactions_view, name='payment_transactions'),
+    path('payments/manual/new/', views.payment_transaction_create_view, name='payment_transaction_create'),
     path('settlements/', views.settlements_view, name='settlements'),
 
     path('invoices/', views.invoices_view, name='invoices'),

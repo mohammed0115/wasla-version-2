@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Access denied" %}{% endblock %}
+
+{% block body %}
+<div class="center">
+  <div class="card" style="padding:20px; max-width:520px;">
+    <h1 style="margin:0 0 8px;">{% trans "Access denied" %}</h1>
+    <p class="muted" style="margin:0 0 14px;">
+      {% trans "You do not have permission to access this page." %}
+    </p>
+    <a class="btn btn-primary" href="/">{% trans "Back to home" %}</a>
+  </div>
+</div>
+{% endblock %}

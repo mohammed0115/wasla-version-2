@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 import re
 
+from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
+
 from .models import Store, StoreSettings
 
 
@@ -91,26 +93,20 @@ class StoreBasicInfoForm(forms.ModelForm):
             }),
         }
 
-    CATEGORY_CHOICES = [
-        ("", _("Select a category")),
-        ("fashion", _("Fashion & Clothing")),
-        ("beauty", _("Beauty & Cosmetics")),
-        ("home", _("Home & Furniture")),
-        ("electronics", _("Electronics")),
-        ("food", _("Food & Beverages")),
-        ("sports", _("Sports & Outdoors")),
-        ("toys", _("Toys & Games")),
-        ("books", _("Books & Media")),
-        ("handmade", _("Handmade & Crafts")),
-        ("other", _("Other")),
-    ]
-
     category = forms.ChoiceField(
-        choices=CATEGORY_CHOICES,
+        choices=(),
         required=True,
         label=_("Business Category"),
         widget=forms.Select(attrs={"class": "form-select"})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        categories = get_global_categories()
+        if not categories:
+            categories = ensure_global_categories()
+        choices = [("", _("Select a category"))] + [(c.name, c.name) for c in categories]
+        self.fields["category"].choices = choices
 
 
 class StoreDomainForm(forms.ModelForm):

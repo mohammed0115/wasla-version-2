@@ -19,6 +19,7 @@
                         <th>Stores</th>
                         <th>Payments</th>
                         <th>Created</th>
+                        <th>Published</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -33,6 +34,13 @@
                         <td><span class="badge bg-info">{{ tenant.payment_count }}</span></td>
                         <td>{{ tenant.created_at|date:"M d, Y" }}</td>
                         <td>
+                            {% if tenant.is_published %}
+                            <span class="badge bg-success">Published</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if tenant.is_active %}
                             <span class="badge bg-success">Active</span>
                             {% else %}
@@ -41,6 +49,16 @@
                         </td>
                         <td>
                             <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_portal:tenant_detail' tenant.id %}">Details</a>
+                            <form method="post" action="{% url 'admin_portal:tenant_publish' tenant.id %}" class="d-inline" onsubmit="return confirm('Confirm publish change?');">
+                                {% csrf_token %}
+                                {% if tenant.is_published %}
+                                <input type="hidden" name="action" value="unpublish">
+                                <button type="submit" class="btn btn-sm btn-outline-warning">Unpublish</button>
+                                {% else %}
+                                <input type="hidden" name="action" value="publish">
+                                <button type="submit" class="btn btn-sm btn-outline-success">Publish</button>
+                                {% endif %}
+                            </form>
                             <form method="post" action="{% url 'admin_portal:tenant_set_active' tenant.id %}" class="d-inline" onsubmit="return confirm('Confirm tenant status change?');">
                                 {% csrf_token %}
                                 {% if tenant.is_active %}
@@ -55,7 +73,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No tenants found</td>
+                        <td colspan="9" class="text-center text-muted py-4">No tenants found</td>
                     </tr>
                     {% endfor %}
                 </tbody>

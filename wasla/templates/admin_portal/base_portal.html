@@ -136,6 +136,16 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'payment_transactions' or request.resolver_match.url_name == 'payment_transaction_create' %}active{% endif %}" href="{% url 'admin_portal:payment_transactions' %}">
+                                <i class="bi bi-receipt"></i> Manual Payments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'subscriptions' %}active{% endif %}" href="{% url 'admin_portal:subscriptions' %}">
+                                <i class="bi bi-award"></i> Subscriptions
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'settlements' %}active{% endif %}" href="{% url 'admin_portal:settlements' %}">
                                 <i class="bi bi-cash-stack"></i> Settlements
                             </a>

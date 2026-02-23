@@ -31,7 +31,7 @@ from apps.settlements.domain.errors import InvalidSettlementStateError, Settleme
 from apps.settlements.models import Settlement, SettlementItem
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
@@ -54,7 +54,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 def balance_view(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     balance = GetMerchantBalanceUseCase.execute(GetMerchantBalanceCommand(tenant_ctx=tenant_ctx))
@@ -63,7 +63,7 @@ def balance_view(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 def settlement_list(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     settlements = ListSettlementsUseCase.execute(ListSettlementsCommand(tenant_ctx=tenant_ctx))
@@ -72,7 +72,7 @@ def settlement_list(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 def settlement_detail(request: HttpRequest, settlement_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
     try:

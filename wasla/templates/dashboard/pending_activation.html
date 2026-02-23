@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Pending Activation" %}{% endblock %}
+
+{% block body %}
+<div class="center">
+  <div class="card" style="padding:20px; max-width:520px;">
+    <h1 style="margin:0 0 8px;">{% trans "Pending Admin Activation" %}</h1>
+    <p class="muted" style="margin:0 0 14px;">
+      {% trans "Your subscription is active, but the store is not published yet." %}
+    </p>
+    <p class="muted" style="margin:0 0 18px;">
+      {% trans "An admin must publish your store before it goes live." %}
+    </p>
+    <a class="btn btn-primary" href="/">{% trans "Back to home" %}</a>
+  </div>
+</div>
+{% endblock %}

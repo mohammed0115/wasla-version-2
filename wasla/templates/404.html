@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Not found" %}{% endblock %}
+
+{% block body %}
+<div class="center">
+  <div class="card" style="padding:20px; max-width:520px;">
+    <h1 style="margin:0 0 8px;">{% trans "Store not found" %}</h1>
+    <p class="muted" style="margin:0 0 14px;">
+      {% trans "We couldn't find the store or page you requested." %}
+    </p>
+    <a class="btn btn-primary" href="/">{% trans "Back to home" %}</a>
+  </div>
+</div>
+{% endblock %}

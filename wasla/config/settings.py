@@ -59,7 +59,7 @@ DEBUG = True
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
 TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "12345").strip() or "12345"
 
-WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "w-sala.com").strip().lower() or "w-sala.com"
+WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "127.0.0.1.nip.io").strip().lower() or "127.0.0.1.nip.io"
 
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",
@@ -70,11 +70,22 @@ ALLOWED_HOSTS = _env_list(
         WASSLA_BASE_DOMAIN,
         f"www.{WASSLA_BASE_DOMAIN}",
         "76.13.143.149",
-        "store1.127.0.0.1.nip.io"
+        "store1.127.0.0.1.nip.io",
+        ".nip.io",
+        ".127.0.0.1.nip.io",
+        ".wasla.site",
     ],
 )
 
-CSRF_TRUSTED_ORIGINS = _env_list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+CSRF_TRUSTED_ORIGINS = _env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://*.127.0.0.1.nip.io:8000",
+        "http://*.nip.io:8000",
+    ],
+)
 
 # Custom domains (multi-tenant mapping)
 CUSTOM_DOMAIN_SERVER_IP = os.getenv("CUSTOM_DOMAIN_SERVER_IP", "").strip()
@@ -172,6 +183,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "apps.tenants.middleware.TenantResolverMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
@@ -198,6 +210,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.tenants.context_processors.merchant_status_context",
             ],
         },
     },

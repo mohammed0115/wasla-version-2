@@ -25,7 +25,9 @@ class Migration(migrations.Migration):
                 ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                "indexes": [models.Index(fields=["store_id", "name"])],
+                "indexes": [
+                    models.Index(fields=["store_id", "name"], name="purchases_supplier_store_name_idx")
+                ],
             },
         ),
         migrations.CreateModel(
@@ -59,7 +61,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "indexes": [models.Index(fields=["store_id", "created_at"])],
+                "indexes": [
+                    models.Index(fields=["store_id", "created_at"], name="purchases_po_store_created_idx")
+                ],
             },
         ),
         migrations.CreateModel(
@@ -82,7 +86,12 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "indexes": [models.Index(fields=["purchase_order", "product"])],
+                "indexes": [
+                    models.Index(
+                        fields=["purchase_order", "product"],
+                        name="purchases_poitem_order_product_idx",
+                    )
+                ],
             },
         ),
         migrations.CreateModel(

@@ -8,6 +8,9 @@ urlpatterns = [
     # Dashboard landing
     path("dashboard/", wviews.dashboard_home, name="dashboard_home"),
     path("dashboard/orders", wviews.dashboard_orders, name="dashboard_orders"),
+    path("dashboard/payment-required", wviews.payment_required, name="payment_required"),
+    path("dashboard/pending-activation", wviews.pending_activation, name="pending_activation"),
+    path("dashboard/domains", wviews.dashboard_domains, name="dashboard_domains"),
 
     # Merchant onboarding / setup
     path("dashboard/setup", wviews.dashboard_setup_store, name="dashboard_setup_store"),
@@ -25,10 +28,15 @@ urlpatterns = [
     path("dashboard/store/info", wviews.store_settings_update, name="store_settings_update"),
 
     # Custom domains
-    path("dashboard/domains", wviews.custom_domain_verification, name="custom_domain_verification"),
     path("dashboard/domains/add", wviews.custom_domain_add, name="custom_domain_add"),
-    path("dashboard/domains/verify", wviews.custom_domain_verify, name="custom_domain_verify"),
-    path("dashboard/domains/disable", wviews.custom_domain_disable, name="custom_domain_disable"),
+    path("dashboard/domains/<int:domain_id>/verify", wviews.custom_domain_verify, name="custom_domain_verify"),
+    path("dashboard/domains/<int:domain_id>/disable", wviews.custom_domain_disable, name="custom_domain_disable"),
+
+    path(
+        ".well-known/wassla-domain-verification/<str:token>",
+        wviews.custom_domain_verification,
+        name="custom_domain_verification",
+    ),
 
     # Storefront (tenant home)
     path("storefront", storefront_views.storefront_home, name="storefront_home"),

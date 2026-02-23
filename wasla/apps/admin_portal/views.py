@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -12,12 +13,20 @@ from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.catalog.models import Product
 from apps.payments.models import PaymentAttempt, WebhookEvent
 from apps.settlements.models import Invoice, InvoiceLine, SettlementRecord
 from apps.stores.models import Store
+from apps.subscriptions.models import StoreSubscription, PaymentTransaction, SubscriptionPlan
+from apps.subscriptions.services.payment_transaction_service import PaymentTransactionService
+from apps.subscriptions.services.subscription_service import SubscriptionService
+from apps.tenants.domain.readiness import StoreReadinessChecker, StoreReadinessSnapshot
 from apps.tenants.models import Tenant
+from apps.tenants.models import StorePaymentSettings, StoreProfile, StoreShippingSettings
+from apps.tenants.services.audit_service import TenantAuditService
 
 from .decorators import admin_permission_required
+from .forms import ManualPaymentForm
 from .utils import log_admin_action
 
 
@@ -30,6 +39,30 @@ def _get_client_ip(request) -> str:
 
 def _throttle_keys(ip: str):
     return f"admin_portal:login_fail:{ip}", f"admin_portal:login_block:{ip}"
+
+
+def _build_readiness_snapshot(tenant: Tenant) -> StoreReadinessSnapshot:
+    profile = StoreProfile.objects.filter(tenant=tenant).first()
+    payment = StorePaymentSettings.objects.filter(tenant=tenant).first()
+    shipping = StoreShippingSettings.objects.filter(tenant=tenant).first()
+    active_products = Product.objects.filter(store_id=tenant.id, is_active=True).count()
+
+    return StoreReadinessSnapshot(
+        tenant_is_active=bool(getattr(tenant, "is_active", False)),
+        store_info_completed=bool(getattr(profile, "store_info_completed", False)) if profile else False,
+        setup_step=int(getattr(profile, "setup_step", 1) or 1) if profile else 1,
+        is_setup_complete=bool(getattr(profile, "is_setup_complete", False)) if profile else False,
+        payment_mode=getattr(payment, "mode", None) if payment else None,
+        payment_provider_name=getattr(payment, "provider_name", None) if payment else None,
+        shipping_mode=getattr(shipping, "fulfillment_mode", None) if shipping else None,
+        shipping_origin_city=getattr(shipping, "origin_city", None) if shipping else None,
+        active_products_count=int(active_products or 0),
+    )
+
+
+def _get_readiness_result(tenant: Tenant):
+    snapshot = _build_readiness_snapshot(tenant)
+    return StoreReadinessChecker.check(snapshot)
 
 
 def login_view(request):
@@ -178,6 +211,83 @@ def tenant_set_active_view(request, tenant_id):
     return redirect('admin_portal:tenants')
 
 
+@admin_permission_required("TENANTS_EDIT")
+def tenant_publish_view(request, tenant_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    tenant = get_object_or_404(Tenant, id=tenant_id)
+    action = (request.POST.get("action") or "publish").strip().lower()
+
+    before = {
+        "is_published": tenant.is_published,
+        "activated_at": tenant.activated_at.isoformat() if tenant.activated_at else None,
+        "activated_by": tenant.activated_by_id,
+        "deactivated_at": tenant.deactivated_at.isoformat() if tenant.deactivated_at else None,
+    }
+
+    if action not in {"publish", "unpublish"}:
+        messages.error(request, "Invalid action.")
+        return redirect("admin_portal:tenant_detail", tenant_id=tenant.id)
+
+    if action == "publish":
+        active_subscription = SubscriptionService.get_active_subscription(tenant.id)
+        if not active_subscription:
+            messages.error(request, "Cannot publish: no active subscription/payment found.")
+            return redirect("admin_portal:tenant_detail", tenant_id=tenant.id)
+
+        readiness = _get_readiness_result(tenant)
+        if not readiness.ok:
+            for reason in readiness.errors:
+                messages.error(request, f"Cannot publish: {reason}")
+            return redirect("admin_portal:tenant_detail", tenant_id=tenant.id)
+
+    now = timezone.now()
+    with transaction.atomic():
+        if action == "publish":
+            tenant.is_published = True
+            tenant.deactivated_at = None
+            if not tenant.activated_at:
+                tenant.activated_at = now
+            tenant.activated_by = request.user
+            tenant.save(update_fields=["is_published", "activated_at", "activated_by", "deactivated_at", "updated_at"])
+
+            Store.objects.filter(tenant_id=tenant.id).update(status=Store.STATUS_ACTIVE)
+            Store.objects.filter(tenant_id=tenant.id, launched_at__isnull=True).update(launched_at=now)
+
+            TenantAuditService.record_action(
+                tenant,
+                "store_published_by_admin",
+                actor=getattr(request.user, "username", "admin"),
+                details="Store published by admin portal.",
+                metadata={"activated_at": tenant.activated_at.isoformat() if tenant.activated_at else None},
+            )
+            action_code = "TENANT_PUBLISH"
+        else:
+            tenant.is_published = False
+            tenant.deactivated_at = now
+            tenant.save(update_fields=["is_published", "deactivated_at", "updated_at"])
+
+            TenantAuditService.record_action(
+                tenant,
+                "store_unpublished_by_admin",
+                actor=getattr(request.user, "username", "admin"),
+                details="Store unpublished by admin portal.",
+                metadata={"deactivated_at": tenant.deactivated_at.isoformat() if tenant.deactivated_at else None},
+            )
+            action_code = "TENANT_UNPUBLISH"
+
+        after = {
+            "is_published": tenant.is_published,
+            "activated_at": tenant.activated_at.isoformat() if tenant.activated_at else None,
+            "activated_by": tenant.activated_by_id,
+            "deactivated_at": tenant.deactivated_at.isoformat() if tenant.deactivated_at else None,
+        }
+        log_admin_action(request, action_code, tenant, before, after)
+
+    return redirect("admin_portal:tenant_detail", tenant_id=tenant.id)
+
+
 @admin_permission_required("STORES_VIEW")
 def stores_view(request):
     stores = (
@@ -240,6 +350,93 @@ def payments_view(request):
         'status_filter': status,
         'provider_filter': provider,
     })
+
+
+@admin_permission_required("FINANCE_VIEW")
+def subscription_list_view(request):
+    status = request.GET.get("status") or ""
+    plan_id = request.GET.get("plan") or ""
+
+    subscriptions = StoreSubscription.objects.select_related("plan").order_by("-created_at")
+    if status:
+        subscriptions = subscriptions.filter(status=status)
+    if plan_id:
+        subscriptions = subscriptions.filter(plan_id=plan_id)
+
+    subscriptions_page = Paginator(subscriptions, 25).get_page(request.GET.get("page", 1))
+    plans = SubscriptionPlan.objects.filter(is_active=True).order_by("price", "name")
+    return render(
+        request,
+        "admin_portal/subscriptions.html",
+        {
+            "subscriptions": subscriptions_page,
+            "status_filter": status,
+            "plan_filter": plan_id,
+            "plans": plans,
+        },
+    )
+
+
+@admin_permission_required("FINANCE_VIEW")
+def payment_transactions_view(request):
+    status = request.GET.get("status") or ""
+    tenant_id = request.GET.get("tenant") or ""
+
+    transactions = PaymentTransaction.objects.select_related("tenant", "plan").order_by("-created_at")
+    if status:
+        transactions = transactions.filter(status=status)
+    if tenant_id:
+        transactions = transactions.filter(tenant_id=tenant_id)
+
+    transactions_page = Paginator(transactions, 25).get_page(request.GET.get("page", 1))
+    tenants = Tenant.objects.filter(is_active=True).order_by("name")
+    return render(
+        request,
+        "admin_portal/payment_transactions.html",
+        {
+            "transactions": transactions_page,
+            "status_filter": status,
+            "tenant_filter": tenant_id,
+            "tenants": tenants,
+        },
+    )
+
+
+@admin_permission_required("FINANCE_MARK_INVOICE_PAID")
+def payment_transaction_create_view(request):
+    form = ManualPaymentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        tenant = form.cleaned_data["tenant"]
+        plan = form.cleaned_data["plan"]
+        amount = form.cleaned_data["amount"]
+        reference = form.cleaned_data.get("reference") or ""
+        currency = form.cleaned_data.get("currency") or "SAR"
+        status = form.cleaned_data.get("status") or PaymentTransaction.STATUS_PAID
+
+        tx = PaymentTransactionService.record_manual_payment(
+            tenant=tenant,
+            plan=plan,
+            amount=amount,
+            reference=reference,
+            currency=currency,
+            status=status,
+            recorded_by=request.user,
+        )
+        log_admin_action(
+            request,
+            "MANUAL_PAYMENT_CREATE",
+            tx,
+            before=None,
+            after={
+                "tenant_id": tenant.id,
+                "plan_id": plan.id,
+                "amount": str(amount),
+                "status": status,
+            },
+        )
+        return redirect("admin_portal:payment_transactions")
+
+    return render(request, "admin_portal/payment_transaction_create.html", {"form": form})
 
 
 @admin_permission_required("FINANCE_VIEW")

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Payment Required" %}{% endblock %}
+
+{% block body %}
+<div class="center">
+  <div class="card" style="padding:20px; max-width:520px;">
+    <h1 style="margin:0 0 8px;">{% trans "Payment Required" %}</h1>
+    <p class="muted" style="margin:0 0 14px;">
+      {% trans "Your plan is selected, but payment has not been confirmed yet." %}
+    </p>
+    <p class="muted" style="margin:0 0 18px;">
+      {% trans "Please contact support or wait for admin confirmation." %}
+    </p>
+    <a class="btn btn-primary" href="{% url 'accounts:persona_plans' %}">{% trans "View plans" %}</a>
+  </div>
+</div>
+{% endblock %}

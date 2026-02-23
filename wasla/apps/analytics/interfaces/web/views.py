@@ -10,7 +10,7 @@ from apps.analytics.application.report_kpis import ReportKpisCommand, ReportKpis
 from apps.analytics.models import Event, Experiment, ExperimentAssignment
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
@@ -35,7 +35,7 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def analytics_events(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -53,7 +53,7 @@ def analytics_events(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def analytics_experiments(request: HttpRequest) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -62,7 +62,7 @@ def analytics_experiments(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def analytics_experiment_detail(request: HttpRequest, key: str) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)

@@ -25,9 +25,42 @@
       <a class="dash__link" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
       <a class="dash__link" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
       <a class="dash__link" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
+      <a class="dash__link" href="{% url 'tenants:dashboard_domains' %}">{% trans "Domains" %}</a>
       <a class="dash__link" href="{% url 'tenants:dashboard_setup_store' %}">{% trans "Store Setup" %}</a>
       <a class="dash__link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store Settings" %}</a>
     </nav>
+
+    {% if merchant_subscription %}
+      <div class="card dash__sidebar-panel dash__plan-panel">
+        <div class="dash__sidebar-title">{% trans "Plan" %}</div>
+        <div class="dash__plan-name">{{ merchant_plan.name }}</div>
+        <div class="dash__plan-meta">
+          <span class="dash__status">
+            {% if merchant_subscription.status == "active" %}
+              {% trans "Paid" %}
+            {% elif merchant_subscription.status == "pending" %}
+              {% trans "Payment required" %}
+            {% else %}
+              {% trans "Inactive" %}
+            {% endif %}
+          </span>
+          <span class="dash__status">
+            {% if merchant_tenant and merchant_tenant.is_published %}
+              {% trans "Published" %}
+            {% else %}
+              {% trans "Pending activation" %}
+            {% endif %}
+          </span>
+        </div>
+        <a class="btn btn-soft btn-block" href="{% url 'accounts:persona_plans' %}">{% trans "Change plan" %}</a>
+      </div>
+    {% else %}
+      <div class="card dash__sidebar-panel dash__plan-panel">
+        <div class="dash__sidebar-title">{% trans "Plan" %}</div>
+        <div class="dash__plan-name">{% trans "No plan selected" %}</div>
+        <a class="btn btn-soft btn-block" href="{% url 'accounts:persona_plans' %}">{% trans "Choose plan" %}</a>
+      </div>
+    {% endif %}
 
     <div class="card dash__sidebar-panel">
       <div class="dash__sidebar-title">{% trans "Language" %}</div>

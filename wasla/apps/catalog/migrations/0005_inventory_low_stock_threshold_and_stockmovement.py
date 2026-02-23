@@ -44,8 +44,8 @@ class Migration(migrations.Migration):
             ],
             options={
                 "indexes": [
-                    models.Index(fields=["store_id", "created_at"]),
-                    models.Index(fields=["store_id", "product"]),
+                    models.Index(fields=["store_id", "created_at"], name="catalog_stock_store_created_idx"),
+                    models.Index(fields=["store_id", "product"], name="catalog_stock_store_product_idx"),
                 ]
             },
         ),

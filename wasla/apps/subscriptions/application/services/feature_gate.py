@@ -10,6 +10,7 @@ from apps.subscriptions.services.exceptions import (
 class FeatureGateService:
     AI_TOOLS = "ai_tools"
     AI_VISUAL_SEARCH = "ai_visual_search"
+    CUSTOM_DOMAIN = "custom_domain"
 
     @staticmethod
     def can_use_feature(tenant_id: int, feature_key: str) -> bool:

@@ -30,6 +30,7 @@ class TenantAdmin(admin.ModelAdmin):
         "setup_completed",
         "setup_step",
         "activated_at",
+        "activated_by",
         "deactivated_at",
     )
     list_filter = ("is_active", "currency", "language")

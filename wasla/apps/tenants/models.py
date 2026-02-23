@@ -15,6 +15,13 @@ class Tenant(models.Model):
     is_active = models.BooleanField(default=True)
     is_published = models.BooleanField(default=False)
     activated_at = models.DateTimeField(null=True, blank=True)
+    activated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activated_tenants",
+    )
     deactivated_at = models.DateTimeField(null=True, blank=True)
 
     domain = models.CharField(max_length=255, blank=True, default="")

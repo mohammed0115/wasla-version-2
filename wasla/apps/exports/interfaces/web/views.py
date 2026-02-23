@@ -16,7 +16,7 @@ from apps.exports.application.use_cases.export_orders_csv import (
 from apps.exports.domain.errors import ExportNotFoundError
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
-from apps.tenants.interfaces.web.decorators import tenant_access_required
+from apps.tenants.interfaces.web.decorators import merchant_dashboard_required
 
 
 def _build_tenant_context(request: HttpRequest) -> TenantContext:
@@ -39,14 +39,14 @@ def _build_tenant_context(request: HttpRequest) -> TenantContext:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def exports_index(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/exports/index.html")
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def export_orders_csv(request: HttpRequest) -> StreamingHttpResponse:
     tenant_ctx = _build_tenant_context(request)
@@ -65,7 +65,7 @@ def export_orders_csv(request: HttpRequest) -> StreamingHttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def export_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     tenant_ctx = _build_tenant_context(request)

@@ -14,9 +14,48 @@
             <dt class="col-sm-3">ID</dt><dd class="col-sm-9">{{ tenant.id }}</dd>
             <dt class="col-sm-3">Name</dt><dd class="col-sm-9">{{ tenant.name }}</dd>
             <dt class="col-sm-3">Slug</dt><dd class="col-sm-9"><code>{{ tenant.slug }}</code></dd>
+            <dt class="col-sm-3">Published</dt>
+            <dd class="col-sm-9">
+                {% if tenant.is_published %}
+                <span class="badge bg-success">Published</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+            </dd>
             <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{% if tenant.is_active %}Active{% else %}Inactive{% endif %}</dd>
+            <dt class="col-sm-3">Activated At</dt><dd class="col-sm-9">{{ tenant.activated_at|date:"M d, Y H:i" }}</dd>
+            <dt class="col-sm-3">Activated By</dt><dd class="col-sm-9">{{ tenant.activated_by|default:"—" }}</dd>
+            <dt class="col-sm-3">Deactivated At</dt><dd class="col-sm-9">{{ tenant.deactivated_at|date:"M d, Y H:i" }}</dd>
             <dt class="col-sm-3">Created</dt><dd class="col-sm-9">{{ tenant.created_at|date:"M d, Y H:i" }}</dd>
         </dl>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-body">
+        <h5 class="card-title">Actions</h5>
+        <div class="d-flex flex-wrap gap-2">
+            <form method="post" action="{% url 'admin_portal:tenant_publish' tenant.id %}" onsubmit="return confirm('Confirm publish change?');">
+                {% csrf_token %}
+                {% if tenant.is_published %}
+                <input type="hidden" name="action" value="unpublish">
+                <button type="submit" class="btn btn-outline-warning">Unpublish</button>
+                {% else %}
+                <input type="hidden" name="action" value="publish">
+                <button type="submit" class="btn btn-outline-success">Publish</button>
+                {% endif %}
+            </form>
+            <form method="post" action="{% url 'admin_portal:tenant_set_active' tenant.id %}" onsubmit="return confirm('Confirm tenant status change?');">
+                {% csrf_token %}
+                {% if tenant.is_active %}
+                <input type="hidden" name="active" value="0">
+                <button type="submit" class="btn btn-outline-danger">Deactivate</button>
+                {% else %}
+                <input type="hidden" name="active" value="1">
+                <button type="submit" class="btn btn-outline-success">Activate</button>
+                {% endif %}
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.conf import settings
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -14,8 +14,6 @@ from apps.accounts.application.usecases.resolve_onboarding_state import resolve_
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.application.use_cases.create_store import CreateStoreCommand, CreateStoreUseCase
 from apps.tenants.application.use_cases.activate_store import (
-    ActivateStoreCommand,
-    ActivateStoreUseCase,
     DeactivateStoreCommand,
     DeactivateStoreUseCase,
 )
@@ -59,10 +57,17 @@ from apps.tenants.domain.errors import (
     StoreNotReadyError,
     StoreSlugAlreadyTakenError,
 )
-from apps.tenants.interfaces.web.decorators import resolve_tenant_for_request, tenant_access_required
+from apps.tenants.interfaces.web.decorators import (
+    resolve_tenant_for_request,
+    tenant_access_required,
+    merchant_dashboard_required,
+    merchant_subscription_required,
+)
+from apps.subscriptions.application.services.feature_gate import FeatureGateService
 from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings
 from apps.tenants.tasks import enqueue_verify_domain
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.tenants.services.audit_service import TenantAuditService
 
 from .forms import (
     CustomDomainForm,
@@ -205,7 +210,11 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
                     return redirect("tenants:dashboard_setup_activate")
             return redirect("tenants:dashboard_setup_payment")
 
-    return render(request, "web/store/store_info_setup.html", {"form": form})
+    return render(
+        request,
+        "web/store/store_info_setup.html",
+        {"form": form, "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", "")},
+    )
 
 
 @login_required
@@ -243,7 +252,12 @@ def dashboard_setup_payment(request: HttpRequest) -> HttpResponse:
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     profile = StoreProfile.objects.filter(tenant=tenant).first()
     if not profile:
@@ -315,7 +329,12 @@ def dashboard_setup_shipping(request: HttpRequest) -> HttpResponse:
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     profile = StoreProfile.objects.filter(tenant=tenant).first()
     if not profile:
@@ -388,7 +407,12 @@ def dashboard_setup_activate(request: HttpRequest) -> HttpResponse:
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     profile = StoreProfile.objects.filter(tenant=tenant).first()
     if not profile:
@@ -410,15 +434,31 @@ def dashboard_setup_activate(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip().lower()
         if action == "activate":
-            try:
-                ActivateStoreUseCase.execute(ActivateStoreCommand(user=request.user, tenant=tenant))
-            except StoreNotReadyError as exc:
-                reasons = exc.reasons or [str(exc)]
-                for reason in reasons:
+            if not readiness.ok:
+                for reason in readiness.errors or ["Store is not ready to request activation."]:
                     messages.error(request, reason)
-            else:
-                messages.success(request, "Store activated successfully. Your store is now live.")
                 return redirect("tenants:dashboard_setup_activate")
+
+            # Merchant request only: admin must publish.
+            try:
+                if profile and not profile.is_setup_complete:
+                    StoreSetupWizardUseCase.complete_setup(user=request.user, profile=profile)
+            except StoreAccessDeniedError as exc:
+                return render(
+                    request,
+                    "dashboard/access_denied.html",
+                    {"message": str(exc)},
+                    status=403,
+                )
+
+            TenantAuditService.record_action(
+                tenant,
+                "activation_requested",
+                actor=getattr(request.user, "username", "user"),
+                details="Merchant requested store activation.",
+            )
+            messages.success(request, "Activation requested. An admin will review and publish your store.")
+            return redirect("tenants:pending_activation")
         elif action == "deactivate":
             DeactivateStoreUseCase.execute(
                 DeactivateStoreCommand(user=request.user, tenant=tenant, reason=request.POST.get("reason") or "")
@@ -469,7 +509,12 @@ def store_setup_step1(request: HttpRequest) -> HttpResponse:
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     initial = {
         "name": tenant.name,
@@ -556,7 +601,12 @@ def store_settings_update(request: HttpRequest) -> HttpResponse:
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     initial = {
         "name": tenant.name,
@@ -585,6 +635,7 @@ def store_settings_update(request: HttpRequest) -> HttpResponse:
                 )
             ),
         }
+        context["base_domain"] = getattr(settings, "WASSLA_BASE_DOMAIN", "")
         return render(request, "web/store/setup_step1.html", context)
 
     if not form.is_valid():
@@ -627,14 +678,21 @@ def custom_domain_verification(request: HttpRequest, token: str) -> HttpResponse
 
 
 @login_required
-@tenant_access_required
+@merchant_subscription_required
 @require_POST
 def custom_domain_add(request: HttpRequest) -> HttpResponse:
     tenant = request.tenant
+    if not FeatureGateService.can_use_feature(tenant.id, FeatureGateService.CUSTOM_DOMAIN):
+        return render(
+            request,
+            "dashboard/upgrade_required.html",
+            {"feature_name": "Custom domains", "tenant": tenant},
+            status=200,
+        )
     form = CustomDomainForm(request.POST)
     if not form.is_valid():
         messages.error(request, "Invalid domain.")
-        return redirect("tenants:store_settings_update")
+        return redirect("tenants:dashboard_domains")
 
     try:
         AddCustomDomainUseCase.execute(
@@ -649,38 +707,43 @@ def custom_domain_add(request: HttpRequest) -> HttpResponse:
     else:
         messages.success(request, "Domain added. Update DNS then verify.")
 
-    return redirect("tenants:store_settings_update")
+    return redirect("tenants:dashboard_domains")
 
 
 @login_required
-@tenant_access_required
+@merchant_subscription_required
 @require_POST
 def custom_domain_verify(request: HttpRequest, domain_id: int) -> HttpResponse:
     tenant = request.tenant
     domain = StoreDomain.objects.filter(id=domain_id, tenant=tenant).first()
     if not domain:
         messages.error(request, "Domain not found.")
-        return redirect("tenants:store_settings_update")
+        return redirect("tenants:dashboard_domains")
 
     try:
         EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
     except StoreAccessDeniedError as exc:
-        raise PermissionDenied(str(exc)) from exc
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
 
     enqueue_verify_domain(domain_id=domain.id)
     messages.success(request, "Verification started. Please wait a moment.")
-    return redirect("tenants:store_settings_update")
+    return redirect("tenants:dashboard_domains")
 
 
 @login_required
-@tenant_access_required
+@merchant_subscription_required
 @require_POST
 def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
     tenant = request.tenant
     domain = StoreDomain.objects.filter(id=domain_id, tenant=tenant).first()
     if not domain:
         messages.error(request, "Domain not found.")
-        return redirect("tenants:store_settings_update")
+        return redirect("tenants:dashboard_domains")
 
     try:
         DisableDomainUseCase.execute(
@@ -695,11 +758,11 @@ def custom_domain_disable(request: HttpRequest, domain_id: int) -> HttpResponse:
     else:
         messages.success(request, "Domain disabled.")
 
-    return redirect("tenants:store_settings_update")
+    return redirect("tenants:dashboard_domains")
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def dashboard_home(request: HttpRequest) -> HttpResponse:
     """Minimal dashboard landing page.
@@ -714,11 +777,6 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     tenant = getattr(request, "tenant", None)
     if tenant is None:
         return redirect("tenants:store_create")
-
-    try:
-        EnsureTenantOwnershipPolicy.ensure_can_access(user=request.user, tenant=tenant)
-    except (StoreAccessDeniedError, StoreInactiveError) as exc:
-        raise PermissionDenied(str(exc)) from exc
 
     use_case = GetMerchantDashboardMetricsUseCase()
     metrics = use_case.execute(
@@ -741,7 +799,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-@tenant_access_required
+@merchant_dashboard_required
 @require_GET
 def dashboard_orders(request: HttpRequest) -> HttpResponse:
     """Merchant orders list (placeholder).
@@ -751,3 +809,44 @@ def dashboard_orders(request: HttpRequest) -> HttpResponse:
     order queries later via an application-level read use-case.
     """
     return render(request, "dashboard/orders.html", {"tenant": request.tenant})
+
+
+@login_required
+@tenant_access_required
+@require_GET
+def payment_required(request: HttpRequest) -> HttpResponse:
+    return render(request, "dashboard/payment_required.html", {"tenant": request.tenant})
+
+
+@login_required
+@tenant_access_required
+@require_GET
+def pending_activation(request: HttpRequest) -> HttpResponse:
+    return render(request, "dashboard/pending_activation.html", {"tenant": request.tenant})
+
+
+@login_required
+@merchant_subscription_required
+@require_GET
+def dashboard_domains(request: HttpRequest) -> HttpResponse:
+    tenant = request.tenant
+    if not FeatureGateService.can_use_feature(tenant.id, FeatureGateService.CUSTOM_DOMAIN):
+        return render(
+            request,
+            "dashboard/upgrade_required.html",
+            {"feature_name": "Custom domains", "tenant": tenant},
+            status=200,
+        )
+
+    domains = StoreDomain.objects.filter(tenant=tenant).order_by("-created_at")
+    return render(
+        request,
+        "dashboard/domains.html",
+        {
+            "tenant": tenant,
+            "domains": domains,
+            "form": CustomDomainForm(),
+            "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", ""),
+            "verification_prefix": getattr(settings, "CUSTOM_DOMAIN_VERIFICATION_PATH_PREFIX", ""),
+        },
+    )

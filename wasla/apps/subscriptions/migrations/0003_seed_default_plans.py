@@ -10,6 +10,9 @@ def seed_default_plans(apps, schema_editor):
     StoreSubscription = apps.get_model("subscriptions", "StoreSubscription")
     Tenant = apps.get_model("tenants", "Tenant")
 
+    if SubscriptionPlan.objects.exists():
+        return
+
     plans = [
         {
             "name": "Basic",
@@ -41,15 +44,10 @@ def seed_default_plans(apps, schema_editor):
     ]
 
     for plan_data in plans:
-        plan, created = SubscriptionPlan.objects.get_or_create(
+        SubscriptionPlan.objects.get_or_create(
             name=plan_data["name"],
             defaults=plan_data,
         )
-        if not created:
-            for key, value in plan_data.items():
-                setattr(plan, key, value)
-            plan.is_active = True
-            plan.save()
 
     default_tenant = Tenant.objects.filter(slug="default").first()
     if not default_tenant:
@@ -88,4 +86,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_default_plans, migrations.RunPython.noop),
     ]
-

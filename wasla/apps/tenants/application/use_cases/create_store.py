@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import IntegrityError, transaction
 
-from apps.subscriptions.models import SubscriptionPlan
-from apps.subscriptions.services.subscription_service import SubscriptionService
 from apps.tenants.domain.errors import (
     StoreSlugAlreadyTakenError,
 )
@@ -173,10 +171,6 @@ class CreateStoreUseCase:
         if store:
             StoreSettings.objects.get_or_create(store=store)
             StoreSetupStep.objects.get_or_create(store=store)
-
-        basic_plan = SubscriptionPlan.objects.filter(name="Basic", is_active=True).first()
-        if basic_plan:
-            SubscriptionService.subscribe_store(tenant.id, basic_plan)
 
         TenantAuditService.record_action(
             tenant,

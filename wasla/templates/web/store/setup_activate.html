@@ -34,7 +34,7 @@
     <form method="post" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
       {% csrf_token %}
       <input type="hidden" name="action" value="activate">
-      <button class="btn" type="submit" {% if readiness and not readiness.ok %}disabled{% endif %}>إطلاق المتجر</button>
+      <button class="btn" type="submit" {% if readiness and not readiness.ok %}disabled{% endif %}>Request activation</button>
       {% if tenant.is_published %}
         <button class="btn btn-soft" formmethod="post" name="action" value="deactivate">إيقاف مؤقت</button>
       {% endif %}
@@ -42,7 +42,7 @@
     </form>
 
     <div style="margin-top:18px;" class="muted">
-      عند الإطلاق سيتم وضع المتجر على الوضع العام (Published) واعتبار الإعداد مكتمل.
+      Admin will review and publish your store after the activation request.
     </div>
   </div>
 </div>

@@ -76,7 +76,15 @@ def resolve_onboarding_state(request) -> str:
 
     active_subscription = SubscriptionService.get_active_subscription(tenant.id)
     if active_subscription is None:
-        return reverse("accounts:persona_plans")
+        from apps.subscriptions.models import StoreSubscription
+        latest = (
+            StoreSubscription.objects.filter(store_id=tenant.id)
+            .order_by("-created_at", "-end_date")
+            .first()
+        )
+        if latest is None:
+            return reverse("accounts:persona_plans")
+        return reverse("tenants:payment_required")
 
     store_profile = StoreProfile.objects.filter(tenant=tenant).order_by("id").first()
     if not store_profile:

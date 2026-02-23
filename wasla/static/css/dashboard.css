@@ -90,6 +90,22 @@
   padding: 12px;
 }
 
+.dash__plan-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.dash__plan-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dash__plan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dash__sidebar-panel .btn {
   inline-size: 100%;
 }

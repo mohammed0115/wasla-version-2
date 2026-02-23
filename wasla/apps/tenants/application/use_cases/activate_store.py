@@ -51,9 +51,11 @@ class ActivateStoreUseCase:
         now = timezone.now()
         if not tenant.activated_at:
             tenant.activated_at = now
+        if hasattr(tenant, "activated_by_id"):
+            tenant.activated_by = cmd.user
         tenant.is_published = True
         tenant.deactivated_at = None
-        tenant.save(update_fields=["is_published", "activated_at", "deactivated_at", "updated_at"])
+        tenant.save(update_fields=["is_published", "activated_at", "activated_by", "deactivated_at", "updated_at"])
 
         if not profile.is_setup_complete:
             StoreSetupWizardUseCase.complete_setup(user=cmd.user, profile=profile)
@@ -99,4 +101,3 @@ class DeactivateStoreUseCase:
         )
 
         return tenant
-
