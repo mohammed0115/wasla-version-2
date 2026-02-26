@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -65,7 +66,7 @@ from apps.tenants.interfaces.web.decorators import (
     merchant_subscription_required,
 )
 from apps.subscriptions.application.services.feature_gate import FeatureGateService
-from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings
+from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings, TenantMembership
 from apps.tenants.tasks import enqueue_verify_domain
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.services.audit_service import TenantAuditService
@@ -74,10 +75,15 @@ from apps.domains.models import DomainHealth
 from .forms import (
     CustomDomainForm,
     PaymentSettingsForm,
+    MemberInviteForm,
+    MemberRoleForm,
     ShippingSettingsForm,
     StoreInfoSetupForm,
     StoreSettingsForm,
 )
+
+
+User = get_user_model()
 
 
 @login_required
@@ -845,6 +851,132 @@ def dashboard_orders(request: HttpRequest) -> HttpResponse:
     order queries later via an application-level read use-case.
     """
     return render(request, "dashboard/orders.html", {"tenant": request.tenant})
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["GET", "POST"])
+def dashboard_users_roles(request: HttpRequest) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    form = MemberInviteForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"]
+        role = form.cleaned_data["role"]
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            messages.error(request, "User with this email does not exist.")
+            return redirect("tenants:dashboard_users_roles")
+
+        if hasattr(tenant, "store_profile") and tenant.store_profile.owner_id == user.id:
+            messages.info(request, "Store owner is already assigned.")
+            return redirect("tenants:dashboard_users_roles")
+
+        membership, created = TenantMembership.objects.get_or_create(
+            tenant=tenant,
+            user=user,
+            defaults={"role": role, "is_active": True},
+        )
+        if not created:
+            membership.role = role
+            membership.is_active = True
+            membership.save(update_fields=["role", "is_active", "updated_at"])
+            messages.success(request, "Member updated.")
+        else:
+            messages.success(request, "Member added.")
+
+        return redirect("tenants:dashboard_users_roles")
+
+    memberships = (
+        TenantMembership.objects.filter(tenant=tenant)
+        .select_related("user")
+        .order_by("-is_active", "role", "user__email")
+    )
+
+    return render(
+        request,
+        "dashboard/settings/users_roles.html",
+        {
+            "tenant": tenant,
+            "memberships": memberships,
+            "invite_form": form,
+        },
+    )
+
+
+@login_required
+@tenant_access_required
+@require_POST
+def dashboard_member_update_role(request: HttpRequest, membership_id: int) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    membership = TenantMembership.objects.filter(tenant=tenant, id=membership_id).select_related("user").first()
+    if not membership:
+        messages.error(request, "Member not found.")
+        return redirect("tenants:dashboard_users_roles")
+
+    if membership.role == TenantMembership.ROLE_OWNER:
+        messages.error(request, "Owner role cannot be changed here.")
+        return redirect("tenants:dashboard_users_roles")
+
+    form = MemberRoleForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid role.")
+        return redirect("tenants:dashboard_users_roles")
+
+    membership.role = form.cleaned_data["role"]
+    membership.is_active = True
+    membership.save(update_fields=["role", "is_active", "updated_at"])
+    messages.success(request, "Member role updated.")
+    return redirect("tenants:dashboard_users_roles")
+
+
+@login_required
+@tenant_access_required
+@require_POST
+def dashboard_member_deactivate(request: HttpRequest, membership_id: int) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    membership = TenantMembership.objects.filter(tenant=tenant, id=membership_id).first()
+    if not membership:
+        messages.error(request, "Member not found.")
+        return redirect("tenants:dashboard_users_roles")
+
+    if membership.role == TenantMembership.ROLE_OWNER:
+        messages.error(request, "Owner cannot be deactivated.")
+        return redirect("tenants:dashboard_users_roles")
+
+    membership.is_active = False
+    membership.save(update_fields=["is_active", "updated_at"])
+    messages.success(request, "Member deactivated.")
+    return redirect("tenants:dashboard_users_roles")
 
 
 @login_required

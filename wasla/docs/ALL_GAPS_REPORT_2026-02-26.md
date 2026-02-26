@@ -56,12 +56,17 @@ This report consolidates gap findings from the SRS files analysis and shows curr
   - apps/tenants/management/commands/seed_permissions.py
   - config/urls.py
 
-### Open
-
 6) Settings module users & roles management (merchant-facing)
-- Status: Open
-- Missing:
-  - Merchant-facing routes/UI/actions for users and roles management in settings flow.
+- Status: Closed
+- Implemented in:
+  - apps/tenants/urls.py
+  - apps/tenants/interfaces/web/views.py
+  - apps/tenants/interfaces/web/forms.py
+  - templates/dashboard/settings/users_roles.html
+  - templates/dashboard/_base.html
+  - apps/tenants/test_users_roles_settings.py
+
+### Open
 
 7) Product category requirement enforcement
 - Status: Open
@@ -75,15 +80,15 @@ This report consolidates gap findings from the SRS files analysis and shows curr
 
 ## Counts
 - Total SRS gaps tracked: 8
-- Closed: 5
-- Open: 3
+- Closed: 6
+- Open: 2
 
 ## Priority to Complete Remaining Gaps
-1. Settings users/roles merchant management
-2. Category-required validation for product creation/update
-3. Product visibility state model expansion
+1. Category-required validation for product creation/update
+2. Product visibility state model expansion
 
 ## Change Evidence (Recent Commits)
 - e6c68fd1: Add stock-driven product auto-status sync
 - 58f2c0e0: Implement SRS gaps: dashboard KPIs, lifecycle transitions, shipping APIs
 - (working tree): Reviews moderation API + RBAC endpoints/tests
+- (working tree): Merchant users/roles settings management (owner-only)

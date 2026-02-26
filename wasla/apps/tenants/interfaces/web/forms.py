@@ -21,6 +21,7 @@ from apps.tenants.domain.setup_policies import (
     validate_payment_settings,
     validate_shipping_settings,
 )
+from apps.tenants.models import TenantMembership
 
 
 class StoreInfoSetupForm(forms.Form):
@@ -230,3 +231,42 @@ class ShippingSettingsForm(forms.Form):
 
         cleaned.update(normalized)
         return cleaned
+
+
+class MemberInviteForm(forms.Form):
+    email = forms.EmailField(label="User email")
+    role = forms.ChoiceField(
+        choices=[
+            (TenantMembership.ROLE_ADMIN, "Admin"),
+            (TenantMembership.ROLE_STAFF, "Staff"),
+            (TenantMembership.ROLE_READ_ONLY, "Read-only"),
+        ],
+        initial=TenantMembership.ROLE_STAFF,
+        label="Role",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"].widget.attrs.setdefault("class", "form-control")
+        self.fields["role"].widget.attrs.setdefault("class", "form-select")
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if not email:
+            raise forms.ValidationError("Email is required.")
+        return email
+
+
+class MemberRoleForm(forms.Form):
+    role = forms.ChoiceField(
+        choices=[
+            (TenantMembership.ROLE_ADMIN, "Admin"),
+            (TenantMembership.ROLE_STAFF, "Staff"),
+            (TenantMembership.ROLE_READ_ONLY, "Read-only"),
+        ],
+        label="Role",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["role"].widget.attrs.setdefault("class", "form-select")
