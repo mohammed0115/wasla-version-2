@@ -42,12 +42,14 @@ class ProductService:
         if not name:
             raise ValueError("Product name is required")
 
+        normalized_quantity = max(0, int(quantity or 0))
+
         product = Product.objects.create(
             store_id=store_id,
             sku=str(sku).strip(),
             name=str(name).strip(),
             price=price,
-            is_active=is_active,
+            is_active=normalized_quantity > 0,
             description_ar=description_ar or "",
             description_en=description_en or "",
             image=image_file,
@@ -63,8 +65,8 @@ class ProductService:
         Inventory.objects.update_or_create(
             product=product,
             defaults={
-                "quantity": max(0, int(quantity or 0)),
-                "in_stock": int(quantity or 0) > 0,
+                "quantity": normalized_quantity,
+                "in_stock": normalized_quantity > 0,
             },
         )
 

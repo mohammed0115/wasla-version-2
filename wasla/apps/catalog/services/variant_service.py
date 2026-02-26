@@ -73,17 +73,17 @@ class ProductConfigurationService:
         payload: dict,
         product: Product | None = None,
     ) -> Product:
+        quantity = max(0, int(payload.get("quantity", 0) or 0))
         product_fields = {
             "sku": str(payload.get("sku", "")).strip(),
             "name": str(payload.get("name", "")).strip(),
             "price": payload.get("price"),
             "description_ar": payload.get("description_ar", "") or "",
             "description_en": payload.get("description_en", "") or "",
-            "is_active": bool(payload.get("is_active", True)),
+            "is_active": quantity > 0,
         }
         if "image" in payload:
             product_fields["image"] = payload.get("image")
-        quantity = max(0, int(payload.get("quantity", 0) or 0))
 
         if not product_fields["sku"]:
             raise ValueError("SKU is required")

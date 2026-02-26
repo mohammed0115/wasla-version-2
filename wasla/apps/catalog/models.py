@@ -260,6 +260,21 @@ class Inventory(models.Model):
     # Alert threshold used in merchant dashboard.
     low_stock_threshold = models.PositiveIntegerField(default=5)
 
+    def save(self, *args, **kwargs):
+        quantity = max(0, int(self.quantity or 0))
+        in_stock = quantity > 0
+        self.quantity = quantity
+        self.in_stock = in_stock
+
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            normalized = set(update_fields)
+            normalized.update({"quantity", "in_stock"})
+            kwargs["update_fields"] = list(normalized)
+
+        super().save(*args, **kwargs)
+        Product.objects.filter(pk=self.product_id).exclude(is_active=in_stock).update(is_active=in_stock)
+
     def __str__(self) -> str:
         return f"{self.product} - qty={self.quantity}"
 
