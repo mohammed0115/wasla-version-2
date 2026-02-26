@@ -95,6 +95,15 @@ def optimize_image_file(image_field):
 class Product(models.Model):
     """Sellable product within a store (unique SKU per store)."""
 
+    VISIBILITY_ENABLED = "enabled"
+    VISIBILITY_DISABLED = "disabled"
+    VISIBILITY_HIDDEN = "hidden"
+    VISIBILITY_CHOICES = [
+        (VISIBILITY_ENABLED, "Enabled"),
+        (VISIBILITY_DISABLED, "Disabled"),
+        (VISIBILITY_HIDDEN, "Hidden"),
+    ]
+
     store_id = models.IntegerField(default=1, db_index=True)
     sku = models.CharField(max_length=64)
     name = models.CharField(max_length=255)
@@ -102,6 +111,7 @@ class Product(models.Model):
     description_ar = models.TextField(blank=True, default="")
     description_en = models.TextField(blank=True, default="")
     image = models.ImageField(upload_to=product_image_upload_to, blank=True, null=True)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default=VISIBILITY_ENABLED)
     is_active = models.BooleanField(default=True)
     categories = models.ManyToManyField(Category, related_name="products", blank=True)
 
@@ -112,6 +122,24 @@ class Product(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.sku})"
+
+    @staticmethod
+    def resolve_visibility(*, quantity: int, requested_visibility: str | None = None) -> str:
+        if requested_visibility == Product.VISIBILITY_HIDDEN:
+            return Product.VISIBILITY_HIDDEN
+        if int(quantity or 0) <= 0:
+            return Product.VISIBILITY_DISABLED
+        if requested_visibility in {
+            Product.VISIBILITY_ENABLED,
+            Product.VISIBILITY_DISABLED,
+            Product.VISIBILITY_HIDDEN,
+        }:
+            return requested_visibility
+        return Product.VISIBILITY_ENABLED
+
+    @staticmethod
+    def is_active_from_visibility(visibility: str) -> bool:
+        return visibility == Product.VISIBILITY_ENABLED
 
 
 class ProductOptionGroup(models.Model):
@@ -273,7 +301,28 @@ class Inventory(models.Model):
             kwargs["update_fields"] = list(normalized)
 
         super().save(*args, **kwargs)
-        Product.objects.filter(pk=self.product_id).exclude(is_active=in_stock).update(is_active=in_stock)
+
+        product = Product.objects.only("id", "visibility", "is_active").filter(pk=self.product_id).first()
+        if not product:
+            return
+
+        if not in_stock:
+            next_visibility = Product.VISIBILITY_DISABLED
+        elif product.visibility == Product.VISIBILITY_DISABLED:
+            next_visibility = Product.VISIBILITY_ENABLED
+        else:
+            next_visibility = product.visibility
+
+        next_is_active = Product.is_active_from_visibility(next_visibility)
+        updates: list[str] = []
+        if product.visibility != next_visibility:
+            product.visibility = next_visibility
+            updates.append("visibility")
+        if product.is_active != next_is_active:
+            product.is_active = next_is_active
+            updates.append("is_active")
+        if updates:
+            product.save(update_fields=updates)
 
     def __str__(self) -> str:
         return f"{self.product} - qty={self.quantity}"

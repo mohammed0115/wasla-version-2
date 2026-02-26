@@ -74,13 +74,21 @@ class ProductConfigurationService:
         product: Product | None = None,
     ) -> Product:
         quantity = max(0, int(payload.get("quantity", 0) or 0))
+        requested_visibility = payload.get("visibility")
+        if requested_visibility is None and payload.get("is_active") is False:
+            requested_visibility = Product.VISIBILITY_DISABLED
+        resolved_visibility = Product.resolve_visibility(
+            quantity=quantity,
+            requested_visibility=requested_visibility,
+        )
         product_fields = {
             "sku": str(payload.get("sku", "")).strip(),
             "name": str(payload.get("name", "")).strip(),
             "price": payload.get("price"),
             "description_ar": payload.get("description_ar", "") or "",
             "description_en": payload.get("description_en", "") or "",
-            "is_active": quantity > 0,
+            "visibility": resolved_visibility,
+            "is_active": Product.is_active_from_visibility(resolved_visibility),
         }
         if "image" in payload:
             product_fields["image"] = payload.get("image")

@@ -74,20 +74,27 @@ This report consolidates gap findings from the SRS files analysis and shows curr
   - apps/catalog/serializers.py
   - apps/catalog/tests/test_category_requirement.py
 
+8) Product visibility states richer than boolean (enabled/disabled/hidden)
+- Status: Closed
+- Implemented in:
+  - apps/catalog/models.py
+  - apps/catalog/migrations/0008_product_visibility.py
+  - apps/catalog/services/product_service.py
+  - apps/catalog/services/variant_service.py
+  - apps/catalog/serializers.py
+  - apps/catalog/tests/test_product_visibility_states.py
+
 ### Open
 
-8) Product visibility states richer than boolean (enabled/disabled/hidden)
-- Status: Open
-- Missing:
-  - 3-state visibility model and migration from boolean active flag.
+- None.
 
 ## Counts
 - Total SRS gaps tracked: 8
-- Closed: 7
-- Open: 1
+- Closed: 8
+- Open: 0
 
 ## Priority to Complete Remaining Gaps
-1. Product visibility state model expansion
+- All tracked SRS gaps are closed.
 
 ## Change Evidence (Recent Commits)
 - e6c68fd1: Add stock-driven product auto-status sync
@@ -95,3 +102,4 @@ This report consolidates gap findings from the SRS files analysis and shows curr
 - (working tree): Reviews moderation API + RBAC endpoints/tests
 - (working tree): Merchant users/roles settings management (owner-only)
 - (working tree): Product category requirement enforcement
+- (working tree): Product visibility 3-state model

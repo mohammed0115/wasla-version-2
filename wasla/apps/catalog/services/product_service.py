@@ -27,6 +27,7 @@ class ProductService:
         quantity: int = 0,
         image_file=None,
         is_active: bool = True,
+        visibility: str | None = None,
         description_ar: str = "",
         description_en: str = "",
     ) -> Product:
@@ -43,13 +44,21 @@ class ProductService:
             raise ValueError("Product name is required")
 
         normalized_quantity = max(0, int(quantity or 0))
+        requested_visibility = visibility
+        if requested_visibility is None and not is_active:
+            requested_visibility = Product.VISIBILITY_DISABLED
+        resolved_visibility = Product.resolve_visibility(
+            quantity=normalized_quantity,
+            requested_visibility=requested_visibility,
+        )
 
         product = Product.objects.create(
             store_id=store_id,
             sku=str(sku).strip(),
             name=str(name).strip(),
             price=price,
-            is_active=normalized_quantity > 0,
+            visibility=resolved_visibility,
+            is_active=Product.is_active_from_visibility(resolved_visibility),
             description_ar=description_ar or "",
             description_en=description_en or "",
             image=image_file,

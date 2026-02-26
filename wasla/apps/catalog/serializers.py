@@ -79,6 +79,14 @@ class ProductWriteSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     quantity = serializers.IntegerField(min_value=0, required=False, default=0)
     is_active = serializers.BooleanField(required=False, default=True)
+    visibility = serializers.ChoiceField(
+        choices=[
+            Product.VISIBILITY_ENABLED,
+            Product.VISIBILITY_DISABLED,
+            Product.VISIBILITY_HIDDEN,
+        ],
+        required=False,
+    )
     description_ar = serializers.CharField(required=False, allow_blank=True)
     description_en = serializers.CharField(required=False, allow_blank=True)
     image = serializers.ImageField(required=False, allow_null=True)
@@ -106,6 +114,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "sku",
             "name",
             "price",
+            "visibility",
             "is_active",
             "description_ar",
             "description_en",
