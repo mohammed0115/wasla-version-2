@@ -42,6 +42,19 @@
   </div>
 </section>
 
+<section class="card dbov-ai-welcome" id="aiWelcomePanel" hidden>
+  <div class="dbov-ai-welcome__head">
+    <h2 class="dash__section-title">{% trans "AI Welcome" %}</h2>
+    <button type="button" class="btn btn-soft" id="aiWelcomeDismiss">{% trans "Dismiss" %}</button>
+  </div>
+  <p class="dash__section-note">{% trans "Welcome to your AI-powered workspace. We prepared smart defaults for your store and recommended your next actions." %}</p>
+  <ul class="dash-list" id="aiWelcomeList">
+    <li>{% trans "Add your first 10 products to improve AI recommendations." %}</li>
+    <li>{% trans "Review shipping zones and payment settings before launch." %}</li>
+    <li>{% trans "Use AI Tools to generate product descriptions in Arabic and English." %}</li>
+  </ul>
+</section>
+
 <section class="dash__overview-grid stack-16">
   <section class="card dash__section">
     <div class="dash__section-header">
@@ -164,5 +177,37 @@
     })();
   </script>
 {% endif %}
+
+<script>
+  (function () {
+    var tenantId = "{{ tenant.id|default:'0' }}";
+    var key = "wasla_ai_welcome_seen_" + tenantId;
+    var panel = document.getElementById("aiWelcomePanel");
+    var dismiss = document.getElementById("aiWelcomeDismiss");
+    if (!panel || !tenantId || tenantId === "0") {
+      return;
+    }
+
+    var alreadySeen = false;
+    try {
+      alreadySeen = window.localStorage.getItem(key) === "1";
+    } catch (e) {
+      alreadySeen = false;
+    }
+
+    if (!alreadySeen) {
+      panel.hidden = false;
+    }
+
+    if (dismiss) {
+      dismiss.addEventListener("click", function () {
+        panel.hidden = true;
+        try {
+          window.localStorage.setItem(key, "1");
+        } catch (e) {}
+      });
+    }
+  })();
+</script>
 
 {% endblock %}

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
 import datetime
@@ -293,4 +294,56 @@ def ai_onboarding_wizard(request):
             "onboarding_seed": onboarding_seed,
             "registration_time_display": registration_time.strftime("%Y-%m-%d %H:%M"),
         },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def ai_onboarding_suggestions(request):
+    business = (request.GET.get("business") or "").strip() or "ملابس"
+
+    suggestions_by_business = {
+        "ملابس": [
+            "ابدأ بإضافة 10 منتجات أساسية مع المقاسات الأكثر طلبًا.",
+            "فعّل المتغيرات (S/M/L/XL) قبل رفع أول دفعة منتجات.",
+            "استخدم وصفًا عربيًا قصيرًا + نقاط مميزات لتحسين التحويل.",
+        ],
+        "إلكترونيات": [
+            "أضف المواصفات الفنية كحقول ثابتة لكل منتج.",
+            "فعّل الشحن المتقدم وتتبع الطلبات من أول يوم.",
+            "أظهر سياسة الضمان في وصف المنتج بشكل واضح.",
+        ],
+        "تجميل": [
+            "أنشئ تصنيفات بحسب نوع البشرة والاستخدام.",
+            "استخدم صورًا متناسقة المقاس لخلاصة منتجات أوضح.",
+            "ابدأ بحملة عرض ترحيبي لأول طلب لتحفيز التحويل.",
+        ],
+        "أثاث": [
+            "أضف الأبعاد والوزن في كل منتج قبل النشر.",
+            "فعّل مناطق الشحن حسب المدن لتسعير أدق.",
+            "استخدم صورًا متعددة لكل منتج (واجهة/تفاصيل/قياس).",
+        ],
+        "أغذية": [
+            "نظّم المنتجات حسب النوع وتاريخ الصلاحية.",
+            "ابدأ بخيارات توصيل سريعة للمدن الأساسية.",
+            "أضف عبوات متعددة السعر لرفع متوسط السلة.",
+        ],
+        "خدمات": [
+            "حوّل كل خدمة إلى باقة واضحة السعر والمدة.",
+            "أضف أسئلة متكررة لشرح خطوات تنفيذ الخدمة.",
+            "فعّل نماذج الطلب السريعة مع حقول مختصرة.",
+        ],
+    }
+
+    default_suggestions = [
+        "ابدأ بالمنتجات الأعلى طلبًا في نشاطك.",
+        "حافظ على صور موحدة ووصف واضح لكل منتج.",
+        "تابع أول 20 طلبًا واضبط الشحن بناءً على النتائج.",
+    ]
+
+    return JsonResponse(
+        {
+            "business": business,
+            "suggestions": suggestions_by_business.get(business, default_suggestions),
+        }
     )

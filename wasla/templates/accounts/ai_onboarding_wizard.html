@@ -115,6 +115,15 @@
     gap: 18px;
   }
 
+  .wizard-body.is-transitioning .wizard-step.is-active {
+    animation: wizardSlideIn .24s ease;
+  }
+
+  @keyframes wizardSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
   .wizard-step {
     display: none;
     animation: fadeStep .26s ease;
@@ -537,7 +546,7 @@
 
 {% block body %}
 <div class="ai-wizard-shell" dir="rtl">
-  <div class="ai-wizard" id="aiWizard">
+  <div class="ai-wizard" id="aiWizard" data-suggestions-url="{% url 'accounts:ai_onboarding_suggestions' %}">
     <div class="ai-wizard-header">
       <div class="ai-brand-row">
         <div class="ai-brand"><span class="ai-brand-dot"></span> Wasla AI Onboarding</div>
@@ -558,7 +567,7 @@
     </div>
 
     <div class="wizard-body">
-      <section class="wizard-step is-active" data-step="1">
+      <div class="wizard-step is-active" data-step="1">
         <div class="soft-card" style="display:grid; gap:14px;">
           <h3 style="margin:0;">🟣 STEP 1 — التسجيل</h3>
           <p class="ai-subtitle" style="margin:0;">جمع البيانات الأساسية مع تحليل ذكي خلف الكواليس.</p>
@@ -591,9 +600,9 @@
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section class="wizard-step" data-step="2">
+      <div class="wizard-step" data-step="2">
         <div class="soft-card" style="display:grid; gap:14px;">
           <h3 style="margin:0;">🟢 STEP 2 — OTP</h3>
           <p class="ai-subtitle" style="margin:0;">لا تغيير في تدفق التحقق.</p>
@@ -607,9 +616,9 @@
           </div>
           <div><span class="status-ok">✓ تم التحقق بنجاح</span></div>
         </div>
-      </section>
+      </div>
 
-      <section class="wizard-step" data-step="3">
+      <div class="wizard-step" data-step="3">
         <div style="display:grid; gap:14px;">
           <div class="soft-card" style="display:grid; gap:10px;">
             <h3 style="margin:0;">🟡 STEP 3 — نوع النشاط (AI يبدأ التحليل)</h3>
@@ -628,10 +637,18 @@
               <span id="analysisText">تحتاج دعم للمتغيرات (مقاسات) وخطة Pro مناسبة كبداية.</span>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section class="wizard-step" data-step="4">
+          <div class="suggestion-panel" id="aiSuggestionBox">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+              <strong>🤖 اقتراحات AI لبداية أسرع</strong>
+              <button type="button" class="btn-ai-secondary" id="btnRefreshSuggestions">تحديث الاقتراحات</button>
+            </div>
+            <ul id="aiSuggestionList" class="dash-list" style="margin-top:10px;"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="4">
         <div style="display:grid; gap:14px;">
           <div class="soft-card" style="display:grid; gap:8px;">
             <h3 style="margin:0;">🟠 STEP 4 — اختيار الخطة (AI Assisted)</h3>
@@ -662,9 +679,9 @@
             <p style="margin:8px 0 0;" id="planReasonText">بناءً على نشاطك (ملابس) ومتوسط 80 منتج مبدئيًا نوصي بخطة Pro.</p>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section class="wizard-step" data-step="5">
+      <div class="wizard-step" data-step="5">
         <div class="grid-2">
           <div class="soft-card" style="display:grid; gap:12px;">
             <h3 style="margin:0;">🔵 STEP 5 — اسم المتجر (AI Branding Engine)</h3>
@@ -697,9 +714,9 @@
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section class="wizard-step" data-step="6">
+      <div class="wizard-step" data-step="6">
         <div class="provision-card">
           <h3 style="margin:0;">🟢 STEP 6 — AI Configuration Engine</h3>
           <p class="ai-subtitle" style="margin:0;">يتم تجهيز إعدادات متجرك الذكية…</p>
@@ -710,9 +727,9 @@
           <div class="provision-line">تفعيل إعدادات الشحن المتقدمة</div>
           <div class="provision-line">اختيار الثيم المناسب للنشاط وتفعيل العملة</div>
         </div>
-      </section>
+      </div>
 
-      <section class="wizard-step" data-step="7">
+      <div class="wizard-step" data-step="7">
         <div style="display:grid; gap:14px;">
           <div class="soft-card" style="display:grid; gap:6px;">
             <h3 style="margin:0;">🔵 أول دخول للداشبورد</h3>
@@ -750,7 +767,7 @@
             AI suggestion: أضف أول 10 منتجات وسنحسن عرضهم تلقائيًا.
           </div>
         </div>
-      </section>
+      </div>
 
       <div class="step-actions">
         <button type="button" class="btn-ai-secondary" id="btnBack">السابق</button>
@@ -809,6 +826,11 @@
   const btnBack = document.getElementById("btnBack");
   const btnNext = document.getElementById("btnNext");
   const btnFinish = document.getElementById("btnFinish");
+  const wizardRoot = document.getElementById("aiWizard");
+  const wizardBody = document.querySelector(".wizard-body");
+  const suggestionsUrl = wizardRoot ? wizardRoot.dataset.suggestionsUrl : "";
+  const suggestionList = document.getElementById("aiSuggestionList");
+  const btnRefreshSuggestions = document.getElementById("btnRefreshSuggestions");
 
   const businessChips = document.getElementById("businessChips");
   const planCards = Array.from(document.querySelectorAll(".plan-card"));
@@ -829,6 +851,11 @@
 
   function setStep(nextStep) {
     state.step = Math.min(7, Math.max(1, nextStep));
+
+    if (wizardBody) {
+      wizardBody.classList.add("is-transitioning");
+      window.setTimeout(() => wizardBody.classList.remove("is-transitioning"), 240);
+    }
 
     steps.forEach((stepEl) => {
       const stepNo = Number(stepEl.dataset.step);
@@ -890,6 +917,35 @@
     state.selectedPlan = rule.plan;
     refreshPlanSelection();
     refreshBranding();
+    fetchAiSuggestions();
+  }
+
+  function renderSuggestions(items) {
+    if (!suggestionList) return;
+    suggestionList.innerHTML = "";
+    (items || []).forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      suggestionList.appendChild(li);
+    });
+  }
+
+  function fetchAiSuggestions() {
+    if (!suggestionsUrl || !suggestionList) {
+      return;
+    }
+
+    const query = new URLSearchParams({ business: state.business }).toString();
+    fetch(`${suggestionsUrl}?${query}`, { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("suggestions_failed")))
+      .then((payload) => renderSuggestions(payload.suggestions || []))
+      .catch(() => {
+        renderSuggestions([
+          "ابدأ بـ 10 منتجات أساسية لتجهيز المتجر بسرعة.",
+          "فعّل التصنيفات الرئيسية قبل نشر الكتالوج.",
+          "راجع بيانات الشحن والدفع قبل أول طلب.",
+        ]);
+      });
   }
 
   function refreshPlanSelection() {
@@ -970,6 +1026,10 @@
       planReasonText.textContent = `تم اختيار خطة ${state.selectedPlan}. التوصية الذكية الأصلية: ${state.recommendedPlan} بناءً على نشاط ${state.business}.`;
     });
   });
+
+  if (btnRefreshSuggestions) {
+    btnRefreshSuggestions.addEventListener("click", fetchAiSuggestions);
+  }
 
   storeNameInput.addEventListener("input", refreshBranding);
 
