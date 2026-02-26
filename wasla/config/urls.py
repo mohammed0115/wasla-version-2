@@ -52,6 +52,7 @@ urlpatterns = [
     path("api/", include(("apps.orders.urls", "orders_api"), namespace="orders_api")),
     path("api/", include(("apps.purchases.urls", "purchases_api"), namespace="purchases_api")),
     path("api/", include(("apps.payments.interfaces.api.urls", "payments_api"), namespace="payments_api")),
+    path("api/", include(("apps.reviews.urls", "reviews_api"), namespace="reviews_api")),
     path("api/", include(("apps.settlements.interfaces.api.urls", "settlements_api"), namespace="settlements_api")),
     path("api/", include(("apps.shipping.urls", "shipping_api"), namespace="shipping_api")),
     path("api/", include(("apps.themes.interfaces.api.urls", "themes_api"), namespace="themes_api")),

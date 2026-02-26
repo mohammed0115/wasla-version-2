@@ -26,6 +26,8 @@ PERMISSIONS = [
     ("plugins.disable_plugin", "plugins", "Disable plugins"),
     ("plugins.uninstall_plugin", "plugins", "Uninstall plugins"),
     ("domains.queue_provision", "domains", "Queue domain provisioning/verification"),
+    ("reviews.view_pending", "reviews", "View pending reviews for moderation"),
+    ("reviews.moderate", "reviews", "Approve/reject reviews"),
 ]
 
 
@@ -44,6 +46,7 @@ ROLE_MATRIX = {
         "settlements.view_settlements",
         "settlements.view_reports",
         "plugins.view_plugins",
+        "reviews.view_pending",
     ],
     TenantMembership.ROLE_READ_ONLY: [
         "orders.view_reports",
