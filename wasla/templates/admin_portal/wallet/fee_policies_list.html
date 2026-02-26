@@ -1,0 +1,216 @@
+{% extends "admin_portal/base_portal.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Fee Policies" %} | Admin{% endblock %}
+{% block page_title %}{% trans "Fee Policies" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <!-- Header with Create Button -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">{% trans "Platform & Store Fee Configuration" %}</h4>
+    <a href="{% url 'admin:wallet_fee_policy_create' %}" class="btn btn-primary">
+      + {% trans "Create Policy" %}
+    </a>
+  </div>
+
+  <!-- Info Alert -->
+  <div class="alert alert-info" role="alert">
+    <strong>{% trans "How Fees Work:" %}</strong> 
+    {% trans "Fees are applied in priority order: Store-specific → Plan-level → Global default. The first matching policy is applied to transactions." %}
+  </div>
+
+  <!-- Fee Policies Grouped by Scope -->
+  
+  <!-- Global Policies -->
+  <div class="mb-4">
+    <h5 class="mb-3">🌍 {% trans "Global Policies" %}</h5>
+    <div class="row">
+      {% for policy in global_policies %}
+        <div class="col-md-6 col-lg-4 mb-3">
+          <div class="card h-100 {% if not policy.is_active %}opacity-50{% endif %}">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <h6 class="mb-0">{{ policy.name }}</h6>
+              {% if not policy.is_active %}
+                <span class="badge bg-secondary">{% trans "Inactive" %}</span>
+              {% endif %}
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">{% trans "Type" %}</p>
+              <p class="mb-3">
+                {% if policy.fee_type == 'percentage' %}
+                  <strong>{{ policy.fee_value }}%</strong> {% trans "of transaction amount" %}
+                {% elif policy.fee_type == 'fixed' %}
+                  <strong>{{ policy.fee_value|floatformat:2 }} {{ currency }}</strong> {% trans "per transaction" %}
+                {% elif policy.fee_type == 'tiered' %}
+                  <span class="badge bg-info">{% trans "Tiered" %}</span>
+                {% endif %}
+              </p>
+
+              {% if policy.minimum_fee %}
+                <p class="text-muted small mb-2">{% trans "Minimum Fee" %}</p>
+                <p class="mb-3"><strong>{{ policy.minimum_fee|floatformat:2 }} {{ currency }}</strong></p>
+              {% endif %}
+
+              <ul class="small text-muted ps-3 mb-3">
+                {% if policy.apply_to_shipping %}
+                  <li>{% trans "Applies to shipping" %}</li>
+                {% endif %}
+                {% if policy.apply_to_discounts %}
+                  <li>{% trans "Applies to discounts" %}</li>
+                {% endif %}
+              </ul>
+
+              <p class="text-muted small mb-2">{% trans "Created" %}</p>
+              <p class="small">{{ policy.created_at|date:"Y-m-d" }}</p>
+            </div>
+            <div class="card-footer bg-light">
+              <a href="{% url 'admin:wallet_fee_policy_edit' policy.id %}" class="btn btn-sm btn-outline-primary">
+                {% trans "Edit" %}
+              </a>
+              {% if policy.is_active %}
+                <form method="post" action="{% url 'admin:wallet_fee_policy_deactivate' policy.id %}" style="display: inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('{% trans 'Deactivate this policy?' %}')">
+                    {% trans "Deactivate" %}
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-muted">{% trans "No global policies configured." %}</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Plan-Level Policies -->
+  {% if plan_policies %}
+    <div class="mb-4">
+      <h5 class="mb-3">📊 {% trans "Plan-Level Policies" %}</h5>
+      <div class="row">
+        {% for policy in plan_policies %}
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100 {% if not policy.is_active %}opacity-50{% endif %}">
+              <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ policy.name }}</h6>
+                {% if not policy.is_active %}
+                  <span class="badge bg-secondary">{% trans "Inactive" %}</span>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-2">{% trans "Plan" %}</p>
+                <p class="mb-3"><strong>{{ policy.subscription_plan.name }}</strong></p>
+
+                <p class="text-muted small mb-2">{% trans "Type" %}</p>
+                <p class="mb-3">
+                  {% if policy.fee_type == 'percentage' %}
+                    <strong>{{ policy.fee_value }}%</strong> {% trans "of transaction amount" %}
+                  {% elif policy.fee_type == 'fixed' %}
+                    <strong>{{ policy.fee_value|floatformat:2 }} {{ currency }}</strong> {% trans "per transaction" %}
+                  {% endif %}
+                </p>
+
+                {% if policy.minimum_fee %}
+                  <p class="text-muted small mb-2">{% trans "Minimum Fee" %}</p>
+                  <p class="mb-3"><strong>{{ policy.minimum_fee|floatformat:2 }} {{ currency }}</strong></p>
+                {% endif %}
+              </div>
+              <div class="card-footer bg-light">
+                <a href="{% url 'admin:wallet_fee_policy_edit' policy.id %}" class="btn btn-sm btn-outline-primary">
+                  {% trans "Edit" %}
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Store-Level Policies -->
+  {% if store_policies %}
+    <div class="mb-4">
+      <h5 class="mb-3">🏪 {% trans "Store-Specific Policies" %}</h5>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Policy Name" %}</th>
+              <th>{% trans "Store" %}</th>
+              <th>{% trans "Type" %}</th>
+              <th>{% trans "Fee Value" %}</th>
+              <th>{% trans "Status" %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for policy in store_policies %}
+              <tr {% if not policy.is_active %}class="table-secondary"{% endif %}>
+                <td><strong>{{ policy.name }}</strong></td>
+                <td>{{ policy.store.name }}</td>
+                <td>
+                  {% if policy.fee_type == 'percentage' %}
+                    {% trans "Percentage" %}
+                  {% elif policy.fee_type == 'fixed' %}
+                    {% trans "Fixed" %}
+                  {% elif policy.fee_type == 'tiered' %}
+                    {% trans "Tiered" %}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if policy.fee_type == 'percentage' %}
+                    {{ policy.fee_value }}%
+                  {% else %}
+                    {{ policy.fee_value|floatformat:2 }} {{ currency }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if policy.is_active %}
+                    <span class="badge bg-success">{% trans "Active" %}</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{% trans "Inactive" %}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'admin:wallet_fee_policy_edit' policy.id %}" class="btn btn-sm btn-outline-primary">
+                    {% trans "Edit" %}
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Management Stats -->
+  <div class="card mt-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">{% trans "Statistics" %}</h5>
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h6 class="text-muted">{% trans "Total Policies" %}</h6>
+          <h3>{{ total_policies }}</h3>
+        </div>
+        <div class="col-md-3">
+          <h6 class="text-muted">{% trans "Active" %}</h6>
+          <h3 class="text-success">{{ active_count }}</h3>
+        </div>
+        <div class="col-md-3">
+          <h6 class="text-muted">{% trans "Inactive" %}</h6>
+          <h3 class="text-muted">{{ inactive_count }}</h3>
+        </div>
+        <div class="col-md-3">
+          <h6 class="text-muted">{% trans "Store-Specific" %}</h6>
+          <h3 class="text-info">{{ store_policies_count }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

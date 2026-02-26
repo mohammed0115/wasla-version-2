@@ -1,0 +1,62 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Payment Attempt Detail{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+  <h1 class="h3">Payment Attempt #{{ attempt.id }}</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div><strong>Status:</strong> {{ attempt.status }}</div>
+    <div><strong>Provider:</strong> {{ attempt.provider }}</div>
+    <div><strong>Order:</strong> {{ attempt.order_id }}</div>
+    <div><strong>Idempotency Key:</strong> {{ attempt.idempotency_key }}</div>
+    <div><strong>Retry Attempts:</strong> {{ attempt.retry_count }}</div>
+    <div><strong>Provider Response:</strong> <pre>{{ attempt.raw_response }}</pre></div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Webhook Logs</div>
+  <div class="card-body table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th>Event</th><th>Status</th><th>Signature</th><th>Received</th></tr></thead>
+      <tbody>
+      {% for log in webhook_logs %}
+        <tr>
+          <td>{{ log.event_id }}</td>
+          <td>{{ log.status }}</td>
+          <td>{% if log.signature_valid %}valid{% else %}invalid{% endif %}</td>
+          <td>{{ log.received_at|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="text-muted text-center">No webhook logs.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Retry / Provider Logs</div>
+  <div class="card-body table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th>Operation</th><th>Status</th><th>Duration</th><th>Created</th></tr></thead>
+      <tbody>
+      {% for log in communication_logs %}
+        <tr>
+          <td>{{ log.operation }}</td>
+          <td>{{ log.status_code|default:'-' }}</td>
+          <td>{{ log.duration_ms|default:'-' }} ms</td>
+          <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="text-muted text-center">No provider logs.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

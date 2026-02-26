@@ -1,0 +1,201 @@
+{% extends "admin_portal/base_portal.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Withdrawal Queue" %} | Admin{% endblock %}
+{% block page_title %}{% trans "Withdrawal Queue" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <!-- Stats Row -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="card-body">
+          <h6 class="text-muted">{% trans "Pending Withdrawals" %}</h6>
+          <h3 class="text-primary">{{ pending_count }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="card-body">
+          <h6 class="text-muted">{% trans "Total Pending Amount" %}</h6>
+          <h3 class="text-warning">{{ pending_total|floatformat:2 }} {{ currency }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="card-body">
+          <h6 class="text-muted">{% trans "Approved (Unpaid)" %}</h6>
+          <h3 class="text-info">{{ approved_count }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="card-body">
+          <h6 class="text-muted">{% trans "Total Paid" %}</h6>
+          <h3 class="text-success">{{ total_paid|floatformat:2 }} {{ currency }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Form -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">{% trans "Filters" %}</h5>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">{% trans "Status" %}</label>
+          <select name="status" class="form-select">
+            <option value="">{% trans "All Statuses" %}</option>
+            <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>{% trans "Pending" %}</option>
+            <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>{% trans "Approved" %}</option>
+            <option value="paid" {% if selected_status == 'paid' %}selected{% endif %}>{% trans "Paid" %}</option>
+            <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>{% trans "Rejected" %}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">{% trans "Store" %}</label>
+          <select name="store" class="form-select">
+            <option value="">{% trans "All Stores" %}</option>
+            {% for store in stores %}
+              <option value="{{ store.id }}" {% if selected_store == store.id|stringformat:'s' %}selected{% endif %}>{{ store.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">{% trans "Date From" %}</label>
+          <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">{% trans "Date To" %}</label>
+          <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">{% trans "Filter" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Withdrawals Table -->
+  <div class="card">
+    <div class="table-responsive">
+      {% if withdrawals %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Reference" %}</th>
+              <th>{% trans "Store" %}</th>
+              <th>{% trans "Merchant" %}</th>
+              <th>{% trans "Amount" %}</th>
+              <th>{% trans "Status" %}</th>
+              <th>{% trans "Requested" %}</th>
+              <th>{% trans "Processed" %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for withdrawal in withdrawals %}
+              <tr>
+                <td>
+                  <code>{{ withdrawal.reference_code }}</code>
+                </td>
+                <td>{{ withdrawal.store.name }}</td>
+                <td>{{ withdrawal.store.owner.get_full_name }}</td>
+                <td>
+                  <strong>{{ withdrawal.amount|floatformat:2 }} {{ currency }}</strong>
+                </td>
+                <td>
+                  {% if withdrawal.status == 'pending' %}
+                    <span class="badge bg-warning text-dark">⏳ {% trans "Pending" %}</span>
+                  {% elif withdrawal.status == 'approved' %}
+                    <span class="badge bg-info">✓ {% trans "Approved" %}</span>
+                  {% elif withdrawal.status == 'paid' %}
+                    <span class="badge bg-success">✓ {% trans "Paid" %}</span>
+                  {% elif withdrawal.status == 'rejected' %}
+                    <span class="badge bg-danger">✗ {% trans "Rejected" %}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <small class="text-muted">{{ withdrawal.requested_at|date:"Y-m-d H:i" }}</small>
+                </td>
+                <td>
+                  {% if withdrawal.processed_at %}
+                    <small class="text-muted">{{ withdrawal.processed_at|date:"Y-m-d H:i" }}</small>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ withdrawal.get_admin_url }}" class="btn btn-sm btn-outline-primary">
+                    {% trans "Details" %}
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+          <div class="d-flex justify-content-between align-items-center p-3 border-top">
+            <span class="text-muted">
+              {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+            <nav>
+              <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page=1">{% trans "First" %}</a>
+                  </li>
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
+                  </li>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
+                  </li>
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
+                  </li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="p-5 text-center text-muted">
+          <p style="font-size: 18px; margin-bottom: 10px;">✓ {% trans "No withdrawals in this status" %}</p>
+          <p class="mb-0">{% trans "All withdrawal requests have been processed!" %}</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .stat-card {
+    border-left: 4px solid #007bff;
+    background: #f8f9fa;
+  }
+  .stat-card .card-body h3 {
+    font-weight: 700;
+    margin-top: 10px;
+  }
+  .table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+  }
+</style>
+{% endblock %}

@@ -34,13 +34,14 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("catalog.Product", on_delete=models.PROTECT)
+    variant = models.ForeignKey("catalog.ProductVariant", on_delete=models.PROTECT, null=True, blank=True)
     quantity = models.PositiveIntegerField()
     unit_price_snapshot = models.DecimalField(max_digits=12, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["cart", "product"], name="uq_cart_item_cart_product"),
+            models.UniqueConstraint(fields=["cart", "product", "variant"], name="uq_cart_item_cart_product_variant"),
         ]
         indexes = [
             models.Index(fields=["cart", "created_at"]),

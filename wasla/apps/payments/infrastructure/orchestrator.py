@@ -15,6 +15,7 @@ from apps.payments.models import PaymentAttempt, PaymentProviderSettings, Webhoo
 from apps.settlements.application.use_cases.process_successful_payment import (
     process_successful_payment,
 )
+from apps.wallet.services.wallet_service import WalletService
 
 
 class PaymentOrchestrator:
@@ -131,6 +132,13 @@ class PaymentOrchestrator:
             locked_attempt.raw_response = result.get("raw", {})
             locked_attempt.provider_reference = result.get("provider_reference") or locked_attempt.provider_reference
             locked_attempt.save(update_fields=["status", "raw_response", "provider_reference", "updated_at"])
+
+            WalletService.on_refund(
+                store_id=locked_attempt.store_id,
+                tenant_id=getattr(locked_attempt.order, "tenant_id", None),
+                amount=amount,
+                reference=f"payment_attempt_refund:{locked_attempt.id}:{amount}",
+            )
 
         return cls._standard_response(
             ok=bool(result.get("ok")),

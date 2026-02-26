@@ -1,0 +1,256 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n static %}
+
+{% block page_title %}{% trans "Wallet" %}{% endblock %}
+{% block page_subtitle %}{% trans "Manage your balance, earnings, and withdrawals" %}{% endblock %}
+
+{% block content %}
+<div class="wallet-summary">
+  <!-- Balance Cards -->
+  <div class="dash__grid dash__grid--3">
+    <!-- Available Balance Card -->
+    <div class="card kpi-card">
+      <div class="kpi-card__icon">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        </svg>
+      </div>
+      <div class="kpi-card__content">
+        <div class="kpi-card__label">{% trans "Available" %}</div>
+        <div class="kpi-card__value">{{ wallet.available_balance|floatformat:2 }} {{ wallet.currency }}</div>
+        <div class="kpi-card__meta">{% trans "Ready for withdrawal" %}</div>
+      </div>
+    </div>
+
+    <!-- Pending Balance Card -->
+    <div class="card kpi-card">
+      <div class="kpi-card__icon" style="color: #f59e0b;">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        </svg>
+      </div>
+      <div class="kpi-card__content">
+        <div class="kpi-card__label">{% trans "Pending Settlement" %}</div>
+        <div class="kpi-card__value">{{ wallet.pending_balance|floatformat:2 }} {{ wallet.currency }}</div>
+        <div class="kpi-card__meta">{% trans "Awaiting order delivery" %}</div>
+      </div>
+    </div>
+
+    <!-- Total Balance Card -->
+    <div class="card kpi-card">
+      <div class="kpi-card__icon" style="color: #10b981;">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
+        </svg>
+      </div>
+      <div class="kpi-card__content">
+        <div class="kpi-card__label">{% trans "Total Balance" %}</div>
+        <div class="kpi-card__value">{{ wallet.balance|floatformat:2 }} {{ wallet.currency }}</div>
+        <div class="kpi-card__meta">{% trans "Available + Pending" %}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+      <h3 style="margin: 0;">{% trans "Quick Actions" %}</h3>
+    </div>
+    <div class="card-body" style="padding: 20px;">
+      <div class="dash__grid dash__grid--2">
+        <a href="{% url 'wallet:dashboard_wallet_withdrawal_request' %}" class="btn btn-primary btn-lg">
+          {% trans "Request Withdrawal" %}
+        </a>
+        <a href="{% url 'wallet:dashboard_wallet_ledger' %}" class="btn btn-soft btn-lg">
+          {% trans "View Ledger" %}
+        </a>
+      </div>
+
+      {% if effective_available %}
+        <div class="muted" style="margin-top: 12px; font-size: 14px;">
+          {% blocktrans %}
+          Effective available balance: <strong>{{ effective_available }} {{ wallet.currency }}</strong>
+          (excluding {{ pending_withdrawals_count }} pending withdrawal{{ pending_withdrawals_count|pluralize }})
+          {% endblocktrans %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="card" style="margin-top: 20px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">{% trans "Recent Transactions" %}</h3>
+      <a href="{% url 'wallet:dashboard_wallet_ledger' %}" class="btn btn-sm btn-soft">{% trans "View All" %}</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      {% if recent_entries %}
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th>{% trans "Date" %}</th>
+              <th>{% trans "Type" %}</th>
+              <th>{% trans "Description" %}</th>
+              <th class="text-right">{% trans "Amount" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in recent_entries %}
+              <tr>
+                <td>
+                  <small class="muted">{{ entry.created_at|date:"Y-m-d H:i" }}</small>
+                </td>
+                <td>
+                  <span class="badge badge-{{ entry.entry_type }}">
+                    {{ entry.get_entry_type_display }}
+                  </span>
+                </td>
+                <td>{{ entry.description|truncatewords:10 }}</td>
+                <td class="text-right">
+                  {% if entry.entry_type == 'payment_captured' or entry.entry_type == 'order_delivered' %}
+                    <span style="color: #10b981;">+{{ entry.total_credit|floatformat:2 }}</span>
+                  {% elif entry.entry_type == 'refund' or entry.entry_type == 'withdrawal' %}
+                    <span style="color: #ef4444;">-{{ entry.total_debit|floatformat:2 }}</span>
+                  {% else %}
+                    {{ entry.total_debit|floatformat:2 }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div style="padding: 40px; text-align: center; color: #9ca3af;">
+          {% trans "No transactions yet" %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pending Withdrawals -->
+  {% if pending_withdrawals %}
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">{% trans "Pending Withdrawals" %}</h3>
+        <a href="{% url 'wallet:dashboard_wallet_withdrawals' %}" class="btn btn-sm btn-soft">{% trans "View All" %}</a>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th>{% trans "Reference" %}</th>
+              <th>{% trans "Amount" %}</th>
+              <th>{% trans "Status" %}</th>
+              <th>{% trans "Requested" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for withdrawal in pending_withdrawals %}
+              <tr>
+                <td><code>{{ withdrawal.reference_code }}</code></td>
+                <td>{{ withdrawal.amount|floatformat:2 }} {{ wallet.currency }}</td>
+                <td>
+                  <span class="badge badge-{{ withdrawal.status }}">
+                    {{ withdrawal.get_status_display }}
+                  </span>
+                </td>
+                <td><small class="muted">{{ withdrawal.requested_at|date:"Y-m-d H:i" }}</small></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .kpi-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-left: 4px solid #1F4FD8;
+  }
+  .kpi-card__icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(31, 79, 216, 0.1);
+    border-radius: 8px;
+    margin-right: 16px;
+    color: #1F4FD8;
+  }
+  .kpi-card__content {
+    flex: 1;
+  }
+  .kpi-card__label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .kpi-card__value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 2px;
+  }
+  .kpi-card__meta {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .card-header {
+    padding: 16px 20px;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .card-body {
+    padding: 20px;
+  }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .table tr:last-child td {
+    border-bottom: none;
+  }
+  .text-right {
+    text-align: right;
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .badge-payment_captured { background-color: #dbeafe; color: #1e40af; }
+  .badge-order_delivered { background-color: #d1fae5; color: #065f46; }
+  .badge-refund { background-color: #fee2e2; color: #991b1b; }
+  .badge-withdrawal { background-color: #fef3c7; color: #92400e; }
+  .badge-adjustment { background-color: #e0e7ff; color: #3730a3; }
+  .badge-pending { background-color: #fef3c7; color: #92400e; }
+  .badge-approved { background-color: #dbeafe; color: #1e40af; }
+  .badge-paid { background-color: #d1fae5; color: #065f46; }
+  .badge-rejected { background-color: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}

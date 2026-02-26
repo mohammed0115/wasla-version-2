@@ -130,6 +130,7 @@ CUSTOM_DOMAIN_NGINX_RELOAD_CMD = os.getenv("CUSTOM_DOMAIN_NGINX_RELOAD_CMD", "sy
 CUSTOM_DOMAIN_FORCE_HTTPS = _env_bool("CUSTOM_DOMAIN_FORCE_HTTPS", "0")
 CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST = _env_bool("CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST", "0")
 DOMAIN_PROVISIONING_MODE = os.getenv("DOMAIN_PROVISIONING_MODE", "manual").strip().lower() or "manual"
+WASLA_ENABLE_AR = _env_bool("WASLA_ENABLE_AR", "0")
 
 NGINX_TEMPLATE_DIR = os.getenv("NGINX_TEMPLATE_DIR", "infrastructure/nginx").strip() or "infrastructure/nginx"
 NGINX_DOMAIN_TEMPLATE = os.getenv("NGINX_DOMAIN_TEMPLATE", "domain.conf.j2").strip() or "domain.conf.j2"
@@ -148,6 +149,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
+    "django_celery_beat",  # Celery Beat scheduler with database backend
     "apps.accounts.apps.AccountsConfig",
     "apps.sms.apps.SmsConfig",
     "apps.notifications.apps.NotificationsConfig",
@@ -164,6 +166,7 @@ INSTALLED_APPS = [
     "apps.exports.apps.ExportsConfig",
     "apps.settlements.apps.SettlementsConfig",
     "apps.ai.apps.AiConfig",
+    "apps.ai_onboarding.apps.AiOnboardingConfig",
     "apps.domains.apps.DomainsConfig",
     "apps.observability.apps.ObservabilityConfig",
     "apps.security.apps.SecurityConfig",
@@ -181,17 +184,23 @@ INSTALLED_APPS = [
     "apps.admin_portal.apps.AdminPortalConfig",
 ]
 
+if WASLA_ENABLE_AR:
+    INSTALLED_APPS.append("apps.ar.apps.ArConfig")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "apps.tenants.middleware.TenantResolverMiddleware",
+    "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
     "apps.tenants.middleware.TenantLocaleMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "apps.observability.middleware.timing.PerformanceMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.security.middleware.rbac.PermissionCacheMiddleware",
     "apps.accounts.middleware.OnboardingFlowMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -299,6 +308,38 @@ if (os.getenv("DJANGO_ENABLE_EXTRA_DBS", "0") or "0") == "1":
     )
 
 
+# Cache configuration
+CACHE_TTL_DEFAULT = int(os.getenv("CACHE_TTL_DEFAULT", "300") or "300")
+CACHE_TTL_SHORT = int(os.getenv("CACHE_TTL_SHORT", "60") or "60")
+CACHE_TTL_LONG = int(os.getenv("CACHE_TTL_LONG", "900") or "900")
+CACHE_KEY_PREFIX = os.getenv("CACHE_KEY_PREFIX", "wasla")
+CACHE_USE_REDIS = _env_bool("CACHE_USE_REDIS", "0")
+CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "redis://127.0.0.1:6379/1")
+
+if CACHE_USE_REDIS:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": CACHE_REDIS_URL,
+            "TIMEOUT": CACHE_TTL_DEFAULT,
+            "KEY_PREFIX": CACHE_KEY_PREFIX,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "wasla-local-cache",
+            "TIMEOUT": CACHE_TTL_DEFAULT,
+            "KEY_PREFIX": CACHE_KEY_PREFIX,
+        }
+    }
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
@@ -359,6 +400,72 @@ SPECTACULAR_SETTINGS = {
         "name": "MIT License",
         "url": "https://opensource.org/licenses/MIT",
     },
+    "TAGS": [
+        {
+            "name": "Catalog / Variants",
+            "description": "Product variant management including option groups, variant stock, and variant pricing resolution.",
+        },
+        {
+            "name": "Catalog / Inventory",
+            "description": "Inventory insights and stock movement tracking for merchant operations.",
+        },
+        {
+            "name": "Cart",
+            "description": "Cart operations for adding, updating, listing, and removing items.",
+        },
+        {
+            "name": "Checkout",
+            "description": "Checkout flow steps from address to shipping and order creation.",
+        },
+        {
+            "name": "Orders",
+            "description": "Order lifecycle, retrieval, and merchant order management operations.",
+        },
+        {
+            "name": "Payments",
+            "description": "Payment initiation, callbacks, and payment status operations.",
+        },
+        {
+            "name": "Shipping",
+            "description": "Shipping methods and shipment-related operations.",
+        },
+        {
+            "name": "Settlements",
+            "description": "Settlement calculations, payouts, and reconciliation operations.",
+        },
+        {
+            "name": "Analytics",
+            "description": "Store analytics, KPIs, and reporting endpoints.",
+        },
+        {
+            "name": "AI",
+            "description": "AI-assisted catalog, categorization, and search operations.",
+        },
+        {
+            "name": "Imports",
+            "description": "Bulk import validation and execution endpoints.",
+        },
+        {
+            "name": "Exports",
+            "description": "Data export endpoints for orders, invoices, and reports.",
+        },
+        {
+            "name": "Themes",
+            "description": "Storefront theme management and customization endpoints.",
+        },
+        {
+            "name": "Reviews",
+            "description": "Product review listing and moderation operations.",
+        },
+        {
+            "name": "Subscriptions",
+            "description": "Subscription plans, entitlements, and billing lifecycle operations.",
+        },
+        {
+            "name": "Wallet",
+            "description": "Wallet balance and wallet transaction operations.",
+        },
+    ],
 }
 
 
@@ -443,6 +550,10 @@ AI_FAISS_INDEX_TYPE = os.environ.get('AI_FAISS_INDEX_TYPE', 'flat')  # flat|ivf
 AI_FAISS_NLIST = int(os.environ.get('AI_FAISS_NLIST', '0') or 0)
 AI_FAISS_NPROBE = int(os.environ.get('AI_FAISS_NPROBE', '0') or 0)
 
+VISUAL_SEARCH_STT_PROVIDER = os.environ.get("VISUAL_SEARCH_STT_PROVIDER", "openai_whisper")
+OPENAI_WHISPER_MODEL = os.environ.get("OPENAI_WHISPER_MODEL", "whisper-1")
+GOOGLE_SPEECH_API_KEY = os.environ.get("GOOGLE_SPEECH_API_KEY", "")
+
 
 # +# Reverse proxy / HTTPS (nginx)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -451,3 +562,112 @@ SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
 CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+
+
+# ==============================================================================
+# CELERY CONFIGURATION
+# ==============================================================================
+
+# Celery Broker and Backend Configuration
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+
+# Celery Message Serialization
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+# Celery Timezone Configuration
+CELERY_TIMEZONE = "UTC"
+CELERY_ENABLE_UTC = True
+
+# Celery Task Result Configuration
+CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+CELERY_TASK_TRACK_STARTED = True  # Track when tasks start
+CELERY_TASK_TIME_LIMIT = 30 * 60  # Task timeout: 30 minutes
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # Soft timeout: 25 minutes
+
+# Celery Worker Configuration
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4  # Number of tasks to prefetch
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after N tasks
+
+# Celery Beat Configuration
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"  # Use DB for schedule persistence
+
+# Task Routes (optional - for task prioritization)
+CELERY_TASK_ROUTES = {
+    "apps.settlements.tasks.*": {"queue": "settlements"},
+    "apps.notifications.tasks.*": {"queue": "notifications"},
+}
+
+# Task Priority Configuration (optional)
+CELERY_TASK_DEFAULT_PRIORITY = 5
+CELERY_TASK_INHERIT_PARENT_PRIORITY = True
+
+# ==============================================================================
+# SETTLEMENT AUTOMATION CONFIGURATION
+# ==============================================================================
+
+# Settlement SLA Policy: Hours before an order is eligible for settlement
+SETTLEMENT_DELAY_HOURS = int(os.getenv("SETTLEMENT_DELAY_HOURS", "24"))
+
+# Settlement batch processing configuration
+SETTLEMENT_BATCH_SIZE = int(os.getenv("SETTLEMENT_BATCH_SIZE", "100"))
+
+# Maximum number of orders to batch process in a single run
+SETTLEMENT_BATCH_MAX_ORDERS = int(os.getenv("SETTLEMENT_BATCH_MAX_ORDERS", "1000"))
+
+# Settlement batch processing timeout (minutes)
+SETTLEMENT_BATCH_TIMEOUT_MINUTES = int(os.getenv("SETTLEMENT_BATCH_TIMEOUT_MINUTES", "30"))
+
+# Enable auto-approval of settlements (default: False - manual approval required)
+SETTLEMENT_AUTO_APPROVE = _env_bool("SETTLEMENT_AUTO_APPROVE", "0")
+
+# Reconciliation lookback window (days)
+SETTLEMENT_RECONCILIATION_LOOKBACK_DAYS = int(os.getenv("SETTLEMENT_RECONCILIATION_LOOKBACK_DAYS", "7"))
+
+# Settlement audit log retention (days)
+SETTLEMENT_AUDIT_LOG_RETENTION_DAYS = int(os.getenv("SETTLEMENT_AUDIT_LOG_RETENTION_DAYS", "90"))
+
+# Enable detailed settlement logging
+SETTLEMENT_DETAILED_LOGGING = _env_bool("SETTLEMENT_DETAILED_LOGGING", "1")
+
+# Settlement notification recipients (comma-separated emails)
+SETTLEMENT_NOTIFICATION_EMAILS = _env_list("SETTLEMENT_NOTIFICATION_EMAILS", [])
+
+# Enable settlement processing
+SETTLEMENT_PROCESSING_ENABLED = _env_bool("SETTLEMENT_PROCESSING_ENABLED", "1")
+
+
+# Performance observability
+PERFORMANCE_SLOW_THRESHOLD_MS = float(os.getenv("PERFORMANCE_SLOW_THRESHOLD_MS", "500") or "500")
+PERFORMANCE_LOG_PERSIST_ENABLED = _env_bool("PERFORMANCE_LOG_PERSIST_ENABLED", "1")
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "apps.observability.logging.JSONFormatter",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        }
+    },
+    "loggers": {
+        "wasla.request": {
+            "handlers": ["console"],
+            "level": os.getenv("WASLA_REQUEST_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "wasla.performance": {
+            "handlers": ["console"],
+            "level": os.getenv("WASLA_PERFORMANCE_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+    },
+}

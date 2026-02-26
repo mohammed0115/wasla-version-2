@@ -14,6 +14,28 @@ from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWiza
 from apps.subscriptions.models import SubscriptionPlan, StoreSubscription
 from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
 
+
+def _infer_country_from_request(request) -> str:
+    country = (getattr(request.user.profile, "country", "") or "").upper().strip()
+    if country in {"SA", "AE", "EG", "KW", "QA", "BH", "OM", "JO", "LB", "MA"}:
+        return country
+
+    language = (getattr(request, "LANGUAGE_CODE", "") or "").lower()
+    accept_language = (request.META.get("HTTP_ACCEPT_LANGUAGE") or "").lower()
+    if "ar-sa" in accept_language:
+        return "SA"
+    if "ar-eg" in accept_language:
+        return "EG"
+    if language.startswith("ar"):
+        return "SA"
+    return "US"
+
+
+def _infer_device_from_request(request) -> str:
+    user_agent = (request.META.get("HTTP_USER_AGENT") or "").lower()
+    mobile_hints = ["mobile", "android", "iphone", "ipad", "ipod"]
+    return "mobile" if any(hint in user_agent for hint in mobile_hints) else "desktop"
+
 # ---------
 # Helpers
 # ---------
@@ -231,5 +253,44 @@ def persona_business(request):
         {
             "choices": choices,
             "selected": selected,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def ai_onboarding_wizard(request):
+    profile = request.user.profile
+    registration_time = timezone.localtime(getattr(profile, "created_at", timezone.now()))
+    market = _infer_country_from_request(request)
+    language = (getattr(request, "LANGUAGE_CODE", "ar") or "ar").lower()
+    device = _infer_device_from_request(request)
+    business = (
+        request.session.get("persona_business_category")
+        or getattr(profile, "category_sub", "")
+        or getattr(profile, "category_main", "")
+        or "ملابس"
+    )
+
+    onboarding_seed = {
+        "registration": {
+            "fullName": request.user.get_full_name() or request.user.username,
+            "email": request.user.email,
+            "phoneCountry": getattr(profile, "phone_country", "+966"),
+            "phoneNumber": getattr(profile, "phone_number", ""),
+            "market": market,
+            "language": language,
+            "registrationTime": registration_time.strftime("%Y-%m-%d %H:%M"),
+            "device": device,
+        },
+        "business": business,
+    }
+
+    return render(
+        request,
+        "accounts/ai_onboarding_wizard.html",
+        {
+            "onboarding_seed": onboarding_seed,
+            "registration_time_display": registration_time.strftime("%Y-%m-%d %H:%M"),
         },
     )

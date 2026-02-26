@@ -12,6 +12,7 @@ from apps.customers.models import Customer
 from apps.orders.models import Order
 from apps.orders.services.order_service import OrderService
 from apps.catalog.models import Product
+from apps.catalog.services.variant_service import ProductVariantService
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.analytics.application.telemetry import TelemetryService, actor_from_tenant_ctx
 from apps.analytics.domain.types import ObjectRef
@@ -64,6 +65,8 @@ class CreateOrderFromCheckoutUseCase:
             items.append(
                 {
                     "product": None,
+                    "variant": None,
+                    "variant_id": item.variant_id,
                     "quantity": item.quantity,
                     "price": item.unit_price,
                     "product_id": item.product_id,
@@ -81,6 +84,24 @@ class CreateOrderFromCheckoutUseCase:
             if not product:
                 raise InvalidCheckoutStateError("Product not found for order.")
             item["product"] = product
+
+        variant_map = ProductVariantService.get_variants_map(
+            store_id=cmd.tenant_ctx.store_id,
+            variant_ids=[item.get("variant_id") for item in items if item.get("variant_id")],
+        )
+        for item in items:
+            variant_id = item.get("variant_id")
+            if not variant_id:
+                continue
+            variant = variant_map.get(variant_id)
+            if not variant or variant.product_id != item["product_id"]:
+                raise InvalidCheckoutStateError("Variant not found for order.")
+            item["variant"] = variant
+
+        try:
+            ProductVariantService.assert_checkout_stock(store_id=cmd.tenant_ctx.store_id, items=items)
+        except ValueError as exc:
+            raise InvalidCheckoutStateError(str(exc)) from exc
 
         order = OrderService.create_order(
             customer,

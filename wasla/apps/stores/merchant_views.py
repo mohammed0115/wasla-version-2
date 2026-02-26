@@ -11,6 +11,7 @@ from django.views.decorators.http import require_http_methods
 
 from apps.catalog.models import Category, Product
 from apps.orders.models import Order
+from apps.payments.models import PaymentAttempt
 
 from .merchant_utils import merchant_required
 
@@ -221,9 +222,19 @@ def merchant_orders_list(request: HttpRequest) -> HttpResponse:
 def merchant_order_detail(request: HttpRequest, order_id: str) -> HttpResponse:
     store = request.merchant_store
     order = get_object_or_404(Order, id=order_id, store_id=store.id)
+    attempts = PaymentAttempt.objects.filter(order=order).order_by("created_at")
+    payment_timeline = [
+        {
+            "status": attempt.status,
+            "timestamp": attempt.created_at,
+            "provider": attempt.provider,
+        }
+        for attempt in attempts
+    ]
     ctx = {
         **_merchant_layout_context(request),
         "order": order,
+        "payment_timeline": payment_timeline,
         "allowed_statuses": [
             Order.Status.PENDING,
             Order.Status.PAID,

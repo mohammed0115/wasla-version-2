@@ -1,0 +1,31 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}تأكيد حذف - لوحة التحكم{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 style="margin: 0;">تأكيد الحذف</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">
+            هل أنت متأكد من رغبتك في حذف النسخة <strong>{{ variant.sku }}</strong>؟
+          </p>
+          <p class="text-muted mb-0">
+            هذا الإجراء لا يمكن التراجع عنه.
+          </p>
+        </div>
+        <div class="card-footer">
+          <form method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">حذف</button>
+          </form>
+          <a href="{% url 'catalog:product_edit' product.id %}" class="btn btn-outline-secondary">إلغاء</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

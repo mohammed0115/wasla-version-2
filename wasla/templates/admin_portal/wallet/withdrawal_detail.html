@@ -1,0 +1,305 @@
+{% extends "admin_portal/base_portal.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Withdrawal" %} {{ withdrawal.reference_code }} | Admin{% endblock %}
+{% block page_title %}{% trans "Withdrawal" %} <code>{{ withdrawal.reference_code }}</code>{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <!-- Main Details (Left) -->
+    <div class="col-lg-7">
+      <!-- Withdrawal Info Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">{% trans "Withdrawal Details" %}</h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-sm-6">
+              <p class="text-muted small">{% trans "Reference Code" %}</p>
+              <code style="font-size: 14px;">{{ withdrawal.reference_code }}</code>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted small">{% trans "Status" %}</p>
+              <p>
+                {% if withdrawal.status == 'pending' %}
+                  <span class="badge bg-warning text-dark">⏳ {% trans "Pending" %}</span>
+                {% elif withdrawal.status == 'approved' %}
+                  <span class="badge bg-info">✓ {% trans "Approved" %}</span>
+                {% elif withdrawal.status == 'paid' %}
+                  <span class="badge bg-success">✓ {% trans "Paid" %}</span>
+                {% elif withdrawal.status == 'rejected' %}
+                  <span class="badge bg-danger">✗ {% trans "Rejected" %}</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="row mb-3">
+            <div class="col-sm-6">
+              <p class="text-muted small">{% trans "Amount" %}</p>
+              <h4>{{ withdrawal.amount|floatformat:2 }} {{ currency }}</h4>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted small">{% trans "Wallet Balance" %}</p>
+              <p>
+                <strong>{{ wallet.available_balance|floatformat:2 }} {{ currency }}</strong>
+                <small class="text-muted d-block">({% trans "Available" %})</small>
+              </p>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <p class="text-muted small">{% trans "Timestamp" %}</p>
+          <div class="row">
+            <div class="col-sm-6">
+              <p>
+                <strong>{% trans "Requested" %}</strong><br>
+                <small>{{ withdrawal.requested_at|date:"Y-m-d H:i:s Z" }}</small>
+              </p>
+            </div>
+            <div class="col-sm-6">
+              {% if withdrawal.processed_at %}
+                <p>
+                  <strong>{% trans "Processed" %}</strong><br>
+                  <small>{{ withdrawal.processed_at|date:"Y-m-d H:i:s Z" }}</small>
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if withdrawal.payout_reference %}
+            <hr class="my-3">
+            <p class="text-muted small">{% trans "Payout Reference" %}</p>
+            <code>{{ withdrawal.payout_reference }}</code>
+          {% endif %}
+
+          {% if withdrawal.rejection_reason %}
+            <hr class="my-3">
+            <div class="alert alert-danger" role="alert">
+              <strong>{% trans "Rejection Reason:" %}</strong><br>
+              {{ withdrawal.rejection_reason }}
+            </div>
+          {% endif %}
+
+          {% if withdrawal.note %}
+            <hr class="my-3">
+            <p class="text-muted small">{% trans "Merchant Note" %}</p>
+            <p>{{ withdrawal.note }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Store & Merchant Info -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">{% trans "Merchant Information" %}</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small">{% trans "Store" %}</p>
+          <p>
+            <strong>{{ withdrawal.store.name }}</strong><br>
+            <small class="text-muted">{{ withdrawal.store.get_type_display }}</small>
+          </p>
+
+          <hr class="my-3">
+
+          <p class="text-muted small">{% trans "Contact" %}</p>
+          <p>
+            <strong>{{ withdrawal.store.owner.get_full_name }}</strong><br>
+            <small>{{ withdrawal.store.owner.email }}</small>
+          </p>
+
+          <hr class="my-3">
+
+          <p class="text-muted small">{% trans "Wallet ID" %}</p>
+          <code>#{{ wallet.id }}</code>
+        </div>
+      </div>
+
+      <!-- Recent Withdrawals -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">{% trans "Recent Withdrawals from This Merchant" %}</h5>
+        </div>
+        <div class="table-responsive">
+          {% if recent_withdrawals %}
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>{% trans "Reference" %}</th>
+                  <th>{% trans "Amount" %}</th>
+                  <th>{% trans "Date" %}</th>
+                  <th>{% trans "Status" %}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for w in recent_withdrawals %}
+                  <tr>
+                    <td><code>{{ w.reference_code }}</code></td>
+                    <td>{{ w.amount|floatformat:2 }}</td>
+                    <td><small>{{ w.requested_at|date:"Y-m-d" }}</small></td>
+                    <td><span class="badge bg-secondary">{{ w.get_status_display }}</span></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="p-3 text-center text-muted">
+              {% trans "No other recent withdrawals" %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions (Right) -->
+    <div class="col-lg-5">
+      <!-- Action Buttons -->
+      {% if withdrawal.status == 'pending' %}
+        <div class="card mb-4 border-warning">
+          <div class="card-header bg-warning bg-opacity-10 border-warning">
+            <h5 class="mb-0">⏳ {% trans "Pending Approval" %}</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">
+              {% trans "This withdrawal is awaiting approval. Use the actions below to approve, reject, or hold for review." %}
+            </p>
+
+            <!-- Approve Form -->
+            <form method="post" action="{% url 'admin:wallet_withdrawal_approve' withdrawal.id %}" class="mb-3">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success w-100" onclick="return confirm('{% trans 'Approve this withdrawal?' %}')">
+                ✓ {% trans "Approve Withdrawal" %}
+              </button>
+            </form>
+
+            <!-- Reject Form -->
+            <button type="button" class="btn btn-danger w-100 mb-3" data-bs-toggle="collapse" data-bs-target="#rejectForm">
+              ✗ {% trans "Reject Withdrawal" %}
+            </button>
+
+            <div id="rejectForm" class="collapse">
+              <form method="post" action="{% url 'admin:wallet_withdrawal_reject' withdrawal.id %}" class="p-3 bg-light rounded">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label class="form-label">{% trans "Rejection Reason" %}</label>
+                  <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="{% trans 'Please provide a reason for rejection...' %}"></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger w-100">{% trans "Confirm Rejection" %}</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% elif withdrawal.status == 'approved' %}
+        <div class="card mb-4 border-info">
+          <div class="card-header bg-info bg-opacity-10 border-info">
+            <h5 class="mb-0">✓ {% trans "Approved" %}</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">
+              {% trans "This withdrawal has been approved. Submit payout information to mark it as paid." %}
+            </p>
+
+            <!-- Mark Paid Form -->
+            <form method="post" action="{% url 'admin:wallet_withdrawal_mark_paid' withdrawal.id %}">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">{% trans "Payout Reference" %} <span class="text-danger">*</span></label>
+                <input type="text" name="payout_reference" class="form-control" required 
+                       placeholder="{% trans 'Bank transfer ID, check #, etc.' %}" 
+                       value="{{ withdrawal.payout_reference|default:'' }}">
+                <small class="form-text text-muted">{% trans "Reference from your payment system" %}</small>
+              </div>
+              <button type="submit" class="btn btn-success w-100">
+                💳 {% trans "Mark as Paid" %}
+              </button>
+            </form>
+          </div>
+        </div>
+      {% elif withdrawal.status == 'paid' %}
+        <div class="card mb-4 border-success">
+          <div class="card-header bg-success bg-opacity-10 border-success">
+            <h5 class="mb-0">✓ {% trans "Paid" %}</h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-success" role="alert">
+              {% trans "This withdrawal has been successfully paid out." %}
+            </div>
+            <p class="text-muted small">
+              <strong>{% trans "Payout Reference:" %}</strong><br>
+              <code>{{ withdrawal.payout_reference }}</code>
+            </p>
+          </div>
+        </div>
+      {% elif withdrawal.status == 'rejected' %}
+        <div class="card mb-4 border-danger">
+          <div class="card-header bg-danger bg-opacity-10 border-danger">
+            <h5 class="mb-0">✗ {% trans "Rejected" %}</h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-danger" role="alert">
+              <strong>{% trans "Rejection Reason:" %}</strong><br>
+              {{ withdrawal.rejection_reason }}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Audit Log -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">📋 {% trans "Activity Log" %}</h5>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <small class="text-muted">{{ withdrawal.created_at|date:"Y-m-d H:i" }}</small><br>
+              {% trans "Withdrawal request created" %}
+            </li>
+            {% if withdrawal.requested_by %}
+              <li class="list-group-item">
+                <small class="text-muted">{{ withdrawal.requested_at|date:"Y-m-d H:i" }}</small><br>
+                {% trans "Requested by" %} <strong>{{ withdrawal.requested_by.get_full_name }}</strong>
+              </li>
+            {% endif %}
+            {% if withdrawal.approved_by %}
+              <li class="list-group-item">
+                <small class="text-muted">{{ withdrawal.processed_at|date:"Y-m-d H:i" }}</small><br>
+                {% trans "Approved by" %} <strong>{{ withdrawal.approved_by.get_full_name }}</strong>
+              </li>
+            {% endif %}
+            {% if withdrawal.status == 'rejected' and withdrawal.processed_at %}
+              <li class="list-group-item">
+                <small class="text-muted">{{ withdrawal.processed_at|date:"Y-m-d H:i" }}</small><br>
+                {% trans "Rejected on" %} {{ withdrawal.processed_at|date:"Y-m-d" }}
+              </li>
+            {% endif %}
+            {% if withdrawal.status == 'paid' and withdrawal.processed_at %}
+              <li class="list-group-item">
+                <small class="text-muted">{{ withdrawal.processed_at|date:"Y-m-d H:i" }}</small><br>
+                {% trans "Marked as paid" %}
+              </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Confirm actions
+document.querySelectorAll('form[data-confirm]').forEach(form => {
+  form.addEventListener('submit', function(e) {
+    if (!confirm(this.dataset.confirm)) {
+      e.preventDefault();
+    }
+  });
+});
+</script>
+{% endblock %}

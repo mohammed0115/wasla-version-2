@@ -3,8 +3,9 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.catalog.models import Inventory, StockMovement
+from apps.catalog.models import Inventory, ProductVariant, StockMovement
 from apps.subscriptions.services.entitlement_service import SubscriptionEntitlementService
+from apps.wallet.services.wallet_service import WalletService
 
 from ..models import Order, OrderItem
 from .pricing_service import PricingService
@@ -59,6 +60,7 @@ class OrderService:
                 tenant_id=order.tenant_id,
                 order=order,
                 product=item["product"],
+                variant=item.get("variant"),
                 quantity=item["quantity"],
                 price=item["price"]
             )
@@ -66,15 +68,37 @@ class OrderService:
 
     @staticmethod
     def validate_stock(order) -> None:
-        items = list(order.items.select_related("product"))
+        items = list(order.items.select_related("product", "variant"))
         if not items:
             raise ValueError("Order has no items")
+
+        variant_items = [item for item in items if item.variant_id]
+        if variant_items:
+            variant_map = {
+                variant.id: variant
+                for variant in ProductVariant.objects.filter(
+                    id__in=[item.variant_id for item in variant_items],
+                    store_id=order.store_id,
+                )
+            }
+            for item in variant_items:
+                variant = variant_map.get(item.variant_id)
+                if not variant or variant.product_id != item.product_id:
+                    raise ValueError(f"Variant not found for '{item.product}'")
+                if not variant.is_active:
+                    raise ValueError(f"Variant inactive for '{item.product}'")
+                if int(variant.stock_quantity) < item.quantity:
+                    raise ValueError(
+                        f"Insufficient variant stock for '{item.product}' (available {variant.stock_quantity})"
+                    )
 
         inventory_map = {
             inv.product_id: inv
             for inv in Inventory.objects.filter(product_id__in=[item.product_id for item in items])
         }
         for item in items:
+            if item.variant_id:
+                continue
             inventory = inventory_map.get(item.product_id)
             if not inventory:
                 raise ValueError(f"No inventory for product '{item.product}'")
@@ -91,8 +115,29 @@ class OrderService:
 
         OrderService.validate_stock(order)
 
-        items = list(order.items.select_related("product"))
+        items = list(order.items.select_related("product", "variant"))
         for item in items:
+            if item.variant_id:
+                updated = ProductVariant.objects.filter(
+                    id=item.variant_id,
+                    store_id=order.store_id,
+                    product_id=item.product_id,
+                    stock_quantity__gte=item.quantity,
+                ).update(stock_quantity=F("stock_quantity") - item.quantity)
+                if updated == 0:
+                    raise ValueError(f"Insufficient stock for '{item.product}'")
+
+                StockMovement.objects.create(
+                    store_id=order.store_id,
+                    product=item.product,
+                    variant_id=item.variant_id,
+                    movement_type=StockMovement.TYPE_OUT,
+                    quantity=item.quantity,
+                    reason="order_paid",
+                    order_id=order.id,
+                )
+                continue
+
             updated = Inventory.objects.filter(
                 product_id=item.product_id,
                 quantity__gte=item.quantity,
@@ -110,7 +155,8 @@ class OrderService:
                 order_id=order.id,
             )
 
-        for inventory in Inventory.objects.filter(product_id__in=[i.product_id for i in items]).select_related(
+        non_variant_product_ids = [i.product_id for i in items if not i.variant_id]
+        for inventory in Inventory.objects.filter(product_id__in=non_variant_product_ids).select_related(
             "product"
         ):
             quantity = inventory.quantity
@@ -129,3 +175,10 @@ class OrderService:
             order.save(update_fields=["status", "payment_status"])
         else:
             order.save(update_fields=["status"])
+
+        WalletService.on_order_paid(
+            store_id=order.store_id,
+            tenant_id=order.tenant_id,
+            net_amount=order.total_amount,
+            reference=f"order_paid:{order.id}",
+        )

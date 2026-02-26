@@ -10,6 +10,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
+from apps.ai_onboarding.services import BusinessAnalyzer, ProvisioningEngine
 
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.application.use_cases.create_store import CreateStoreCommand, CreateStoreUseCase
@@ -439,6 +440,39 @@ def dashboard_setup_activate(request: HttpRequest) -> HttpResponse:
                     messages.error(request, reason)
                 return redirect("tenants:dashboard_setup_activate")
 
+            profile_country = "SA"
+            try:
+                profile_country = (request.user.profile.country or "SA").upper()
+            except Exception:
+                profile_country = "SA"
+            business_type = "general"
+            try:
+                business_type = (
+                    request.user.profile.category_sub
+                    or request.user.profile.category_main
+                    or "general"
+                )
+            except Exception:
+                business_type = "general"
+            device_type = "mobile" if "mobile" in (request.META.get("HTTP_USER_AGENT") or "").lower() else "desktop"
+
+            try:
+                analysis = BusinessAnalyzer().analyze(
+                    business_type=business_type,
+                    country=profile_country,
+                    language=getattr(request, "LANGUAGE_CODE", "ar"),
+                    device_type=device_type,
+                )
+                ProvisioningEngine().provision(
+                    user=request.user,
+                    business_type=business_type,
+                    analysis=analysis,
+                    tenant=tenant,
+                )
+            except Exception as exc:
+                messages.error(request, f"AI provisioning failed: {exc}")
+                return redirect("tenants:dashboard_setup_activate")
+
             # Merchant request only: admin must publish.
             try:
                 if profile and not profile.is_setup_complete:
@@ -794,6 +828,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         {
             "tenant": tenant,
             "metrics": metrics,
+            "show_performance_indicator": bool(settings.DEBUG),
         },
     )
 

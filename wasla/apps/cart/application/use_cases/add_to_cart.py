@@ -9,6 +9,7 @@ from apps.cart.domain.errors import CartError
 from apps.cart.domain.policies import ensure_positive_quantity
 from apps.cart.infrastructure.repositories import get_or_create_cart
 from apps.catalog.models import Product
+from apps.catalog.services.variant_service import ProductVariantService, VariantPricingService
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.analytics.application.telemetry import TelemetryService, actor_from_tenant_ctx
 from apps.analytics.domain.types import ObjectRef
@@ -21,6 +22,7 @@ class AddToCartCommand:
     tenant_ctx: TenantContext
     product_id: int
     quantity: int
+    variant_id: int | None = None
 
 
 class AddToCartUseCase:
@@ -36,17 +38,31 @@ class AddToCartUseCase:
         if not product:
             raise CartError("Product not found.")
 
+        variant = None
+        if cmd.variant_id:
+            try:
+                variant = ProductVariantService.get_variant_for_store(
+                    store_id=cmd.tenant_ctx.store_id,
+                    product_id=product.id,
+                    variant_id=cmd.variant_id,
+                )
+            except ValueError as exc:
+                raise CartError(str(exc)) from exc
+
+        unit_price = VariantPricingService.resolve_price(product=product, variant=variant)
+
         cart = get_or_create_cart(cmd.tenant_ctx)
-        item = cart.items.filter(product_id=product.id).first()
+        item = cart.items.filter(product_id=product.id, variant_id=(variant.id if variant else None)).first()
         if item:
             item.quantity = item.quantity + quantity
-            item.unit_price_snapshot = product.price
+            item.unit_price_snapshot = unit_price
             item.save(update_fields=["quantity", "unit_price_snapshot"])
         else:
             cart.items.create(
                 product=product,
+                variant=variant,
                 quantity=quantity,
-                unit_price_snapshot=product.price,
+                unit_price_snapshot=unit_price,
             )
         cart.currency = cmd.tenant_ctx.currency or cart.currency
         cart.save(update_fields=["currency", "updated_at"])

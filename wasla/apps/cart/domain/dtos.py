@@ -9,6 +9,8 @@ from typing import Sequence
 class CartItemDTO:
     id: int
     product_id: int
+    variant_id: int | None
+    variant_sku: str
     name: str
     quantity: int
     unit_price: Decimal

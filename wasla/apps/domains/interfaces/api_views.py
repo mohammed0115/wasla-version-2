@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
 
 from apps.cart.interfaces.api.responses import api_response
+from apps.security.rbac import require_permission
 from apps.tenants.models import StoreDomain
 
 
 class DomainProvisionQueueAPI(APIView):
     permission_classes = [IsAdminUser]
 
+    @method_decorator(require_permission("domains.queue_provision"))
     def post(self, request):
         domain_id = int(request.data.get("domain_id") or 0)
         domain = StoreDomain.objects.filter(id=domain_id).first()

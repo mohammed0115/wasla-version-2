@@ -1,18 +1,230 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }}{% endblock %}
 {% block body %}
-<div class="container">
-  <div class="card" style="padding:18px;">
-    <h1 style="margin:0 0 6px;">{{ product.name }}</h1>
-    <p class="muted">{{ product.description }}</p>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <form method="post" action="/api/cart/add" style="display:flex; gap:10px;">
+<div class="container" style="max-width: 900px; margin: 40px auto;">
+  <div class="card" style="padding: 18px;">
+    <!-- Product Header -->
+    <h1 style="margin: 0 0 6px;">{{ product.name }}</h1>
+    <p class="muted">{{ product.description_ar }}</p>
+
+    <!-- Price Display -->
+    <div style="margin: 15px 0; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
+      <span style="font-size: 24px; font-weight: bold; color: #2c3e50;" id="displayPrice">
+        {{ product.price }}
+      </span>
+      <span style="font-size: 18px; color: #7f8c8d;"> ر.س</span>
+    </div>
+
+    <!-- Variant Selection (if product has variants) -->
+    {% if product.variants.exists %}
+      <form id="variantForm" method="post" action="/api/cart/add" style="margin-bottom: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.id }}">
+        <input type="hidden" name="variant_id" id="variantId" value="">
+
+        <!-- Option Groups -->
+        {% for group in option_groups %}
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+              {{ group.name }}
+              {% if group.is_required %}<span style="color: red;">*</span>{% endif %}
+            </label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              {% for option in group.options.all %}
+                <button
+                  type="button"
+                  class="variant-option-btn"
+                  data-group="{{ group.id }}"
+                  data-option="{{ option.id }}"
+                  style="
+                    padding: 8px 16px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    background: white;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                  "
+                  onmouseover="this.style.borderColor='#3498db'"
+                  onmouseout="this.style.borderColor='#ddd'"
+                >
+                  {{ option.value }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+
+        <!-- Stock & Availability -->
+        <div id="stockStatus" style="margin: 15px 0; padding: 10px; background-color: #e8f5e9; border-radius: 4px; display: none;">
+          <small id="stockText"></small>
+        </div>
+
+        <!-- Add to Cart Button -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+          <button
+            class="btn"
+            type="submit"
+            id="addToCartBtn"
+            disabled
+            style="opacity: 0.6; cursor: not-allowed;"
+          >
+            أضف للسلة
+          </button>
+          <a class="btn btn-soft" href="/store/cart">عرض السلة</a>
+        </div>
+      </form>
+
+      <!-- Variant Mapping (hidden JSON for JS) -->
+      <script id="variantData" type="application/json">
+        {{ variant_json|safe }}
+      </script>
+
+      <!-- Variant Selection JS -->
+      <script>
+        new VariantSelector({
+          productId: {{ product.id }},
+          variantData: JSON.parse(document.getElementById('variantData').textContent),
+          basePrice: {{ product.price }},
+        });
+      </script>
+    {% else %}
+      <!-- Simple Product: No variants -->
+      <form method="post" action="/api/cart/add" style="display: flex; gap: 10px; flex-wrap: wrap;">
         {% csrf_token %}
         <input type="hidden" name="product_id" value="{{ product.id }}">
         <button class="btn" type="submit">أضف للسلة</button>
+        <a class="btn btn-soft" href="/store/cart">عرض السلة</a>
       </form>
-      <a class="btn btn-soft" href="/store/cart">عرض السلة</a>
-    </div>
+    {% endif %}
   </div>
 </div>
+
+<style>
+  .variant-option-btn.selected {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+  }
+  
+  .variant-option-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn:not(:disabled) {
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  /**
+   * VariantSelector: Handles option selection and variant matching
+   */
+  class VariantSelector {
+    constructor(config) {
+      this.productId = config.productId;
+      this.variantData = config.variantData;
+      this.basePrice = config.basePrice;
+      
+      this.selectedOptions = new Map(); // groupId -> optionId
+      this.currentVariant = null;
+      
+      this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+      document.querySelectorAll('.variant-option-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.selectOption(btn);
+        });
+      });
+    }
+
+    selectOption(btn) {
+      const groupId = btn.dataset.group;
+      const optionId = btn.dataset.option;
+
+      // Deselect others in same group
+      document.querySelectorAll(`[data-group="${groupId}"]`).forEach(b => {
+        b.classList.remove('selected');
+      });
+
+      // Select this option
+      btn.classList.add('selected');
+      this.selectedOptions.set(groupId, parseInt(optionId));
+
+      // Find matching variant
+      this.updateVariantMatch();
+    }
+
+    updateVariantMatch() {
+      const selectedOptionIds = new Set(this.selectedOptions.values());
+      
+      // Find variant where all selected options match
+      this.currentVariant = null;
+      for (const variant of this.variantData.variants) {
+        const variantOptionIds = new Set(variant.option_ids);
+        
+        // Check if all selected options are in this variant
+        const allMatch = [...selectedOptionIds].every(id => variantOptionIds.has(id));
+        
+        if (allMatch && selectedOptionIds.size > 0) {
+          this.currentVariant = variant;
+          break;
+        }
+      }
+
+      this.updateUI();
+    }
+
+    updateUI() {
+      const addBtn = document.getElementById('addToCartBtn');
+      const stockStatus = document.getElementById('stockStatus');
+      const displayPrice = document.getElementById('displayPrice');
+      const variantIdInput = document.getElementById('variantId');
+      const stockText = document.getElementById('stockText');
+
+      if (this.currentVariant) {
+        // Variant found
+        variantIdInput.value = this.currentVariant.id;
+
+        // Update price
+        const price = this.currentVariant.price_override || this.basePrice;
+        displayPrice.textContent = price;
+
+        // Update stock
+        if (this.currentVariant.stock_quantity > 0) {
+          stockStatus.style.display = 'block';
+          stockStatus.style.backgroundColor = '#e8f5e9';
+          stockText.textContent = `✓ متاح (${this.currentVariant.stock_quantity} في المخزون)`;
+          
+          addBtn.disabled = false;
+          addBtn.style.opacity = '1';
+          addBtn.style.cursor = 'pointer';
+        } else {
+          stockStatus.style.display = 'block';
+          stockStatus.style.backgroundColor = '#ffebee';
+          stockText.textContent = '✗ غير متاح حالياً';
+          
+          addBtn.disabled = true;
+          addBtn.style.opacity = '0.6';
+          addBtn.style.cursor = 'not-allowed';
+        }
+      } else {
+        // No variant match yet
+        stockStatus.style.display = 'none';
+        variantIdInput.value = '';
+        addBtn.disabled = true;
+        addBtn.style.opacity = '0.6';
+        addBtn.style.cursor = 'not-allowed';
+      }
+    }
+  }
+</script>
 {% endblock %}

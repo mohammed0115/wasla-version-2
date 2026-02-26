@@ -43,7 +43,15 @@ class JSONFormatter(logging.Formatter):
             "path": path_var.get(),
             "method": method_var.get(),
         }
-        for key in ("status_code", "latency_ms", "error_code"):
+        for key in (
+            "status_code",
+            "latency_ms",
+            "duration_ms",
+            "error_code",
+            "store_id",
+            "query_count",
+            "cache_status",
+        ):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
         return json.dumps(payload, ensure_ascii=False)

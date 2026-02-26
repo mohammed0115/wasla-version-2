@@ -129,4 +129,32 @@
   </section>
 </section>
 
+{% if show_performance_indicator %}
+  <div class="card" style="margin-top: 12px; padding: 10px;">
+    <strong>{% trans "Dev page load" %}:</strong>
+    <span id="devPerfLoadMs">--</span> ms
+  </div>
+  <script>
+    (function () {
+      if (!window.performance || !window.performance.timing) {
+        return;
+      }
+      var timing = window.performance.timing;
+      var loadMs = timing.loadEventEnd && timing.navigationStart
+        ? (timing.loadEventEnd - timing.navigationStart)
+        : 0;
+      if (!loadMs && window.performance.getEntriesByType) {
+        var nav = window.performance.getEntriesByType('navigation');
+        if (nav && nav.length) {
+          loadMs = Math.round(nav[0].duration || 0);
+        }
+      }
+      var el = document.getElementById('devPerfLoadMs');
+      if (el) {
+        el.textContent = String(Math.max(0, Math.round(loadMs)));
+      }
+    })();
+  </script>
+{% endif %}
+
 {% endblock %}

@@ -1,0 +1,190 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}{{ product.name }} - لوحة التحكم{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <div>
+      <h1 style="margin: 0; margin-bottom: 5px;">{{ product.name }}</h1>
+      <p class="text-muted" style="margin: 0;">SKU: <code>{{ product.sku }}</code></p>
+    </div>
+    <div>
+      <a href="{% url 'catalog:product_edit' product.id %}" class="btn btn-primary">إدارة النسخ والخيارات</a>
+      <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">العودة</a>
+    </div>
+  </div>
+
+  <!-- Product Info -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-body">
+          <h5>معلومات المنتج</h5>
+          <table class="table table-borderless">
+            <tr>
+              <td><strong>السعر الأساسي:</strong></td>
+              <td>{{ product.price }} ر.س</td>
+            </tr>
+            <tr>
+              <td><strong>الحالة:</strong></td>
+              <td>
+                {% if product.is_active %}
+                  <span class="badge bg-success">نشط</span>
+                {% else %}
+                  <span class="badge bg-danger">غير نشط</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>النوع:</strong></td>
+              <td>
+                {% if product.variants.exists %}
+                  منتج متعدد الخيارات
+                {% else %}
+                  منتج بسيط
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card bg-light">
+        <div class="card-body">
+          <h6>ملخص النسخ</h6>
+          <p style="margin: 0;">
+            <strong>{{ product.variants.count }}</strong> نسخة
+            {% if product.variants.count > 0 %}
+              <br>
+              <small class="text-muted">
+                نشطة: {{ product.variants.filter.is_active=True|length }}
+              </small>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option Groups -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div style="display: flex; justify-content: space-between;">
+        <h5 style="margin: 0;">خيارات المنتج</h5>
+        <a href="{% url 'catalog:option_group_create' product.id %}" class="btn btn-sm btn-success">
+          + إضافة
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if option_groups %}
+        <div class="row">
+          {% for group in option_groups %}
+            <div class="col-md-6 mb-3">
+              <div class="border rounded p-3">
+                <h6>{{ group.name }} {% if group.is_required %}<span class="badge bg-danger">إجباري</span>{% endif %}</h6>
+                <small>
+                  {% for option in group.options.all %}
+                    <span class="badge bg-light text-dark">{{ option.value }}</span>
+                  {% endfor %}
+                </small>
+                <div class="mt-2">
+                  <a href="{% url 'catalog:option_group_edit' product.id group.id %}" class="btn btn-sm btn-outline-primary">
+                    تعديل
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted">لا توجد خيارات حتى الآن</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Variants Table -->
+  <div class="card">
+    <div class="card-header">
+      <div style="display: flex; justify-content: space-between;">
+        <h5 style="margin: 0;">النسخ المختلفة</h5>
+        {% if option_groups %}
+          <a href="{% url 'catalog:variant_create' product.id %}" class="btn btn-sm btn-success">
+            + إضافة نسخة
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if variants %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>السعر</th>
+                <th>المخزون</th>
+                <th>الخيارات</th>
+                <th>الحالة</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for variant in variants %}
+                <tr>
+                  <td><code>{{ variant.sku }}</code></td>
+                  <td>
+                    {% if variant.price_override %}
+                      <strong>{{ variant.price_override }}</strong> <small>(مخصص)</small>
+                    {% else %}
+                      {{ product.price }} <small>(أساسي)</small>
+                    {% endif %}
+                    ر.س
+                  </td>
+                  <td>
+                    <span class="badge bg-{% if variant.stock_quantity > 0 %}success{% else %}danger{% endif %}">
+                      {{ variant.stock_quantity }}
+                    </span>
+                  </td>
+                  <td>
+                    <small>
+                      {% for option in variant.options.all %}
+                        <span class="badge bg-info">{{ option.group.name }}: {{ option.value }}</span>
+                      {% endfor %}
+                    </small>
+                  </td>
+                  <td>
+                    {% if variant.is_active %}
+                      <span class="badge bg-success">نشط</span>
+                    {% else %}
+                      <span class="badge bg-danger">معطل</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'catalog:variant_edit' product.id variant.id %}" class="btn btn-sm btn-outline-primary">
+                      تعديل
+                    </a>
+                    <a href="{% url 'catalog:variant_delete' product.id variant.id %}" class="btn btn-sm btn-outline-danger">
+                      حذف
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">
+          {% if option_groups %}
+            لا توجد نسخ بعد
+          {% else %}
+            أضف مجموعات خيارات أولاً
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

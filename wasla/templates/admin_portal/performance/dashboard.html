@@ -1,0 +1,126 @@
+{% extends 'admin_portal/base_portal.html' %}
+{% block title %}Performance Monitoring{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Performance Monitoring</h2>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Store</label>
+        <select name="store" class="form-select">
+          <option value="">All</option>
+          {% for store in stores %}
+            <option value="{{ store.id }}" {% if store_filter == store.id|stringformat:'s' %}selected{% endif %}>{{ store.name }} ({{ store.id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Endpoint</label>
+        <input type="text" name="endpoint" class="form-control" value="{{ endpoint_filter }}" placeholder="/api/..." />
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-4"><div class="card kpi-card"><div class="card-body"><small>Total Requests</small><h4>{{ summary.total_requests|default:0 }}</h4></div></div></div>
+  <div class="col-md-4"><div class="card kpi-card"><div class="card-body"><small>Avg Duration (ms)</small><h4>{{ summary.avg_response_ms|default:0|floatformat:2 }}</h4></div></div></div>
+  <div class="col-md-4"><div class="card kpi-card"><div class="card-body"><small>Avg Query Count</small><h4>{{ summary.avg_query_count|default:0|floatformat:2 }}</h4></div></div></div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Slowest Endpoints (Last 24h)</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Endpoint</th><th>Avg Duration (ms)</th><th>Hits</th></tr></thead>
+          <tbody>
+            {% for row in slowest_endpoints %}
+              <tr><td>{{ row.path }}</td><td>{{ row.avg_duration_ms|floatformat:2 }}</td><td>{{ row.total }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-muted text-center">No data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Average Duration by Endpoint</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Endpoint</th><th>Avg Duration</th><th>Avg Queries</th></tr></thead>
+          <tbody>
+            {% for row in average_by_endpoint %}
+              <tr><td>{{ row.path }}</td><td>{{ row.avg_duration_ms|floatformat:2 }}</td><td>{{ row.avg_query_count|floatformat:2 }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-muted text-center">No data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Query Count Trends</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Date</th><th>Avg Query Count</th><th>Hits</th></tr></thead>
+      <tbody>
+        {% for row in query_count_trends %}
+          <tr><td>{{ row.day }}</td><td>{{ row.avg_query_count|floatformat:2 }}</td><td>{{ row.total }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-muted text-center">No trend data</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Recent Requests</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Time</th><th>Store</th><th>Method</th><th>Path</th><th>Status</th><th>Duration</th><th>Queries</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in logs %}
+          <tr>
+            <td>{{ item.created_at|date:'Y-m-d H:i:s' }}</td>
+            <td>{{ item.store }}</td>
+            <td>{{ item.method }}</td>
+            <td>{{ item.path }}</td>
+            <td>{{ item.status_code }}</td>
+            <td>{{ item.duration_ms|floatformat:2 }}</td>
+            <td>{{ item.query_count }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No logs found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

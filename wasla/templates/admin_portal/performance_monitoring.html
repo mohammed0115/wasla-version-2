@@ -1,0 +1,98 @@
+{% extends 'admin_portal/base_portal.html' %}
+{% block title %}Performance Monitoring{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Performance Monitoring</h2>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Store</label>
+        <select name="store" class="form-select">
+          <option value="">All</option>
+          {% for store in stores %}
+            <option value="{{ store.id }}" {% if store_filter == store.id|stringformat:'s' %}selected{% endif %}>{{ store.name }} ({{ store.id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Endpoint</label>
+        <input type="text" name="endpoint" class="form-control" value="{{ endpoint_filter }}" placeholder="/api/catalog/products/..." />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" />
+      </div>
+      <div class="col-md-2 form-check mt-4">
+        <input type="checkbox" name="slow_only" value="1" class="form-check-input" id="slowOnly" {% if slow_only %}checked{% endif %}>
+        <label class="form-check-label" for="slowOnly">Slow only</label>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-primary w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="card kpi-card"><div class="card-body"><small>Total Requests</small><h4>{{ summary.total_requests|default:0 }}</h4></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card"><div class="card-body"><small>Avg Response (ms)</small><h4>{{ summary.avg_response_ms|default:0|floatformat:2 }}</h4></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card"><div class="card-body"><small>Avg DB Queries</small><h4>{{ summary.avg_query_count|default:0|floatformat:2 }}</h4></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card"><div class="card-body"><small>Cache Hit Rate</small><h4>{{ cache_hit_rate }}%</h4></div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Recent Performance Logs</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Store</th>
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Status</th>
+          <th>Response (ms)</th>
+          <th>Queries</th>
+          <th>Cache</th>
+          <th>Slow</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in logs %}
+          <tr>
+            <td>{{ item.created_at|date:'Y-m-d H:i:s' }}</td>
+            <td>{{ item.store_id }}</td>
+            <td>{{ item.method }}</td>
+            <td>{{ item.endpoint }}</td>
+            <td>{{ item.status_code }}</td>
+            <td>{{ item.response_time_ms|floatformat:2 }}</td>
+            <td>{{ item.db_query_count }}</td>
+            <td>{% if item.cache_hit %}<span class="badge bg-success">HIT</span>{% else %}<span class="badge bg-secondary">MISS</span>{% endif %}</td>
+            <td>{% if item.is_slow %}<span class="badge bg-warning text-dark">YES</span>{% else %}<span class="badge bg-light text-dark">NO</span>{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No performance logs found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

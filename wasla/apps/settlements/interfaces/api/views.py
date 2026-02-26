@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from rest_framework import status
+from rest_framework import serializers
 from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 
 from apps.cart.interfaces.api.responses import api_response
 from apps.settlements.application.use_cases.approve_settlement import (
@@ -37,8 +40,88 @@ from apps.settlements.interfaces.api.serializers import (
     SettlementDetailSerializer,
     SettlementSerializer,
 )
+from apps.security.rbac import require_permission
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_merchant, require_store, require_tenant
+
+
+ErrorEnvelopeSerializer = inline_serializer(
+    name="SettlementsErrorEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": serializers.JSONField(allow_null=True),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+BalanceEnvelopeSerializer = inline_serializer(
+    name="SettlementsBalanceEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": BalanceSerializer(),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+SettlementsListDataSerializer = inline_serializer(
+    name="SettlementsListData",
+    fields={
+        "items": SettlementSerializer(many=True),
+    },
+)
+
+SettlementsListEnvelopeSerializer = inline_serializer(
+    name="SettlementsListEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": SettlementsListDataSerializer,
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+SettlementEnvelopeSerializer = inline_serializer(
+    name="SettlementEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": SettlementSerializer(),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+SettlementDetailEnvelopeSerializer = inline_serializer(
+    name="SettlementDetailEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": SettlementDetailSerializer(),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+MonthlyReportEnvelopeSerializer = inline_serializer(
+    name="MonthlyReportEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": serializers.JSONField(),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
+
+InvoiceDraftInputSerializer = inline_serializer(
+    name="InvoiceDraftInput",
+    fields={
+        "year": serializers.IntegerField(),
+        "month": serializers.IntegerField(),
+    },
+)
+
+InvoiceDraftEnvelopeSerializer = inline_serializer(
+    name="InvoiceDraftEnvelope",
+    fields={
+        "success": serializers.BooleanField(),
+        "data": serializers.JSONField(),
+        "errors": serializers.ListField(child=serializers.CharField()),
+    },
+)
 
 
 def _build_tenant_context(request) -> TenantContext:
@@ -61,6 +144,8 @@ def _build_tenant_context(request) -> TenantContext:
 
 
 class MerchantBalanceAPI(APIView):
+    @method_decorator(require_permission("settlements.view_balance"))
+    @extend_schema(tags=["Settlements"], summary="Get merchant balance", responses={200: BalanceEnvelopeSerializer})
     def get(self, request):
         tenant_ctx = _build_tenant_context(request)
         balance = GetMerchantBalanceUseCase.execute(GetMerchantBalanceCommand(tenant_ctx=tenant_ctx))
@@ -68,6 +153,8 @@ class MerchantBalanceAPI(APIView):
 
 
 class MerchantSettlementsAPI(APIView):
+    @method_decorator(require_permission("settlements.view_settlements"))
+    @extend_schema(tags=["Settlements"], summary="List merchant settlements", responses={200: SettlementsListEnvelopeSerializer})
     def get(self, request):
         tenant_ctx = _build_tenant_context(request)
         settlements = ListSettlementsUseCase.execute(ListSettlementsCommand(tenant_ctx=tenant_ctx))
@@ -76,6 +163,12 @@ class MerchantSettlementsAPI(APIView):
 
 
 class MerchantSettlementDetailAPI(APIView):
+    @method_decorator(require_permission("settlements.view_settlements"))
+    @extend_schema(
+        tags=["Settlements"],
+        summary="Get settlement detail",
+        responses={200: SettlementDetailEnvelopeSerializer, 404: ErrorEnvelopeSerializer},
+    )
     def get(self, request, settlement_id: int):
         tenant_ctx = _build_tenant_context(request)
         try:
@@ -91,6 +184,12 @@ class MerchantSettlementDetailAPI(APIView):
 class AdminApproveSettlementAPI(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        tags=["Settlements"],
+        summary="Admin approve settlement",
+        responses={200: SettlementEnvelopeSerializer, 404: ErrorEnvelopeSerializer, 409: ErrorEnvelopeSerializer},
+    )
+    @method_decorator(require_permission("settlements.manage_settlements"))
     def post(self, request, settlement_id: int):
         try:
             settlement = ApproveSettlementUseCase.execute(
@@ -106,6 +205,12 @@ class AdminApproveSettlementAPI(APIView):
 class AdminMarkSettlementPaidAPI(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        tags=["Settlements"],
+        summary="Admin mark settlement paid",
+        responses={200: SettlementEnvelopeSerializer, 404: ErrorEnvelopeSerializer, 409: ErrorEnvelopeSerializer},
+    )
+    @method_decorator(require_permission("settlements.manage_settlements"))
     def post(self, request, settlement_id: int):
         try:
             settlement = MarkSettlementPaidUseCase.execute(
@@ -119,6 +224,12 @@ class AdminMarkSettlementPaidAPI(APIView):
 
 
 class MerchantMonthlyReportAPI(APIView):
+    @method_decorator(require_permission("settlements.view_reports"))
+    @extend_schema(
+        tags=["Settlements"],
+        summary="Generate monthly report",
+        responses={200: MonthlyReportEnvelopeSerializer, 400: ErrorEnvelopeSerializer, 404: ErrorEnvelopeSerializer},
+    )
     def get(self, request):
         store = require_store(request)
         require_merchant(request)
@@ -151,6 +262,13 @@ class MerchantMonthlyReportAPI(APIView):
 
 
 class MerchantInvoiceDraftAPI(APIView):
+    @method_decorator(require_permission("settlements.create_invoice_draft"))
+    @extend_schema(
+        tags=["Settlements"],
+        summary="Generate monthly invoice draft",
+        request=InvoiceDraftInputSerializer,
+        responses={200: InvoiceDraftEnvelopeSerializer, 201: InvoiceDraftEnvelopeSerializer, 400: ErrorEnvelopeSerializer, 404: ErrorEnvelopeSerializer},
+    )
     def post(self, request):
         store = require_store(request)
         require_merchant(request)

@@ -1,0 +1,94 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}{% if product %}تعديل: {{ product.name }}{% else %}منتج جديد{% endif %} - لوحة التحكم{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h1 style="margin-bottom: 25px;">
+    {% if product %}
+      تعديل: {{ product.name }}
+    {% else %}
+      إضافة منتج جديد
+    {% endif %}
+  </h1>
+
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card-body">
+        <!-- SKU -->
+        <div class="form-group mb-3">
+          <label for="{{ form.sku.id_for_label }}" class="form-label">SKU *</label>
+          {{ form.sku }}
+          {% if form.sku.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.sku.errors.0 }}
+            </div>
+          {% endif %}
+          <small class="text-muted">معرف فريد للمنتج في المتجر</small>
+        </div>
+
+        <!-- Name -->
+        <div class="form-group mb-3">
+          <label for="{{ form.name.id_for_label }}" class="form-label">اسم المنتج *</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.name.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Price -->
+        <div class="form-group mb-3">
+          <label for="{{ form.price.id_for_label }}" class="form-label">السعر الأساسي *</label>
+          <div class="input-group">
+            {{ form.price }}
+            <span class="input-group-text">ر.س</span>
+          </div>
+          {% if form.price.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.price.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Description AR -->
+        <div class="form-group mb-3">
+          <label for="{{ form.description_ar.id_for_label }}" class="form-label">الوصف (عربي)</label>
+          {{ form.description_ar }}
+          {% if form.description_ar.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.description_ar.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Description EN -->
+        <div class="form-group mb-3">
+          <label for="{{ form.description_en.id_for_label }}" class="form-label">Description (English)</label>
+          {{ form.description_en }}
+          {% if form.description_en.errors %}
+            <div class="invalid-feedback d-block">
+              {{ form.description_en.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Is Active -->
+        <div class="form-check mb-3">
+          {{ form.is_active }}
+          <label for="{{ form.is_active.id_for_label }}" class="form-check-label">
+            نشط / معروض
+          </label>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <button type="submit" class="btn btn-primary">{{ action }}</button>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">إلغاء</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
