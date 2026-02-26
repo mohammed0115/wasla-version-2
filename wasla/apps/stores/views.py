@@ -260,13 +260,15 @@ def store_setup_domain(request):
     else:
         form = StoreDomainForm(instance=store)
 
+    base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
+
     context = {
         "form": form,
         "store": store,
         "step": 4,
         "step_label": _("Domain Setup"),
         "progress": 100,
-        "domain_hint": f"{store.name.lower().replace(' ', '')}.visualai.sa",
+        "domain_hint": f"{store.name.lower().replace(' ', '')}.{base_domain}",
     }
     return render(request, "stores/store_setup_domain.html", context)
 
