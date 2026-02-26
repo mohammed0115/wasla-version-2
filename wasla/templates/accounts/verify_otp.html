@@ -24,7 +24,7 @@
 
   .otp-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 10px;
   }
 
@@ -122,6 +122,8 @@
           {{ form.d2.as_widget }}
           {{ form.d3.as_widget }}
           {{ form.d4.as_widget }}
+          {{ form.d5.as_widget }}
+          {{ form.d6.as_widget }}
         </div>
 
         {% if form.non_field_errors %}

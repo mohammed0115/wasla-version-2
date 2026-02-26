@@ -124,10 +124,16 @@ class OTPForm(forms.Form):
     d2 = forms.CharField(max_length=1, widget=forms.TextInput(attrs={"class": "", **otp_attrs}))
     d3 = forms.CharField(max_length=1, widget=forms.TextInput(attrs={"class": "", **otp_attrs}))
     d4 = forms.CharField(max_length=1, widget=forms.TextInput(attrs={"class": "", **otp_attrs}))
+    d5 = forms.CharField(max_length=1, widget=forms.TextInput(attrs={"class": "", **otp_attrs}))
+    d6 = forms.CharField(max_length=1, widget=forms.TextInput(attrs={"class": "", **otp_attrs}))
 
 
     def code(self) -> str:
-        return f"{self.cleaned_data['d1']}{self.cleaned_data['d2']}{self.cleaned_data['d3']}{self.cleaned_data['d4']}"
+        return (
+            f"{self.cleaned_data['d1']}{self.cleaned_data['d2']}"
+            f"{self.cleaned_data['d3']}{self.cleaned_data['d4']}"
+            f"{self.cleaned_data['d5']}{self.cleaned_data['d6']}"
+        )
 
 class PersonaCountryForm(forms.Form):
     country = forms.ChoiceField(label="اختر بلدك", choices=COUNTRY_CHOICES)

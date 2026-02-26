@@ -58,7 +58,7 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
-TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "12345").strip() or "12345"
+TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "123456").strip() or "123456"
 
 WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "127.0.0.1.nip.io").strip().lower() or "127.0.0.1.nip.io"
 
