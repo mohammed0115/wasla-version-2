@@ -66,12 +66,15 @@ This report consolidates gap findings from the SRS files analysis and shows curr
   - templates/dashboard/_base.html
   - apps/tenants/test_users_roles_settings.py
 
-### Open
-
 7) Product category requirement enforcement
-- Status: Open
-- Missing:
-  - Hard validation that product must belong to at least one category.
+- Status: Closed
+- Implemented in:
+  - apps/catalog/services/product_service.py
+  - apps/catalog/services/variant_service.py
+  - apps/catalog/serializers.py
+  - apps/catalog/tests/test_category_requirement.py
+
+### Open
 
 8) Product visibility states richer than boolean (enabled/disabled/hidden)
 - Status: Open
@@ -80,15 +83,15 @@ This report consolidates gap findings from the SRS files analysis and shows curr
 
 ## Counts
 - Total SRS gaps tracked: 8
-- Closed: 6
-- Open: 2
+- Closed: 7
+- Open: 1
 
 ## Priority to Complete Remaining Gaps
-1. Category-required validation for product creation/update
-2. Product visibility state model expansion
+1. Product visibility state model expansion
 
 ## Change Evidence (Recent Commits)
 - e6c68fd1: Add stock-driven product auto-status sync
 - 58f2c0e0: Implement SRS gaps: dashboard KPIs, lifecycle transitions, shipping APIs
 - (working tree): Reviews moderation API + RBAC endpoints/tests
 - (working tree): Merchant users/roles settings management (owner-only)
+- (working tree): Product category requirement enforcement

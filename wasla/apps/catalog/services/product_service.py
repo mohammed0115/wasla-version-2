@@ -55,12 +55,11 @@ class ProductService:
             image=image_file,
         )
 
-        if categories:
-            cats = list(categories)
-            for c in cats:
-                if getattr(c, "store_id", None) != store_id:
-                    raise ValueError("Category store_id mismatch")
-            product.categories.add(*cats)
+        ProductService._assign_categories(
+            product=product,
+            store_id=store_id,
+            categories=categories,
+        )
 
         Inventory.objects.update_or_create(
             product=product,
@@ -71,3 +70,19 @@ class ProductService:
         )
 
         return product
+
+    @staticmethod
+    def _assign_categories(*, product: Product, store_id: int, categories: Iterable[Category] | None) -> None:
+        if categories:
+            selected_categories = list(categories)
+            for category in selected_categories:
+                if getattr(category, "store_id", None) != store_id:
+                    raise ValueError("Category store_id mismatch")
+            product.categories.set(selected_categories)
+
+        if not product.categories.exists():
+            default_category, _ = Category.objects.get_or_create(
+                store_id=store_id,
+                name="General",
+            )
+            product.categories.add(default_category)

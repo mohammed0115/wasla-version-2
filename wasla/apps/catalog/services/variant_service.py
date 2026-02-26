@@ -5,7 +5,7 @@ from typing import Iterable
 
 from django.db import IntegrityError, transaction
 
-from apps.catalog.models import Inventory, Product, ProductImage, ProductOption, ProductOptionGroup, ProductVariant
+from apps.catalog.models import Category, Inventory, Product, ProductImage, ProductOption, ProductOptionGroup, ProductVariant
 from apps.stores.models import Store
 
 
@@ -127,7 +127,26 @@ class ProductConfigurationService:
                 variants_payload=variants,
             )
 
+        ProductConfigurationService._sync_product_categories(
+            store=store,
+            product=product,
+            category_ids=payload.get("category_ids"),
+        )
+
         return product
+
+    @staticmethod
+    def _sync_product_categories(*, store: Store, product: Product, category_ids: list[int] | None) -> None:
+        if category_ids is not None:
+            normalized_ids = [int(category_id) for category_id in category_ids if category_id]
+            selected_categories = list(Category.objects.filter(store_id=store.id, id__in=normalized_ids))
+            if len(selected_categories) != len(set(normalized_ids)):
+                raise ValueError("One or more categories were not found in this store.")
+            product.categories.set(selected_categories)
+
+        if not product.categories.exists():
+            default_category, _ = Category.objects.get_or_create(store_id=store.id, name="General")
+            product.categories.add(default_category)
 
     @staticmethod
     def _replace_option_groups(*, store: Store, groups_payload: list[dict]) -> None:

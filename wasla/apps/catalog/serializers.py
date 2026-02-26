@@ -82,6 +82,11 @@ class ProductWriteSerializer(serializers.Serializer):
     description_ar = serializers.CharField(required=False, allow_blank=True)
     description_en = serializers.CharField(required=False, allow_blank=True)
     image = serializers.ImageField(required=False, allow_null=True)
+    category_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        allow_empty=True,
+    )
     images = ProductImageWriteSerializer(many=True, required=False)
     option_groups = ProductOptionGroupWriteSerializer(many=True, required=False)
     variants = ProductVariantWriteSerializer(many=True, required=False)
