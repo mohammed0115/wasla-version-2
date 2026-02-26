@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,nip.io").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,w-sala.com,.w-sala.com").split(",") if h.strip()]
 
 def _env_bool(name: str, default: str = "0") -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "on")
@@ -60,7 +60,7 @@ DEBUG = True
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
 TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "123456").strip() or "123456"
 
-WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "127.0.0.1.nip.io").strip().lower() or "127.0.0.1.nip.io"
+WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "w-sala.com").strip().lower() or "w-sala.com"
 
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",
@@ -69,6 +69,7 @@ ALLOWED_HOSTS = _env_list(
         "127.0.0.1",
         "[::1]",
         WASSLA_BASE_DOMAIN,
+        f".{WASSLA_BASE_DOMAIN}",
         f"www.{WASSLA_BASE_DOMAIN}",
         "76.13.143.149",
         "store1.127.0.0.1.nip.io",
@@ -85,6 +86,8 @@ CSRF_TRUSTED_ORIGINS = _env_list(
         "http://localhost:8000",
         "http://*.127.0.0.1.nip.io:8000",
         "http://*.nip.io:8000",
+        "https://w-sala.com",
+        "https://*.w-sala.com",
     ],
 )
 
