@@ -990,6 +990,8 @@ def payment_required(request: HttpRequest) -> HttpResponse:
 @tenant_access_required
 @require_GET
 def pending_activation(request: HttpRequest) -> HttpResponse:
+    if getattr(request.tenant, "is_published", False):
+        return redirect("tenants:dashboard_home")
     return render(request, "dashboard/pending_activation.html", {"tenant": request.tenant})
 
 

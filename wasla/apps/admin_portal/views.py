@@ -2,20 +2,28 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Avg, Count, Sum
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+from apps.admin_portal.forms import ManualPaymentForm
+from apps.observability.models import RequestPerformanceLog
 from apps.payments.models import PaymentAttempt, WebhookEvent
 from apps.settlements.models import Invoice, InvoiceLine, SettlementRecord
 from apps.stores.models import Store
+from apps.subscriptions.models import PaymentTransaction, StoreSubscription, SubscriptionPlan
+from apps.subscriptions.services.payment_transaction_service import PaymentTransactionService
 from apps.tenants.models import Tenant
+from apps.tenants.models import StoreProfile
 
 from .decorators import admin_permission_required
 from .utils import log_admin_action
@@ -32,6 +40,50 @@ def _throttle_keys(ip: str):
 	return f"admin_portal:login_fail:{ip}", f"admin_portal:login_block:{ip}"
 
 
+def _provision_platform_domain(tenant: Tenant) -> bool:
+	base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "") or "").strip().lower()
+	if not base_domain:
+		return False
+
+	preferred = f"store{tenant.id}"
+	candidate = preferred
+	suffix = 1
+	while Tenant.objects.exclude(id=tenant.id).filter(subdomain=candidate).exists():
+		suffix += 1
+		candidate = f"{preferred}-{suffix}"
+
+	full_domain = f"{candidate}.{base_domain}"
+	changed = (tenant.subdomain != candidate) or (tenant.domain != full_domain)
+	if changed:
+		tenant.subdomain = candidate
+		tenant.domain = full_domain
+		tenant.save(update_fields=["subdomain", "domain", "updated_at"])
+	return changed
+
+
+def _finalize_setup_for_tenant(tenant: Tenant) -> bool:
+	changed = False
+	now = timezone.now()
+
+	if not tenant.setup_completed or tenant.setup_step != 4:
+		tenant.setup_completed = True
+		tenant.setup_completed_at = tenant.setup_completed_at or now
+		tenant.setup_step = 4
+		tenant.save(update_fields=["setup_completed", "setup_completed_at", "setup_step", "updated_at"])
+		changed = True
+
+	profile = StoreProfile.objects.filter(tenant=tenant).first()
+	if profile and (not profile.is_setup_complete or int(profile.setup_step or 1) != 4):
+		profile.is_setup_complete = True
+		profile.setup_step = 4
+		profile.save(update_fields=["is_setup_complete", "setup_step", "updated_at"])
+		changed = True
+
+	return changed
+
+
+@never_cache
+@ensure_csrf_cookie
 def login_view(request):
 	if request.user.is_authenticated and request.user.is_staff:
 		return redirect('/admin-portal/')
@@ -172,6 +224,64 @@ def tenant_set_active_view(request, tenant_id):
 			'deactivated_at': tenant.deactivated_at.isoformat() if tenant.deactivated_at else None,
 		}
 		log_admin_action(request, action, tenant, before, after)
+
+	return redirect('admin_portal:tenants')
+
+
+@admin_permission_required("TENANTS_EDIT")
+def tenant_publish_view(request, tenant_id):
+	if request.method != 'POST':
+		return HttpResponseNotAllowed(['POST'])
+
+	tenant = get_object_or_404(Tenant, id=tenant_id)
+	action = (request.POST.get('action') or '').strip().lower()
+	should_publish = action == 'publish'
+
+	before = {'is_published': tenant.is_published}
+
+	with transaction.atomic():
+		tenant.is_published = should_publish
+		tenant.save(update_fields=['is_published', 'updated_at'])
+
+		subscription_changed = False
+		domain_changed = False
+		setup_changed = False
+		if should_publish:
+			latest_subscription = (
+				StoreSubscription.objects.select_related('plan')
+				.filter(store_id=tenant.id)
+				.order_by('-created_at', '-end_date')
+				.first()
+			)
+			if latest_subscription and latest_subscription.status != 'active':
+				latest_subscription.status = 'active'
+				today = timezone.now().date()
+				if latest_subscription.end_date and latest_subscription.end_date < today:
+					cycle = getattr(latest_subscription.plan, 'billing_cycle', 'monthly')
+					extension_days = 365 if cycle == 'yearly' else 30
+					latest_subscription.end_date = today + timedelta(days=extension_days)
+					latest_subscription.save(update_fields=['status', 'end_date'])
+				else:
+					latest_subscription.save(update_fields=['status'])
+				subscription_changed = True
+
+			domain_changed = _provision_platform_domain(tenant)
+			setup_changed = _finalize_setup_for_tenant(tenant)
+
+		after = {'is_published': tenant.is_published}
+		if subscription_changed:
+			after['subscription_status'] = 'active'
+		if domain_changed:
+			after['platform_domain'] = tenant.domain
+		if setup_changed:
+			after['setup_completed'] = True
+		log_admin_action(
+			request,
+			'TENANT_PUBLISH' if should_publish else 'TENANT_UNPUBLISH',
+			tenant,
+			before,
+			after,
+		)
 
 	return redirect('admin_portal:tenants')
 
@@ -322,4 +432,125 @@ def webhooks_view(request):
 		'webhooks': webhooks_page,
 		'provider_filter': provider,
 		'status_filter': status,
+	})
+
+
+@admin_permission_required("FINANCE_VIEW")
+def payment_transactions_view(request):
+	transactions = (
+		PaymentTransaction.objects.select_related('tenant', 'plan')
+		.order_by('-created_at')
+	)
+	tenants = Tenant.objects.only('id', 'name', 'slug').order_by('name')
+
+	status_filter = (request.GET.get('status') or '').strip()
+	tenant_filter = (request.GET.get('tenant') or '').strip()
+
+	if status_filter:
+		transactions = transactions.filter(status=status_filter)
+	if tenant_filter.isdigit():
+		transactions = transactions.filter(tenant_id=int(tenant_filter))
+
+	transactions_page = Paginator(transactions, 25).get_page(request.GET.get('page', 1))
+	return render(request, 'admin_portal/payment_transactions.html', {
+		'transactions': transactions_page,
+		'tenants': tenants,
+		'status_filter': status_filter,
+		'tenant_filter': tenant_filter,
+	})
+
+
+@admin_permission_required("FINANCE_VIEW")
+def payment_transaction_create_view(request):
+	form = ManualPaymentForm(request.POST or None)
+	if request.method == 'POST' and form.is_valid():
+		cleaned = form.cleaned_data
+		status = cleaned['status']
+		tenant = cleaned['tenant']
+
+		PaymentTransactionService.record_manual_payment(
+			tenant=tenant,
+			plan=cleaned['plan'],
+			amount=cleaned['amount'],
+			currency=(cleaned.get('currency') or 'SAR').strip().upper() or 'SAR',
+			reference=(cleaned.get('reference') or '').strip(),
+			status=status,
+			recorded_by=request.user,
+		)
+
+		if status == PaymentTransaction.STATUS_PAID and getattr(tenant, 'is_published', False):
+			_provision_platform_domain(tenant)
+			_finalize_setup_for_tenant(tenant)
+
+		return redirect('admin_portal:payment_transactions')
+
+	return render(request, 'admin_portal/payment_transaction_create.html', {'form': form})
+
+
+@admin_permission_required("FINANCE_VIEW")
+def subscriptions_view(request):
+	subscriptions = StoreSubscription.objects.select_related('plan').order_by('-created_at')
+	plans = SubscriptionPlan.objects.only('id', 'name').order_by('name')
+
+	status_filter = (request.GET.get('status') or '').strip()
+	plan_filter = (request.GET.get('plan') or '').strip()
+
+	if status_filter:
+		subscriptions = subscriptions.filter(status=status_filter)
+	if plan_filter.isdigit():
+		subscriptions = subscriptions.filter(plan_id=int(plan_filter))
+
+	subscriptions_page = Paginator(subscriptions, 25).get_page(request.GET.get('page', 1))
+	return render(request, 'admin_portal/subscriptions.html', {
+		'subscriptions': subscriptions_page,
+		'plans': plans,
+		'status_filter': status_filter,
+		'plan_filter': plan_filter,
+	})
+
+
+@admin_permission_required("STORES_VIEW")
+def performance_monitoring_view(request):
+	logs = RequestPerformanceLog.objects.all().order_by('-created_at')
+	stores = Store.objects.only('id', 'name').order_by('name')
+
+	store_filter = (request.GET.get('store') or '').strip()
+	endpoint_filter = (request.GET.get('endpoint') or '').strip()
+	date_from = (request.GET.get('date_from') or '').strip()
+	date_to = (request.GET.get('date_to') or '').strip()
+	slow_only = (request.GET.get('slow_only') or '').strip() in ('1', 'true', 'on')
+
+	if store_filter.isdigit():
+		logs = logs.filter(store_id=int(store_filter))
+	if endpoint_filter:
+		logs = logs.filter(endpoint__icontains=endpoint_filter)
+	if date_from:
+		logs = logs.filter(created_at__date__gte=date_from)
+	if date_to:
+		logs = logs.filter(created_at__date__lte=date_to)
+	if slow_only:
+		logs = logs.filter(is_slow=True)
+
+	summary = logs.aggregate(
+		total_requests=Count('id'),
+		avg_response_ms=Avg('response_time_ms'),
+		avg_query_count=Avg('db_query_count'),
+	)
+
+	total = summary.get('total_requests') or 0
+	cache_hits = logs.filter(cache_hit=True).count()
+	cache_hit_rate = round((cache_hits / total) * 100, 2) if total else 0
+
+	logs_page = Paginator(logs, 50).get_page(request.GET.get('page', 1))
+
+	return render(request, 'admin_portal/performance_monitoring.html', {
+		'logs': logs_page,
+		'stores': stores,
+		'summary': summary,
+		'cache_hit_rate': cache_hit_rate,
+		'store_filter': store_filter,
+		'endpoint_filter': endpoint_filter,
+		'date_from': date_from,
+		'date_to': date_to,
+		'slow_only': slow_only,
 	})

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.domain.errors import StoreAccessDeniedError, StoreInactiveError
@@ -93,6 +95,25 @@ def _latest_subscription(tenant_id: int) -> StoreSubscription | None:
     )
 
 
+def _ensure_active_subscription_for_published(tenant: Tenant, subscription: StoreSubscription | None) -> StoreSubscription | None:
+    if subscription is None:
+        return None
+    if subscription.status == "active":
+        return subscription
+    if not getattr(tenant, "is_published", False):
+        return subscription
+
+    subscription.status = "active"
+    today = timezone.now().date()
+    if subscription.end_date and subscription.end_date < today:
+        cycle = getattr(subscription.plan, "billing_cycle", "monthly")
+        subscription.end_date = today + timedelta(days=365 if cycle == "yearly" else 30)
+        subscription.save(update_fields=["status", "end_date"])
+    else:
+        subscription.save(update_fields=["status"])
+    return subscription
+
+
 def merchant_dashboard_required(view_func):
     """Require tenant ownership + active subscription + published store."""
 
@@ -118,6 +139,7 @@ def merchant_dashboard_required(view_func):
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
             return redirect("accounts:persona_plans")
+        subscription = _ensure_active_subscription_for_published(tenant, subscription)
         if subscription.status != "active":
             return redirect("tenants:payment_required")
         if not getattr(tenant, "is_published", False):
@@ -153,6 +175,7 @@ def merchant_subscription_required(view_func):
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
             return redirect("accounts:persona_plans")
+        subscription = _ensure_active_subscription_for_published(tenant, subscription)
         if subscription.status != "active":
             return redirect("tenants:payment_required")
 
