@@ -377,11 +377,12 @@
 
 .hero__network{
   position:absolute;
-  inset: 6% 2% auto auto;
+  top: 12px;
+  right: 24px;
   width:min(460px, 44vw);
   height:320px;
   pointer-events:none;
-  z-index: 0;
+  z-index: 2;
 }
 
 .hero__node{
@@ -441,6 +442,13 @@
 
 @media (max-width: 992px){
   .hero__network{ display:none; }
+}
+
+@media (max-width: 1240px){
+  .hero__network{
+    right: 6px;
+    width:min(380px, 40vw);
+  }
 }
 
 /* Keep the animation subtle and avoid clutter on small screens */
