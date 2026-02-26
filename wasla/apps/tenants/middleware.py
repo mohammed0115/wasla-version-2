@@ -35,12 +35,46 @@ class TenantResolverMiddleware(MiddlewareMixin):
             return None
 
         subdomain = extract_subdomain(request.get_host())
+        from apps.stores.models import Store
+
         if not subdomain:
             request.store = None
             request.tenant = None
-            return None
 
-        from apps.stores.models import Store
+            session_store_id = request.session.get("store_id")
+            try:
+                session_store_id = int(session_store_id) if session_store_id is not None else None
+            except (TypeError, ValueError):
+                session_store_id = None
+
+            if session_store_id:
+                store = (
+                    Store.objects.select_related("tenant")
+                    .filter(tenant_id=session_store_id)
+                    .order_by("id")
+                    .first()
+                )
+                if store:
+                    request.store = store
+                    request.tenant = store.tenant
+                    return None
+
+            user = getattr(request, "user", None)
+            if user and user.is_authenticated:
+                store = (
+                    Store.objects.select_related("tenant")
+                    .filter(owner=user)
+                    .order_by("id")
+                    .first()
+                )
+                if store:
+                    if hasattr(request, "session"):
+                        request.session["store_id"] = store.tenant_id
+                    request.store = store
+                    request.tenant = store.tenant
+                    return None
+
+            return None
 
         store_qs = Store.objects.select_related("tenant").filter(slug=subdomain)
         try:
