@@ -61,7 +61,7 @@ class DomainChecker:
                     response = requests.get(
                         url,
                         timeout=self.HTTP_TIMEOUT,
-                        verify=True,
+                        verify=False,
                         allow_redirects=True,
                     )
                     # Accept any response status (even error pages mean server is reachable)
@@ -114,8 +114,7 @@ class DomainChecker:
                     # Parse expiry date
                     not_after = cert.get("notAfter")
                     if not_after:
-                        # Parse SSL date format: 'Jan 15 12:30:45 2026 GMT'
-                        expires_at = dt.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
+                        expires_at = self.parse_ssl_not_after(not_after)
                         # Make timezone-aware
                         expires_at = timezone.make_aware(expires_at)
 
@@ -157,3 +156,7 @@ class DomainChecker:
                 "expires_at": None,
                 "error": f"SSL check error: {str(e)}",
             }
+
+    @staticmethod
+    def parse_ssl_not_after(not_after: str) -> datetime:
+        return datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")

@@ -69,6 +69,7 @@ from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile,
 from apps.tenants.tasks import enqueue_verify_domain
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.services.audit_service import TenantAuditService
+from apps.domains.models import DomainHealth
 
 from .forms import (
     CustomDomainForm,
@@ -874,12 +875,24 @@ def dashboard_domains(request: HttpRequest) -> HttpResponse:
         )
 
     domains = StoreDomain.objects.filter(tenant=tenant).order_by("-created_at")
+    primary_domain = domains.first()
+    domain_status = None
+    if primary_domain:
+        health = DomainHealth.objects.filter(store_domain=primary_domain).first()
+        if health:
+            domain_status = {
+                "domain": primary_domain.domain,
+                "ssl_valid": health.ssl_valid,
+                "days_until_expiry": health.days_until_expiry,
+                "status": health.status,
+            }
     return render(
         request,
         "dashboard/domains.html",
         {
             "tenant": tenant,
             "domains": domains,
+            "domain_status": domain_status,
             "form": CustomDomainForm(),
             "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", ""),
             "verification_prefix": getattr(settings, "CUSTOM_DOMAIN_VERIFICATION_PATH_PREFIX", ""),

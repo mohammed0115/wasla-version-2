@@ -37,6 +37,7 @@ urlpatterns = [
     path("", include(("apps.stores.urls", "stores"), namespace="stores")),
     path("", include(("apps.tenants.urls", "tenants"), namespace="tenants")),
     path("", include(("apps.plugins.urls", "plugins"), namespace="plugins")),
+    path("", include(("apps.domains.interfaces.web_urls", "domains_web"), namespace="domains_web")),
 
     # APIs
     path("api/", include(("apps.ai.interfaces.api.urls", "ai_api"), namespace="ai_api")),
@@ -54,6 +55,7 @@ urlpatterns = [
     path("api/", include(("apps.settlements.interfaces.api.urls", "settlements_api"), namespace="settlements_api")),
     path("api/", include(("apps.themes.interfaces.api.urls", "themes_api"), namespace="themes_api")),
     path("api/", include(("apps.wallet.urls", "wallet_api"), namespace="wallet_api")),
+    path("api/", include(("apps.domains.interfaces.api_urls", "domains_api"), namespace="domains_api")),
 ]
 
 if getattr(settings, "WASLA_ENABLE_AR", False):

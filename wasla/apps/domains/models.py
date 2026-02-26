@@ -62,7 +62,7 @@ class DomainHealth(models.Model):
     )
 
     last_checked_at = models.DateTimeField(auto_now_add=True)
-    last_error = models.TextField(blank=True, default="")
+    last_error = models.TextField(null=True, blank=True)
 
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
@@ -117,6 +117,7 @@ class DomainHealth(models.Model):
         """Return a formatted health summary."""
         return {
             "domain": self.store_domain.domain,
+            "store_id": self.tenant_id,
             "status": self.status,
             "dns_resolves": self.dns_resolves,
             "http_reachable": self.http_reachable,
@@ -125,8 +126,16 @@ class DomainHealth(models.Model):
             "is_expiring_soon": self.is_expiring_soon,
             "is_expired": self.is_expired,
             "last_checked_at": self.last_checked_at.isoformat() if self.last_checked_at else None,
-            "last_error": self.last_error,
+            "last_error": self.last_error or "",
         }
+
+    @property
+    def store(self):
+        return self.tenant
+
+    @property
+    def domain(self):
+        return self.store_domain
 
 
 class DomainAlert(models.Model):
@@ -192,6 +201,14 @@ class DomainAlert(models.Model):
         self.resolved_by = resolved_by
         self.save(update_fields=["resolved", "resolved_at", "resolved_by", "updated_at"])
 
+    @property
+    def store(self):
+        return self.tenant
+
+    @property
+    def domain(self):
+        return self.store_domain
+
     @classmethod
     def create_from_health(
         cls,
@@ -205,6 +222,7 @@ class DomainAlert(models.Model):
         existing = (
             cls.objects.filter(
                 store_domain=domain_health.store_domain,
+                severity=severity,
                 message=message,
                 resolved=False,
             )
@@ -222,6 +240,39 @@ class DomainAlert(models.Model):
         return cls.objects.create(
             store_domain=domain_health.store_domain,
             tenant=domain_health.tenant,
+            severity=severity,
+            message=message,
+            resolution_text=resolution_text,
+        )
+
+    @classmethod
+    def create_for_domain(
+        cls,
+        *,
+        store_domain: StoreDomain,
+        tenant: Tenant,
+        severity: str,
+        message: str,
+        resolution_text: str = "",
+    ) -> DomainAlert:
+        existing = (
+            cls.objects.filter(
+                store_domain=store_domain,
+                severity=severity,
+                message=message,
+                resolved=False,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if existing:
+            existing.updated_at = timezone.now()
+            existing.save(update_fields=["updated_at"])
+            return existing
+
+        return cls.objects.create(
+            store_domain=store_domain,
+            tenant=tenant,
             severity=severity,
             message=message,
             resolution_text=resolution_text,

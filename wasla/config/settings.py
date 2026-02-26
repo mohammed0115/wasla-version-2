@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
-from pathlib import Path
 import os
 from urllib.parse import urlparse
+from pathlib import Path
+import importlib.util
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 
@@ -149,7 +150,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
-    "django_celery_beat",  # Celery Beat scheduler with database backend
     "apps.accounts.apps.AccountsConfig",
     "apps.sms.apps.SmsConfig",
     "apps.notifications.apps.NotificationsConfig",
@@ -183,6 +183,9 @@ INSTALLED_APPS = [
     "apps.visual_search.apps.VisualSearchConfig",
     "apps.admin_portal.apps.AdminPortalConfig",
 ]
+
+if importlib.util.find_spec("django_celery_beat"):
+    INSTALLED_APPS.append("django_celery_beat")
 
 if WASLA_ENABLE_AR:
     INSTALLED_APPS.append("apps.ar.apps.ArConfig")

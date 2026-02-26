@@ -122,15 +122,15 @@ class Migration(migrations.Migration):
             index=models.Index(fields=["ssl_expires_at"], name="domhealth_ssl_expiry_idx"),
         ),
         migrations.AddIndex(
-            model_name="domalert",
+            model_name="domainalert",
             index=models.Index(fields=["tenant", "resolved"], name="domalert_tenant_resolved_idx"),
         ),
         migrations.AddIndex(
-            model_name="domalert",
+            model_name="domainalert",
             index=models.Index(fields=["severity", "created_at"], name="domalert_severity_created_idx"),
         ),
         migrations.AddIndex(
-            model_name="domalert",
+            model_name="domainalert",
             index=models.Index(fields=["store_domain", "resolved"], name="domalert_domain_resolved_idx"),
         ),
     ]
