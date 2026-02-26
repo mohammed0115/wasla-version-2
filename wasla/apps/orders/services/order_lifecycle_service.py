@@ -9,9 +9,9 @@ from ..models import Order
 
 class OrderLifecycleService:
     ORDER_TRANSITIONS: dict[str, list[str]] = {
-        "pending": ["cancelled"],
+        "pending": ["paid", "cancelled"],
         "paid": ["processing"],
-        "processing": [],
+        "processing": ["shipped"],
         "shipped": ["delivered"],
         "delivered": ["completed"],
         "completed": [],

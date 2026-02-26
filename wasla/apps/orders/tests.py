@@ -80,6 +80,12 @@ class OrderLifecycleServiceTests(TestCase):
         with self.assertRaisesMessage(ValueError, "Cannot mark delivered/completed without a shipment."):
             OrderLifecycleService.transition(order=order, new_status="delivered")
 
+    def test_processing_to_shipped_is_allowed(self):
+        order = self._create_order(status="processing")
+        OrderLifecycleService.transition(order=order, new_status="shipped")
+        order.refresh_from_db()
+        self.assertEqual(order.status, "shipped")
+
     def test_delivered_updates_shipments_except_cancelled(self):
         order = self._create_order(status="shipped")
         shipped = Shipment.objects.create(order=order, carrier="dhl", status="shipped", tenant_id=self.tenant.id)

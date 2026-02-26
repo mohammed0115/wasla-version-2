@@ -25,6 +25,14 @@
     <div class="dash__kpi-value">{{ metrics.revenue_7d }} {{ tenant.currency|default:"SAR" }}</div>
   </div>
   <div class="card dash__kpi-card">
+    <div class="dash__kpi-label">{% trans "Wallet balance" %}</div>
+    <div class="dash__kpi-value">{{ metrics.wallet_balance }} {{ tenant.currency|default:"SAR" }}</div>
+  </div>
+  <div class="card dash__kpi-card">
+    <div class="dash__kpi-label">{% trans "Active shipments" %}</div>
+    <div class="dash__kpi-value">{{ metrics.active_shipments|default:0 }}</div>
+  </div>
+  <div class="card dash__kpi-card">
     <div class="dash__kpi-label">{% trans "Visitors (7 days)" %}</div>
     <div class="dash__kpi-value">{{ metrics.visitors_7d|default:0 }}</div>
   </div>

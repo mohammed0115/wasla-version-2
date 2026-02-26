@@ -41,6 +41,8 @@ class MerchantDashboardMetricsDTO:
     sales_today: Decimal
     orders_today: int
     revenue_7d: Decimal
+    wallet_balance: Decimal
+    active_shipments: int
     visitors_7d: int
     conversion_7d: Decimal
     chart_7d: list[ChartPointDTO]
