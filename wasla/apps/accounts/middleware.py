@@ -20,7 +20,7 @@ class OnboardingFlowMiddleware:
     @staticmethod
     def _should_guard(path: str) -> bool:
         return (
-            path == "/dashboard/"
+            path.startswith("/dashboard")
             or path.startswith("/store/setup")
             or path.startswith("/dashboard/setup")
             or path.startswith("/store/create")

@@ -1,0 +1,242 @@
+{
+  "auth": {
+    "hero": {
+      "title": {
+        "en": "Start your store. Grow your brand.",
+        "ar": "ابدأ متجرك. ونمِّ علامتك."
+      },
+      "subtitle": {
+        "en": "Launch in minutes with secure payments, guided setup, and everything you need to sell online.",
+        "ar": "أطلق متجرك خلال دقائق مع مدفوعات آمنة، وإعداد موجّه، وكل ما تحتاجه للبيع أونلاين."
+      },
+      "trust": {
+        "ssl": { "en": "SSL Secured", "ar": "اتصال آمن SSL" },
+        "payments": { "en": "Trusted Payments", "ar": "مدفوعات موثوقة" },
+        "uptime": { "en": "Always-on Platform", "ar": "منصة تعمل باستمرار" }
+      }
+    },
+    "cta": {
+      "createStore": { "en": "Create your store", "ar": "أنشئ متجرك" },
+      "login": { "en": "Log in", "ar": "تسجيل الدخول" },
+      "support": { "en": "Need help? Contact support", "ar": "تحتاج مساعدة؟ تواصل مع الدعم" }
+    },
+    "tabs": {
+      "login": { "en": "Log in", "ar": "تسجيل الدخول" },
+      "register": { "en": "Create account", "ar": "إنشاء حساب" }
+    },
+    "fields": {
+      "emailOrPhone": { "en": "Email or phone", "ar": "البريد الإلكتروني أو رقم الجوال" },
+      "businessEmailOrPhone": { "en": "Business email or phone", "ar": "بريد النشاط التجاري أو رقم الجوال" },
+      "password": { "en": "Password", "ar": "كلمة المرور" },
+      "confirmPassword": { "en": "Confirm password", "ar": "تأكيد كلمة المرور" }
+    },
+    "placeholders": {
+      "emailOrPhone": { "en": "Enter your email or phone", "ar": "أدخل بريدك الإلكتروني أو رقم جوالك" },
+      "businessEmailOrPhone": { "en": "Enter your business email or phone", "ar": "أدخل بريد نشاطك التجاري أو رقم جوالك" },
+      "password": { "en": "Enter your password", "ar": "أدخل كلمة المرور" },
+      "createPassword": { "en": "Create a password", "ar": "أنشئ كلمة مرور" },
+      "confirmPassword": { "en": "Confirm your password", "ar": "أكّد كلمة المرور" }
+    },
+    "password": {
+      "helper": {
+        "en": "Use 8+ characters with upper/lowercase letters, numbers, and symbols.",
+        "ar": "استخدم 8 أحرف على الأقل مع أحرف كبيرة وصغيرة وأرقام ورمز."
+      },
+      "strength": {
+        "weak": { "en": "Weak", "ar": "ضعيفة" },
+        "fair": { "en": "Fair", "ar": "مقبولة" },
+        "good": { "en": "Good", "ar": "جيدة" },
+        "strong": { "en": "Strong", "ar": "قوية" }
+      }
+    },
+    "actions": {
+      "login": { "en": "Log in", "ar": "تسجيل الدخول" },
+      "loggingIn": { "en": "Logging in...", "ar": "جارِ تسجيل الدخول..." },
+      "createAccount": { "en": "Create my store", "ar": "أنشئ متجري" },
+      "creatingAccount": { "en": "Creating account...", "ar": "جارِ إنشاء الحساب..." },
+      "forgotPassword": { "en": "Forgot password?", "ar": "نسيت كلمة المرور؟" },
+      "magicLink": { "en": "Use magic link instead", "ar": "الدخول برابط سحري" },
+      "alreadyHaveAccount": { "en": "Already have an account? Log in", "ar": "لديك حساب بالفعل؟ سجّل الدخول" }
+    },
+    "validation": {
+      "required": { "en": "This field is required.", "ar": "هذا الحقل مطلوب." },
+      "invalidEmailPhone": { "en": "Enter a valid email or phone number.", "ar": "أدخل بريدًا إلكترونيًا أو رقم جوال صحيحًا." },
+      "passwordRequired": { "en": "Enter your password.", "ar": "أدخل كلمة المرور." },
+      "passwordWeak": { "en": "Your password is too weak. Make it stronger to continue.", "ar": "كلمة المرور ضعيفة. اجعلها أقوى للمتابعة." },
+      "passwordMismatch": { "en": "Passwords do not match.", "ar": "كلمتا المرور غير متطابقتين." }
+    },
+    "errors": {
+      "invalidCredentials": { "en": "Email/phone or password is incorrect.", "ar": "البريد/الجوال أو كلمة المرور غير صحيحة." },
+      "tooManyAttempts": { "en": "Too many attempts. Please try again in a few minutes.", "ar": "محاولات كثيرة. يرجى المحاولة بعد دقائق." },
+      "accountExists": { "en": "An account already exists with this email/phone. Log in instead.", "ar": "يوجد حساب بهذا البريد/الجوال. سجّل الدخول بدلًا من ذلك." },
+      "generic": { "en": "Something went wrong. Please try again.", "ar": "حدث خطأ ما. يرجى المحاولة مرة أخرى." }
+    },
+    "success": {
+      "login": { "en": "Welcome back! Redirecting to your dashboard...", "ar": "أهلًا بعودتك! جاري تحويلك إلى لوحة التحكم..." },
+      "register": { "en": "Account created successfully. Verify your code to continue.", "ar": "تم إنشاء الحساب بنجاح. أكمل التحقق للمتابعة." }
+    }
+  },
+  "otp": {
+    "title": { "en": "Verify your account", "ar": "تحقق من حسابك" },
+    "subtitle": {
+      "en": "Enter the 6-digit code sent to {{masked_destination}}",
+      "ar": "أدخل رمز التحقق المكوّن من 6 أرقام المرسل إلى {{masked_destination}}"
+    },
+    "actions": {
+      "verify": { "en": "Verify code", "ar": "تحقق من الرمز" },
+      "verifying": { "en": "Verifying...", "ar": "جارِ التحقق..." },
+      "changeDestination": { "en": "Change email/phone", "ar": "تغيير البريد/الجوال" },
+      "resendCountdown": { "en": "Resend code in {{seconds}}s", "ar": "إعادة الإرسال خلال {{seconds}} ث" },
+      "resend": { "en": "Didn’t get it? Resend code", "ar": "لم يصلك الرمز؟ أعد الإرسال" }
+    },
+    "validation": {
+      "incomplete": { "en": "Enter the full 6-digit code.", "ar": "أدخل رمز التحقق كاملًا (6 أرقام)." },
+      "invalid": { "en": "That code is incorrect. Try again.", "ar": "الرمز غير صحيح. حاول مرة أخرى." },
+      "expired": { "en": "This code has expired. Request a new one.", "ar": "انتهت صلاحية الرمز. اطلب رمزًا جديدًا." }
+    },
+    "success": {
+      "verified": { "en": "Verified successfully. Let’s set up your store.", "ar": "تم التحقق بنجاح. لنبدأ إعداد متجرك." }
+    }
+  },
+  "onboarding": {
+    "progress": {
+      "stepOf": { "en": "Step {{current}} of 5", "ar": "الخطوة {{current}} من 5" },
+      "percent": { "en": "{{percent}}% complete", "ar": "{{percent}}% مكتمل" }
+    },
+    "actions": {
+      "back": { "en": "Back", "ar": "السابق" },
+      "continue": { "en": "Continue", "ar": "متابعة" },
+      "skip": { "en": "Skip for now", "ar": "تخطي الآن" },
+      "saving": { "en": "Saving...", "ar": "جارِ الحفظ..." }
+    },
+    "common": {
+      "saveFailed": { "en": "Couldn’t save your changes. Please try again.", "ar": "تعذر حفظ التغييرات. حاول مرة أخرى." },
+      "networkIssue": { "en": "Connection issue detected. Check your internet and retry.", "ar": "يوجد خلل في الاتصال. تحقق من الإنترنت وأعد المحاولة." },
+      "saved": { "en": "Saved successfully.", "ar": "تم الحفظ بنجاح." }
+    },
+    "steps": {
+      "storeName": {
+        "title": { "en": "Name your store", "ar": "سمِّ متجرك" },
+        "subtitle": { "en": "Choose a name your customers will remember.", "ar": "اختر اسمًا يعبّر عن علامتك ويسهل تذكره." },
+        "field": { "en": "Store name", "ar": "اسم المتجر" },
+        "placeholder": { "en": "e.g., Noor Boutique", "ar": "مثال: متجر نور" },
+        "urlPreview": { "en": "Your store URL preview", "ar": "معاينة رابط متجرك" },
+        "validation": {
+          "required": { "en": "Store name is required.", "ar": "اسم المتجر مطلوب." },
+          "short": { "en": "Store name must be at least 3 characters.", "ar": "اسم المتجر يجب أن يكون 3 أحرف على الأقل." },
+          "invalidChars": { "en": "Use letters, numbers, spaces, or hyphens only.", "ar": "استخدم حروفًا أو أرقامًا أو مسافات أو شرطات فقط." },
+          "slugTaken": { "en": "This store URL is already taken. Try another name.", "ar": "رابط المتجر مستخدم بالفعل. جرّب اسمًا آخر." }
+        }
+      },
+      "logo": {
+        "title": { "en": "Add your logo", "ar": "أضف شعارك" },
+        "subtitle": { "en": "Upload your brand logo to personalize your storefront.", "ar": "ارفع شعار العلامة لتمييز واجهة متجرك." },
+        "dropzone": { "en": "Drag & drop your logo here, or click to upload", "ar": "اسحب وأفلت الشعار هنا أو اضغط للرفع" },
+        "helper": { "en": "PNG, JPG, or SVG up to 2MB", "ar": "PNG أو JPG أو SVG بحجم أقصى 2MB" },
+        "actions": {
+          "uploadContinue": { "en": "Upload & continue", "ar": "رفع ومتابعة" },
+          "skip": { "en": "Skip for now", "ar": "تخطي الآن" },
+          "replace": { "en": "Replace logo", "ar": "استبدال الشعار" },
+          "remove": { "en": "Remove", "ar": "إزالة" }
+        },
+        "validation": {
+          "unsupported": { "en": "Unsupported file type. Please upload PNG, JPG, or SVG.", "ar": "نوع الملف غير مدعوم. ارفع PNG أو JPG أو SVG." },
+          "tooLarge": { "en": "File is too large. Maximum size is 2MB.", "ar": "حجم الملف كبير. الحد الأقصى 2MB." }
+        },
+        "success": {
+          "uploaded": { "en": "Logo uploaded successfully.", "ar": "تم رفع الشعار بنجاح." }
+        }
+      },
+      "firstProduct": {
+        "title": { "en": "Add your first product", "ar": "أضف أول منتج" },
+        "subtitle": { "en": "Create one product now. You can add more anytime.", "ar": "أضف منتجًا واحدًا الآن، ويمكنك إضافة المزيد لاحقًا." },
+        "fields": {
+          "name": { "en": "Product name", "ar": "اسم المنتج" },
+          "price": { "en": "Price", "ar": "السعر" },
+          "image": { "en": "Product image", "ar": "صورة المنتج" }
+        },
+        "placeholders": {
+          "name": { "en": "e.g., Classic Cotton T-Shirt", "ar": "مثال: تيشيرت قطني كلاسيك" },
+          "price": { "en": "e.g., 99.00", "ar": "مثال: 99.00" }
+        },
+        "validation": {
+          "nameRequired": { "en": "Product name is required.", "ar": "اسم المنتج مطلوب." },
+          "priceRequired": { "en": "Price is required.", "ar": "السعر مطلوب." },
+          "priceInvalid": { "en": "Enter a valid price greater than 0.", "ar": "أدخل سعرًا صحيحًا أكبر من 0." }
+        },
+        "actions": {
+          "saveContinue": { "en": "Save product & continue", "ar": "حفظ المنتج ومتابعة" },
+          "addLater": { "en": "I’ll add products later", "ar": "سأضيف المنتجات لاحقًا" },
+          "saving": { "en": "Saving product...", "ar": "جارِ حفظ المنتج..." }
+        },
+        "success": {
+          "added": { "en": "First product added. Great start!", "ar": "تمت إضافة أول منتج. بداية ممتازة!" }
+        }
+      },
+      "payment": {
+        "title": { "en": "Set up payments", "ar": "إعداد المدفوعات" },
+        "subtitle": { "en": "Connect a payment method so you can accept customer orders.", "ar": "اربط وسيلة دفع لبدء استقبال طلبات العملاء." },
+        "trust": { "en": "Your payment data is encrypted and securely stored.", "ar": "بيانات الدفع مشفّرة ومحفوظة بأمان." },
+        "status": {
+          "notConnected": { "en": "Not connected", "ar": "غير متصل" },
+          "pending": { "en": "Pending verification", "ar": "قيد المراجعة" },
+          "connected": { "en": "Connected", "ar": "متصل" }
+        },
+        "actions": {
+          "connect": { "en": "Connect payment", "ar": "ربط وسيلة الدفع" },
+          "connecting": { "en": "Connecting...", "ar": "جارِ الربط..." },
+          "continuePublish": { "en": "Continue to publish", "ar": "متابعة إلى النشر" }
+        },
+        "validation": {
+          "missingDetails": { "en": "Please complete all required payment details.", "ar": "يرجى إكمال جميع بيانات الدفع المطلوبة." },
+          "providerError": { "en": "Couldn’t connect payment provider. Please retry.", "ar": "تعذر ربط مزود الدفع. حاول مرة أخرى." }
+        },
+        "success": {
+          "configured": { "en": "Payment setup completed.", "ar": "تم إعداد المدفوعات بنجاح." }
+        }
+      },
+      "publish": {
+        "title": { "en": "Publish your store", "ar": "انشر متجرك" },
+        "subtitle": { "en": "Your store is ready. Go live and start selling.", "ar": "متجرك جاهز الآن. انطلق وابدأ البيع." },
+        "checklistIntro": { "en": "Before publishing, confirm these items:", "ar": "قبل النشر، تأكد من التالي:" },
+        "checklist": {
+          "storeName": { "en": "Store name set", "ar": "تم تحديد اسم المتجر" },
+          "logo": { "en": "Logo added", "ar": "تم رفع الشعار" },
+          "firstProduct": { "en": "First product added", "ar": "تمت إضافة أول منتج" },
+          "payment": { "en": "Payment configured", "ar": "تم إعداد الدفع" }
+        },
+        "actions": {
+          "publish": { "en": "Publish store", "ar": "نشر المتجر" },
+          "publishing": { "en": "Publishing...", "ar": "جارِ النشر..." },
+          "backEdit": { "en": "Back to edit", "ar": "رجوع للتعديل" }
+        },
+        "success": {
+          "title": { "en": "Your store is live 🎉", "ar": "متجرك أصبح مباشرًا 🎉" },
+          "message": { "en": "Congratulations! Your store is now published and ready for customers.", "ar": "مبروك! متجرك الآن منشور وجاهز لاستقبال العملاء." },
+          "goDashboard": { "en": "Go to dashboard", "ar": "اذهب إلى لوحة التحكم" },
+          "viewStorefront": { "en": "View storefront", "ar": "عرض المتجر" }
+        },
+        "error": {
+          "failed": { "en": "Publish failed. Please try again in a moment.", "ar": "فشل النشر. حاول مرة أخرى بعد لحظات." }
+        }
+      }
+    }
+  },
+  "feedback": {
+    "inline": {
+      "looksGood": { "en": "Looks good.", "ar": "ممتاز." },
+      "saved": { "en": "Saved.", "ar": "تم الحفظ." },
+      "fixField": { "en": "Please fix this field.", "ar": "يرجى تصحيح هذا الحقل." },
+      "invalidValue": { "en": "This value is invalid.", "ar": "القيمة المدخلة غير صالحة." }
+    },
+    "toast": {
+      "success": { "en": "Saved successfully.", "ar": "تمت العملية بنجاح." },
+      "warning": { "en": "Your session will expire soon.", "ar": "ستنتهي الجلسة قريبًا." },
+      "error": { "en": "Action failed. Please try again.", "ar": "فشلت العملية. حاول مرة أخرى." }
+    },
+    "empty": {
+      "products": { "en": "No products yet. Add your first product to start selling.", "ar": "لا توجد منتجات بعد. أضف أول منتج لبدء البيع." },
+      "payments": { "en": "No payment method connected yet. Connect one to accept orders.", "ar": "لم يتم ربط وسيلة دفع بعد. اربط وسيلة لبدء استقبال الطلبات." }
+    }
+  }
+}

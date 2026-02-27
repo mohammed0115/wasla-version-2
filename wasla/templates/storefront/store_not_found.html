@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Store not found" %}{% endblock %}
+
+{% block body %}
+<div class="center">
+  <div class="card" style="padding:20px; max-width:560px;">
+    <h1 style="margin:0 0 8px;">{% trans "Store not found" %}</h1>
+    <p class="muted" style="margin:0 0 14px;">
+      {% trans "This store subdomain is not active yet or does not exist." %}
+    </p>
+    <a class="btn btn-primary" href="https://{{ base_domain|default:'w-sala.com' }}">{% trans "Back to main site" %}</a>
+  </div>
+</div>
+{% endblock %}

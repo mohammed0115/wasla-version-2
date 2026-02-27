@@ -10,7 +10,6 @@ from apps.tenants.domain.errors import (
 )
 from apps.tenants.domain.policies import validate_hex_color, validate_store_name, validate_tenant_slug
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
-from apps.stores.models import Store, StoreSettings, StoreSetupStep
 from apps.tenants.services.audit_service import TenantAuditService
 
 
@@ -139,44 +138,11 @@ class CreateStoreUseCase:
                 },
             )
 
-        store = Store.objects.filter(owner=cmd.user).order_by("id").first()
-        if store and store.tenant_id is None:
-            updates = []
-            store.tenant = tenant
-            updates.append("tenant")
-            if not store.slug:
-                store.slug = slug
-                updates.append("slug")
-            if not store.subdomain:
-                store.subdomain = slug
-                updates.append("subdomain")
-            if store.status != Store.STATUS_ACTIVE:
-                store.status = Store.STATUS_ACTIVE
-                updates.append("status")
-            if store.name != store_name and not store.name:
-                store.name = store_name
-                updates.append("name")
-            store.save(update_fields=updates or None)
-        elif not store:
-            if Store.objects.filter(slug=slug).exists() or Store.objects.filter(subdomain=slug).exists():
-                raise StoreSlugAlreadyTakenError("This store slug is already taken.")
-            store = Store.objects.create(
-                owner=cmd.user,
-                tenant=tenant,
-                name=store_name,
-                slug=slug,
-                subdomain=slug,
-                status=Store.STATUS_ACTIVE,
-            )
-        if store:
-            StoreSettings.objects.get_or_create(store=store)
-            StoreSetupStep.objects.get_or_create(store=store)
-
         TenantAuditService.record_action(
             tenant,
             "store_created",
             actor=getattr(cmd.user, "username", "user"),
-            details="Store created via onboarding.",
+            details="Tenant profile created via onboarding; physical store is provisioned after payment approval.",
             metadata={"slug": tenant.slug, "currency": tenant.currency, "language": tenant.language},
         )
 

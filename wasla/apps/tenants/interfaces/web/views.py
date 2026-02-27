@@ -201,7 +201,7 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
             request.session["store_id"] = result.tenant.id
             request.tenant = result.tenant
             if result.created:
-                messages.success(request, "Store created successfully.")
+                messages.success(request, "Store profile created. Your store will be provisioned after payment approval.")
             else:
                 messages.info(request, "You already have a store. Redirected to your dashboard.")
             profile = StoreProfile.objects.filter(tenant=result.tenant).first()

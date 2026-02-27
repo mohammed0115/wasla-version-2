@@ -13,6 +13,8 @@ from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPol
 from apps.tenants.domain.errors import StoreAccessDeniedError, StoreInactiveError
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
 from apps.subscriptions.models import StoreSubscription
+from apps.subscriptions.models import PaymentTransaction
+from apps.tenants.services.provisioning import merchant_has_active_store
 
 
 def resolve_tenant_for_request(request: HttpRequest) -> Tenant | None:
@@ -114,6 +116,21 @@ def _ensure_active_subscription_for_published(tenant: Tenant, subscription: Stor
     return subscription
 
 
+def _has_submitted_payment(tenant_id: int) -> bool:
+    return PaymentTransaction.objects.filter(tenant_id=tenant_id).exclude(
+        status__in=[
+            PaymentTransaction.STATUS_FAILED,
+            PaymentTransaction.STATUS_CANCELLED,
+        ]
+    ).exists()
+
+
+def _billing_redirect_for_tenant(tenant_id: int):
+    if _has_submitted_payment(tenant_id):
+        return redirect("tenants:billing_pending_activation")
+    return redirect("tenants:billing_payment_required")
+
+
 def merchant_dashboard_required(view_func):
     """Require tenant ownership + active subscription + published store."""
 
@@ -136,14 +153,17 @@ def merchant_dashboard_required(view_func):
         request.session["store_id"] = tenant.id
         request.tenant = tenant
 
+        if not merchant_has_active_store(request.user):
+            return _billing_redirect_for_tenant(tenant.id)
+
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
-            return redirect("accounts:persona_plans")
+            return _billing_redirect_for_tenant(tenant.id)
         subscription = _ensure_active_subscription_for_published(tenant, subscription)
         if subscription.status != "active":
-            return redirect("tenants:payment_required")
+            return _billing_redirect_for_tenant(tenant.id)
         if not getattr(tenant, "is_published", False):
-            return redirect("tenants:pending_activation")
+            return redirect("tenants:billing_pending_activation")
 
         return view_func(request, *args, **kwargs)
 
@@ -172,12 +192,15 @@ def merchant_subscription_required(view_func):
         request.session["store_id"] = tenant.id
         request.tenant = tenant
 
+        if not merchant_has_active_store(request.user):
+            return _billing_redirect_for_tenant(tenant.id)
+
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
-            return redirect("accounts:persona_plans")
+            return _billing_redirect_for_tenant(tenant.id)
         subscription = _ensure_active_subscription_for_published(tenant, subscription)
         if subscription.status != "active":
-            return redirect("tenants:payment_required")
+            return _billing_redirect_for_tenant(tenant.id)
 
         return view_func(request, *args, **kwargs)
 

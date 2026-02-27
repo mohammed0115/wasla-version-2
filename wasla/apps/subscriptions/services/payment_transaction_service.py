@@ -5,8 +5,8 @@ from datetime import date, timedelta
 from django.db import transaction
 from django.utils import timezone
 
-from apps.stores.models import Store
-from apps.tenants.models import Tenant
+from apps.tenants.models import Tenant, TenantMembership
+from apps.tenants.services.provisioning import provision_store_after_payment
 
 from ..models import PaymentTransaction, StoreSubscription, SubscriptionPlan
 
@@ -37,23 +37,31 @@ class PaymentTransactionService:
         )
 
         if status == PaymentTransaction.STATUS_PAID:
-            start = date.today()
-            end = start + (
-                timedelta(days=30) if plan.billing_cycle == "monthly" else timedelta(days=365)
-            )
-            subscription, _ = StoreSubscription.objects.update_or_create(
-                store_id=tenant.id,
-                defaults={
-                    "plan": plan,
-                    "status": "active",
-                    "start_date": start,
-                    "end_date": end,
-                },
-            )
-            tx.subscription = subscription
-            tx.save(update_fields=["subscription"])
+            owner = None
+            profile = getattr(tenant, "store_profile", None)
+            if profile is not None:
+                owner = getattr(profile, "owner", None)
+            if owner is None:
+                owner_membership = (
+                    TenantMembership.objects.select_related("user")
+                    .filter(
+                        tenant=tenant,
+                        role=TenantMembership.ROLE_OWNER,
+                        is_active=True,
+                    )
+                    .order_by("id")
+                    .first()
+                )
+                if owner_membership:
+                    owner = owner_membership.user
 
-            Store.objects.filter(tenant_id=tenant.id).update(status=Store.STATUS_ACTIVE)
-            Tenant.objects.filter(id=tenant.id).update(is_active=True)
+            if owner is None:
+                raise ValueError("Cannot approve payment: tenant owner not found.")
+
+            store = provision_store_after_payment(merchant=owner, plan=plan, payment=tx)
+            subscription = StoreSubscription.objects.filter(store_id=store.tenant_id).order_by("-created_at").first()
+            if subscription and tx.subscription_id != subscription.id:
+                tx.subscription = subscription
+                tx.save(update_fields=["subscription"])
 
         return tx

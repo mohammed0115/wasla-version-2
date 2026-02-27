@@ -3,11 +3,18 @@
 from django import forms
 from django.forms import inlineformset_factory, modelformset_factory
 
-from apps.catalog.models import Product, ProductOption, ProductOptionGroup, ProductVariant
+from apps.catalog.models import Category, Product, ProductOption, ProductOptionGroup, ProductVariant
 
 
 class ProductForm(forms.ModelForm):
     """Form for product creation/editing."""
+
+    categories = forms.ModelMultipleChoiceField(
+        queryset=Category.objects.none(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select"}),
+        label="Categories",
+    )
 
     class Meta:
         model = Product
@@ -20,6 +27,13 @@ class ProductForm(forms.ModelForm):
             "description_en": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, store_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if store_id:
+            self.fields["categories"].queryset = Category.objects.filter(store_id__in=[0, int(store_id)]).order_by("name")
+        else:
+            self.fields["categories"].queryset = Category.objects.filter(store_id=0).order_by("name")
 
 
 class ProductOptionGroupForm(forms.ModelForm):

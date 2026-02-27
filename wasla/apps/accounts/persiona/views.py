@@ -166,7 +166,7 @@ def persona_plans(request):
                 store_id=tenant.id,
                 defaults={
                     "plan": chosen,
-                    "status": "active" if is_free else "pending",
+                    "status": "pending",
                     "start_date": timezone.now().date(),
                     "end_date": (
                         timezone.now().date()
@@ -178,12 +178,9 @@ def persona_plans(request):
             request.session["persona_billing_cycle"] = chosen.billing_cycle
             request.session["persona_plan_id"] = chosen.id
 
-        # Next step after choosing plan:
-        # - Free plan: go مباشرة إلى لوحة التحكم
-        # - Paid plan: go to payment setup first
-        if float(getattr(chosen, "price", 0) or 0) <= 0:
-            return redirect("tenants:dashboard_home")
-        return redirect("tenants:dashboard_setup_payment")
+        # Option C flow: do not auto-activate subscriptions or stores.
+        # Merchant must submit/complete manual payment then wait for admin approval.
+        return redirect("tenants:billing_payment_required")
 
     # GET
     selected_plan_id = request.session.get("persona_plan_id")

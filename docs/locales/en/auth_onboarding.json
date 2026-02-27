@@ -1,0 +1,230 @@
+{
+  "auth": {
+    "hero": {
+      "title": "Start your store. Grow your brand.",
+      "subtitle": "Launch in minutes with secure payments, guided setup, and everything you need to sell online.",
+      "trust": {
+        "ssl": "SSL Secured",
+        "payments": "Trusted Payments",
+        "uptime": "Always-on Platform"
+      }
+    },
+    "cta": {
+      "createStore": "Create your store",
+      "login": "Log in",
+      "support": "Need help? Contact support"
+    },
+    "tabs": {
+      "login": "Log in",
+      "register": "Create account"
+    },
+    "fields": {
+      "emailOrPhone": "Email or phone",
+      "businessEmailOrPhone": "Business email or phone",
+      "password": "Password",
+      "confirmPassword": "Confirm password"
+    },
+    "placeholders": {
+      "emailOrPhone": "Enter your email or phone",
+      "businessEmailOrPhone": "Enter your business email or phone",
+      "password": "Enter your password",
+      "createPassword": "Create a password",
+      "confirmPassword": "Confirm your password"
+    },
+    "password": {
+      "helper": "Use 8+ characters with upper/lowercase letters, numbers, and symbols.",
+      "strength": {
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      }
+    },
+    "actions": {
+      "login": "Log in",
+      "loggingIn": "Logging in...",
+      "createAccount": "Create my store",
+      "creatingAccount": "Creating account...",
+      "forgotPassword": "Forgot password?",
+      "magicLink": "Use magic link instead",
+      "alreadyHaveAccount": "Already have an account? Log in"
+    },
+    "validation": {
+      "required": "This field is required.",
+      "invalidEmailPhone": "Enter a valid email or phone number.",
+      "passwordRequired": "Enter your password.",
+      "passwordWeak": "Your password is too weak. Make it stronger to continue.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "errors": {
+      "invalidCredentials": "Email/phone or password is incorrect.",
+      "tooManyAttempts": "Too many attempts. Please try again in a few minutes.",
+      "accountExists": "An account already exists with this email/phone. Log in instead.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "success": {
+      "login": "Welcome back! Redirecting to your dashboard...",
+      "register": "Account created successfully. Verify your code to continue."
+    }
+  },
+  "otp": {
+    "title": "Verify your account",
+    "subtitle": "Enter the 6-digit code sent to {{masked_destination}}",
+    "actions": {
+      "verify": "Verify code",
+      "verifying": "Verifying...",
+      "changeDestination": "Change email/phone",
+      "resendCountdown": "Resend code in {{seconds}}s",
+      "resend": "Didn’t get it? Resend code"
+    },
+    "validation": {
+      "incomplete": "Enter the full 6-digit code.",
+      "invalid": "That code is incorrect. Try again.",
+      "expired": "This code has expired. Request a new one."
+    },
+    "success": {
+      "verified": "Verified successfully. Let’s set up your store."
+    }
+  },
+  "onboarding": {
+    "progress": {
+      "stepOf": "Step {{current}} of 5",
+      "percent": "{{percent}}% complete"
+    },
+    "actions": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "saving": "Saving..."
+    },
+    "common": {
+      "saveFailed": "Couldn’t save your changes. Please try again.",
+      "networkIssue": "Connection issue detected. Check your internet and retry.",
+      "saved": "Saved successfully."
+    },
+    "steps": {
+      "storeName": {
+        "title": "Name your store",
+        "subtitle": "Choose a name your customers will remember.",
+        "field": "Store name",
+        "placeholder": "e.g., Noor Boutique",
+        "urlPreview": "Your store URL preview",
+        "validation": {
+          "required": "Store name is required.",
+          "short": "Store name must be at least 3 characters.",
+          "invalidChars": "Use letters, numbers, spaces, or hyphens only.",
+          "slugTaken": "This store URL is already taken. Try another name."
+        }
+      },
+      "logo": {
+        "title": "Add your logo",
+        "subtitle": "Upload your brand logo to personalize your storefront.",
+        "dropzone": "Drag & drop your logo here, or click to upload",
+        "helper": "PNG, JPG, or SVG up to 2MB",
+        "actions": {
+          "uploadContinue": "Upload & continue",
+          "skip": "Skip for now",
+          "replace": "Replace logo",
+          "remove": "Remove"
+        },
+        "validation": {
+          "unsupported": "Unsupported file type. Please upload PNG, JPG, or SVG.",
+          "tooLarge": "File is too large. Maximum size is 2MB."
+        },
+        "success": {
+          "uploaded": "Logo uploaded successfully."
+        }
+      },
+      "firstProduct": {
+        "title": "Add your first product",
+        "subtitle": "Create one product now. You can add more anytime.",
+        "fields": {
+          "name": "Product name",
+          "price": "Price",
+          "image": "Product image"
+        },
+        "placeholders": {
+          "name": "e.g., Classic Cotton T-Shirt",
+          "price": "e.g., 99.00"
+        },
+        "validation": {
+          "nameRequired": "Product name is required.",
+          "priceRequired": "Price is required.",
+          "priceInvalid": "Enter a valid price greater than 0."
+        },
+        "actions": {
+          "saveContinue": "Save product & continue",
+          "addLater": "I’ll add products later",
+          "saving": "Saving product..."
+        },
+        "success": {
+          "added": "First product added. Great start!"
+        }
+      },
+      "payment": {
+        "title": "Set up payments",
+        "subtitle": "Connect a payment method so you can accept customer orders.",
+        "trust": "Your payment data is encrypted and securely stored.",
+        "status": {
+          "notConnected": "Not connected",
+          "pending": "Pending verification",
+          "connected": "Connected"
+        },
+        "actions": {
+          "connect": "Connect payment",
+          "connecting": "Connecting...",
+          "continuePublish": "Continue to publish"
+        },
+        "validation": {
+          "missingDetails": "Please complete all required payment details.",
+          "providerError": "Couldn’t connect payment provider. Please retry."
+        },
+        "success": {
+          "configured": "Payment setup completed."
+        }
+      },
+      "publish": {
+        "title": "Publish your store",
+        "subtitle": "Your store is ready. Go live and start selling.",
+        "checklistIntro": "Before publishing, confirm these items:",
+        "checklist": {
+          "storeName": "Store name set",
+          "logo": "Logo added",
+          "firstProduct": "First product added",
+          "payment": "Payment configured"
+        },
+        "actions": {
+          "publish": "Publish store",
+          "publishing": "Publishing...",
+          "backEdit": "Back to edit"
+        },
+        "success": {
+          "title": "Your store is live 🎉",
+          "message": "Congratulations! Your store is now published and ready for customers.",
+          "goDashboard": "Go to dashboard",
+          "viewStorefront": "View storefront"
+        },
+        "error": {
+          "failed": "Publish failed. Please try again in a moment."
+        }
+      }
+    }
+  },
+  "feedback": {
+    "inline": {
+      "looksGood": "Looks good.",
+      "saved": "Saved.",
+      "fixField": "Please fix this field.",
+      "invalidValue": "This value is invalid."
+    },
+    "toast": {
+      "success": "Saved successfully.",
+      "warning": "Your session will expire soon.",
+      "error": "Action failed. Please try again."
+    },
+    "empty": {
+      "products": "No products yet. Add your first product to start selling.",
+      "payments": "No payment method connected yet. Connect one to accept orders."
+    }
+  }
+}

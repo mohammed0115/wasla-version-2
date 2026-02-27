@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -24,6 +25,7 @@ from apps.subscriptions.models import PaymentTransaction, StoreSubscription, Sub
 from apps.subscriptions.services.payment_transaction_service import PaymentTransactionService
 from apps.tenants.models import Tenant
 from apps.tenants.models import StoreProfile
+from apps.tenants.services.provisioning import provision_store_after_payment
 
 from .decorators import admin_permission_required
 from .utils import log_admin_action
@@ -468,7 +470,7 @@ def payment_transaction_create_view(request):
 		status = cleaned['status']
 		tenant = cleaned['tenant']
 
-		PaymentTransactionService.record_manual_payment(
+		tx = PaymentTransactionService.record_manual_payment(
 			tenant=tenant,
 			plan=cleaned['plan'],
 			amount=cleaned['amount'],
@@ -478,13 +480,51 @@ def payment_transaction_create_view(request):
 			recorded_by=request.user,
 		)
 
-		if status == PaymentTransaction.STATUS_PAID and getattr(tenant, 'is_published', False):
-			_provision_platform_domain(tenant)
-			_finalize_setup_for_tenant(tenant)
+		if status == PaymentTransaction.STATUS_PAID:
+			owner = getattr(getattr(tenant, 'store_profile', None), 'owner', None)
+			if owner is not None:
+				provision_store_after_payment(merchant=owner, plan=cleaned['plan'], payment=tx)
+			messages.success(request, 'Payment approved and store provisioning executed.')
+		else:
+			messages.success(request, 'Manual payment was recorded as pending.')
 
 		return redirect('admin_portal:payment_transactions')
 
 	return render(request, 'admin_portal/payment_transaction_create.html', {'form': form})
+
+
+@admin_permission_required("FINANCE_VIEW")
+def payment_transaction_approve_create_store_view(request, transaction_id: int):
+	if request.method != 'POST':
+		return HttpResponseNotAllowed(['POST'])
+
+	tx = get_object_or_404(PaymentTransaction.objects.select_related('tenant', 'plan'), id=transaction_id)
+	if tx.status == PaymentTransaction.STATUS_PAID:
+		messages.info(request, 'Payment is already approved.')
+		return redirect('admin_portal:payment_transactions')
+
+	if tx.status in {PaymentTransaction.STATUS_FAILED, PaymentTransaction.STATUS_CANCELLED}:
+		messages.error(request, 'Cannot approve a failed or cancelled payment.')
+		return redirect('admin_portal:payment_transactions')
+
+	owner = getattr(getattr(tx.tenant, 'store_profile', None), 'owner', None)
+	if owner is None:
+		messages.error(request, 'Tenant owner was not found. Please assign owner first.')
+		return redirect('admin_portal:payment_transactions')
+
+	with transaction.atomic():
+		tx.status = PaymentTransaction.STATUS_PAID
+		tx.paid_at = timezone.now()
+		if tx.recorded_by_id is None:
+			tx.recorded_by = request.user
+			update_fields = ['status', 'paid_at', 'recorded_by']
+		else:
+			update_fields = ['status', 'paid_at']
+		tx.save(update_fields=update_fields)
+		provision_store_after_payment(merchant=owner, plan=tx.plan, payment=tx)
+
+	messages.success(request, 'Payment approved and store created/activated successfully.')
+	return redirect('admin_portal:payment_transactions')
 
 
 @admin_permission_required("FINANCE_VIEW")

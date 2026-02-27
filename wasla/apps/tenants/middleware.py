@@ -17,6 +17,7 @@ EN:
 from django.conf import settings
 from django.http import Http404
 from django.db.utils import OperationalError, ProgrammingError
+from django.shortcuts import render
 from django.utils import translation
 from django.utils.deprecation import MiddlewareMixin
 
@@ -28,12 +29,21 @@ from .services.domain_resolution import resolve_tenant_by_host
 class TenantResolverMiddleware(MiddlewareMixin):
     """Resolve store based on subdomain and attach store + tenant to request."""
 
+    @staticmethod
+    def _is_platform_subdomain_host(host: str) -> bool:
+        normalized_host = (host or "").split(":", 1)[0].strip().lower()
+        base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "") or "").strip().lower()
+        if base_domain and normalized_host.endswith(f".{base_domain}"):
+            return True
+        return normalized_host.endswith(".nip.io") or normalized_host.endswith(".localhost")
+
     def process_request(self, request):
         if request.path.startswith("/admin-portal/"):
             request.store = None
             request.tenant = None
             return None
 
+        host = request.get_host().split(":", 1)[0]
         subdomain = extract_subdomain(request.get_host())
         from apps.stores.models import Store
 
@@ -89,6 +99,16 @@ class TenantResolverMiddleware(MiddlewareMixin):
 
         store = store_qs.first()
         if not store:
+            if self._is_platform_subdomain_host(host) and not request.path.startswith("/api/"):
+                return render(
+                    request,
+                    "storefront/store_not_found.html",
+                    {
+                        "requested_subdomain": subdomain,
+                        "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com"),
+                    },
+                    status=404,
+                )
             raise Http404("Store not found")
 
         request.store = store

@@ -9,8 +9,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.subscriptions.services.subscription_service import SubscriptionService
+from apps.subscriptions.models import PaymentTransaction
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
+from apps.tenants.services.provisioning import merchant_has_active_store
 
 
 def _resolve_tenant_for_user(request) -> Tenant | None:
@@ -78,6 +80,12 @@ def resolve_onboarding_state(request) -> str:
         return reverse("tenants:store_create")
 
     active_subscription = SubscriptionService.get_active_subscription(tenant.id)
+    has_submitted_payment = PaymentTransaction.objects.filter(tenant_id=tenant.id).exclude(
+        status__in=[
+            PaymentTransaction.STATUS_FAILED,
+            PaymentTransaction.STATUS_CANCELLED,
+        ]
+    ).exists()
     if active_subscription is None:
         from apps.subscriptions.models import StoreSubscription
         latest = (
@@ -100,7 +108,14 @@ def resolve_onboarding_state(request) -> str:
             active_subscription = latest
 
     if active_subscription is None:
-        return reverse("tenants:payment_required")
+        if has_submitted_payment:
+            return reverse("tenants:billing_pending_activation")
+        return reverse("tenants:billing_payment_required")
+
+    if not merchant_has_active_store(request.user):
+        if has_submitted_payment:
+            return reverse("tenants:billing_pending_activation")
+        return reverse("tenants:billing_payment_required")
 
     store_profile = StoreProfile.objects.filter(tenant=tenant).order_by("id").first()
     if not store_profile:

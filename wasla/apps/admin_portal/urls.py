@@ -20,6 +20,7 @@ urlpatterns = [
     path('payments/', views.payments_view, name='payments'),
     path('payments/transactions/', views.payment_transactions_view, name='payment_transactions'),
     path('payments/transactions/create/', views.payment_transaction_create_view, name='payment_transaction_create'),
+    path('payments/transactions/<int:transaction_id>/approve-create-store/', views.payment_transaction_approve_create_store_view, name='payment_transaction_approve_create_store'),
     path('subscriptions/', views.subscriptions_view, name='subscriptions'),
     path('settlements/', views.settlements_view, name='settlements'),
 

@@ -84,6 +84,7 @@ CSRF_TRUSTED_ORIGINS = _env_list(
     default=[
         "http://127.0.0.1:8000",
         "http://localhost:8000",
+        "http://*.nip.io",
         "http://*.127.0.0.1.nip.io:8000",
         "http://*.nip.io:8000",
         "https://w-sala.com",

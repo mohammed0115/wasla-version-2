@@ -27,7 +27,7 @@ class ManualPaymentForm(forms.Form):
     reference = forms.CharField(max_length=120, required=False, label="Reference")
     status = forms.ChoiceField(
         choices=PaymentTransaction.STATUS_CHOICES,
-        initial=PaymentTransaction.STATUS_PAID,
+        initial=PaymentTransaction.STATUS_PENDING,
         label="Status",
     )
 

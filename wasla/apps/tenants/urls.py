@@ -10,6 +10,8 @@ urlpatterns = [
     path("dashboard/orders", wviews.dashboard_orders, name="dashboard_orders"),
     path("dashboard/payment-required", wviews.payment_required, name="payment_required"),
     path("dashboard/pending-activation", wviews.pending_activation, name="pending_activation"),
+    path("billing/payment-required/", wviews.payment_required, name="billing_payment_required"),
+    path("billing/pending-activation/", wviews.pending_activation, name="billing_pending_activation"),
     path("dashboard/domains", wviews.dashboard_domains, name="dashboard_domains"),
 
     # Merchant onboarding / setup

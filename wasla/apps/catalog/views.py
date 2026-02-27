@@ -36,15 +36,16 @@ def product_create(request):
     require_permission(request, "catalog.create_product")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, request.FILES)
+        form = ProductForm(request.POST, request.FILES, store_id=store.id)
         if form.is_valid():
             product = form.save(commit=False)
             product.store_id = store.id
             product.save()
+            form.save_m2m()
             # Redirect to edit view to add variants
             return redirect("catalog:product_edit", product_id=product.id)
     else:
-        form = ProductForm()
+        form = ProductForm(store_id=store.id)
 
     return render(
         request,
@@ -64,12 +65,13 @@ def product_edit(request, product_id: int):
     variants = product.variants.prefetch_related("options").order_by("id")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, request.FILES, instance=product)
+        form = ProductForm(request.POST, request.FILES, instance=product, store_id=store.id)
         if form.is_valid():
             product = form.save()
+            form.save_m2m()
             return redirect("catalog:product_detail", product_id=product.id)
     else:
-        form = ProductForm(instance=product)
+        form = ProductForm(instance=product, store_id=store.id)
 
     return render(
         request,
