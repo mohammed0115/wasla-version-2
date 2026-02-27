@@ -1,0 +1,1047 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Wasla | AI Onboarding Wizard{% endblock %}
+{% block global_lang_switcher %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .ai-wizard-shell {
+    min-height: 100vh;
+    padding: 28px 18px;
+    background:
+      radial-gradient(70% 45% at 82% 8%, rgba(31, 79, 216, 0.12), transparent 62%),
+      radial-gradient(55% 36% at 14% 92%, rgba(242, 140, 40, 0.10), transparent 65%),
+      var(--bg);
+  }
+
+  .ai-wizard {
+    inline-size: min(1120px, 100%);
+    margin-inline: auto;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(11, 28, 58, 0.10);
+  }
+
+  .ai-wizard-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    gap: 16px;
+    background: linear-gradient(140deg, rgba(31,79,216,0.04), rgba(242,140,40,0.05));
+  }
+
+  .ai-brand-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .ai-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    color: var(--navy);
+  }
+
+  .ai-brand-dot {
+    inline-size: 10px;
+    block-size: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    box-shadow: 0 0 0 6px rgba(31, 79, 216, 0.12);
+  }
+
+  .ai-title {
+    margin: 0;
+    font-size: clamp(24px, 3.3vw, 36px);
+    line-height: 1.2;
+  }
+
+  .ai-subtitle {
+    margin: 0;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .steps-track {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .step-pill {
+    min-height: 54px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    padding: 8px 10px;
+    display: grid;
+    gap: 4px;
+    align-content: center;
+    transition: all .25s ease;
+  }
+
+  .step-pill small {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .step-pill span {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .step-pill.is-active {
+    border-color: rgba(31, 79, 216, 0.35);
+    background: rgba(31, 79, 216, 0.08);
+    transform: translateY(-1px);
+  }
+
+  .step-pill.is-done {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.10);
+  }
+
+  .wizard-body {
+    padding: 24px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .wizard-body.is-transitioning .wizard-step.is-active {
+    animation: wizardSlideIn .24s ease;
+  }
+
+  @keyframes wizardSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .wizard-step {
+    display: none;
+    animation: fadeStep .26s ease;
+  }
+
+  .wizard-step.is-active {
+    display: block;
+  }
+
+  @keyframes fadeStep {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .field label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .ai-input {
+    min-height: 46px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 14px;
+    background: var(--white);
+    outline: none;
+  }
+
+  .ai-input:focus {
+    border-color: rgba(31, 79, 216, 0.35);
+    box-shadow: 0 0 0 3px rgba(31,79,216,0.10);
+  }
+
+  .meta-card,
+  .soft-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--white);
+    padding: 14px;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .meta-item {
+    border-radius: 12px;
+    border: 1px dashed rgba(11,28,58,.12);
+    padding: 10px;
+    background: rgba(11,28,58,0.02);
+    display: grid;
+    gap: 6px;
+  }
+
+  .meta-item small {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .meta-item strong {
+    color: var(--navy);
+    font-size: 14px;
+  }
+
+  .otp-row {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    max-width: 420px;
+  }
+
+  .otp-box {
+    min-height: 52px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .status-ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #047857;
+    font-weight: 800;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.32);
+    border-radius: 999px;
+    padding: 8px 12px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    min-height: 42px;
+    padding: 9px 14px;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--white);
+    cursor: pointer;
+    transition: .2s ease;
+  }
+
+  .chip.is-active {
+    border-color: rgba(31,79,216,0.38);
+    background: rgba(31,79,216,0.08);
+    color: var(--primary);
+  }
+
+  .analysis-box {
+    border: 1px solid rgba(31, 79, 216, 0.24);
+    border-radius: 14px;
+    background: linear-gradient(140deg, rgba(31,79,216,0.08), rgba(242,140,40,0.08));
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .analysis-box h4,
+  .plan-reason h4,
+  .logo-card h4,
+  .provision-card h4,
+  .dash-card h4 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kpi {
+    background: var(--white);
+    border: 1px solid rgba(11,28,58,0.08);
+    border-radius: 12px;
+    padding: 10px;
+    display: grid;
+    gap: 4px;
+  }
+
+  .kpi small {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .kpi strong {
+    font-size: 18px;
+    color: var(--navy);
+  }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .plan-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    background: var(--white);
+    position: relative;
+    display: grid;
+    gap: 8px;
+    cursor: pointer;
+    transition: .22s ease;
+  }
+
+  .plan-card.is-recommended {
+    border-color: rgba(31,79,216,0.5);
+    box-shadow: 0 10px 25px rgba(31,79,216,0.10);
+  }
+
+  .plan-card.is-selected {
+    border-color: rgba(31,79,216,0.8);
+    box-shadow: 0 0 0 3px rgba(31,79,216,0.12);
+  }
+
+  .recommended-tag {
+    position: absolute;
+    inset-inline-start: 12px;
+    inset-block-start: -10px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: var(--white);
+    border-radius: 999px;
+    min-height: 24px;
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .plan-price {
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  .plan-reason {
+    border: 1px solid rgba(11,28,58,0.08);
+    border-radius: 14px;
+    background: rgba(11,28,58,0.03);
+    padding: 14px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .domain-status {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 700;
+    border: 1px solid var(--border);
+  }
+
+  .domain-status.available {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.32);
+  }
+
+  .domain-status.taken {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.38);
+  }
+
+  .name-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .name-suggestion {
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .logo-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(11,28,58,0.02);
+    display: grid;
+    gap: 12px;
+  }
+
+  .logo-placeholder {
+    inline-size: 74px;
+    block-size: 74px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(31,79,216,.22), rgba(242,140,40,.24));
+    border: 1px solid rgba(31,79,216,0.28);
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    color: var(--navy);
+  }
+
+  .palette {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    inline-size: 34px;
+    block-size: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(11,28,58,.16);
+  }
+
+  .provision-card {
+    border: 1px solid rgba(31,79,216,0.24);
+    border-radius: 16px;
+    background: linear-gradient(140deg, rgba(31,79,216,0.08), rgba(11,28,58,0.04));
+    padding: 18px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .provision-line {
+    min-height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(11,28,58,0.08);
+    background: linear-gradient(90deg, rgba(31,79,216,.08), rgba(31,79,216,.20), rgba(31,79,216,.08));
+    background-size: 220% 100%;
+    animation: shimmer 1.6s infinite linear;
+    display: flex;
+    align-items: center;
+    padding-inline: 12px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .dash-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--white);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .dash-list {
+    margin: 0;
+    padding-inline-start: 18px;
+    color: var(--text);
+    display: grid;
+    gap: 7px;
+    font-weight: 600;
+  }
+
+  .suggestion-panel {
+    border: 1px solid rgba(31,79,216,0.24);
+    border-radius: 12px;
+    background: rgba(31,79,216,0.07);
+    padding: 12px;
+    font-weight: 700;
+  }
+
+  .step-actions {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-ai-primary,
+  .btn-ai-secondary {
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .btn-ai-primary {
+    border: none;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+  }
+
+  .btn-ai-secondary {
+    background: var(--white);
+    color: var(--text);
+  }
+
+  .is-hidden {
+    display: none !important;
+  }
+
+  @media (max-width: 1080px) {
+    .steps-track { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plan-grid,
+    .dash-grid,
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 720px) {
+    .ai-wizard-header,
+    .wizard-body { padding: 16px; }
+    .grid-2,
+    .meta-grid,
+    .kpis { grid-template-columns: 1fr; }
+    .otp-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="ai-wizard-shell" dir="rtl">
+  <div class="ai-wizard" id="aiWizard" data-suggestions-url="{% url 'accounts:ai_onboarding_suggestions' %}">
+    <div class="ai-wizard-header">
+      <div class="ai-brand-row">
+        <div class="ai-brand"><span class="ai-brand-dot"></span> Wasla AI Onboarding</div>
+        <a href="{% url 'tenants:dashboard_home' %}" class="btn-ai-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">تخطي إلى لوحة التحكم</a>
+      </div>
+      <h1 class="ai-title">Wizard ذكي لتجهيز متجرك في دقائق</h1>
+      <p class="ai-subtitle">تجربة تسجيل احترافية مدعومة بالذكاء الاصطناعي — جاهزة للعربية وRTL.</p>
+
+      <div class="steps-track" id="stepsTrack">
+        <div class="step-pill is-active" data-step="1"><small>STEP 1</small><span>التسجيل</span></div>
+        <div class="step-pill" data-step="2"><small>STEP 2</small><span>OTP</span></div>
+        <div class="step-pill" data-step="3"><small>STEP 3</small><span>نوع النشاط</span></div>
+        <div class="step-pill" data-step="4"><small>STEP 4</small><span>الخطة</span></div>
+        <div class="step-pill" data-step="5"><small>STEP 5</small><span>اسم المتجر</span></div>
+        <div class="step-pill" data-step="6"><small>STEP 6</small><span>AI Configuration</span></div>
+        <div class="step-pill" data-step="7"><small>STEP 7</small><span>أول Dashboard</span></div>
+      </div>
+    </div>
+
+    <div class="wizard-body">
+      <div class="wizard-step is-active" data-step="1">
+        <div class="soft-card" style="display:grid; gap:14px;">
+          <h3 style="margin:0;">🟣 STEP 1 — التسجيل</h3>
+          <p class="ai-subtitle" style="margin:0;">جمع البيانات الأساسية مع تحليل ذكي خلف الكواليس.</p>
+
+          <div class="grid-2">
+            <div class="field">
+              <label>الاسم الكامل</label>
+              <input class="ai-input" id="regFullName" value="{{ onboarding_seed.registration.fullName }}" />
+            </div>
+            <div class="field">
+              <label>البريد الإلكتروني</label>
+              <input class="ai-input" id="regEmail" value="{{ onboarding_seed.registration.email }}" />
+            </div>
+            <div class="field">
+              <label>مفتاح الدولة</label>
+              <input class="ai-input" id="regPhoneCountry" value="{{ onboarding_seed.registration.phoneCountry }}" />
+            </div>
+            <div class="field">
+              <label>رقم الجوال</label>
+              <input class="ai-input" id="regPhone" value="{{ onboarding_seed.registration.phoneNumber }}" />
+            </div>
+          </div>
+
+          <div class="meta-card">
+            <div class="meta-grid">
+              <div class="meta-item"><small>IP → الدولة</small><strong id="metaCountry">{{ onboarding_seed.registration.market }}</strong></div>
+              <div class="meta-item"><small>اللغة</small><strong id="metaLanguage">{{ onboarding_seed.registration.language }}</strong></div>
+              <div class="meta-item"><small>وقت التسجيل</small><strong id="metaTime">{{ registration_time_display }}</strong></div>
+              <div class="meta-item"><small>الجهاز</small><strong id="metaDevice">{{ onboarding_seed.registration.device }}</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="2">
+        <div class="soft-card" style="display:grid; gap:14px;">
+          <h3 style="margin:0;">🟢 STEP 2 — OTP</h3>
+          <p class="ai-subtitle" style="margin:0;">لا تغيير في تدفق التحقق.</p>
+          <div class="otp-row">
+            <input class="ai-input otp-box" maxlength="1" value="1">
+            <input class="ai-input otp-box" maxlength="1" value="2">
+            <input class="ai-input otp-box" maxlength="1" value="3">
+            <input class="ai-input otp-box" maxlength="1" value="4">
+            <input class="ai-input otp-box" maxlength="1" value="5">
+            <input class="ai-input otp-box" maxlength="1" value="6">
+          </div>
+          <div><span class="status-ok">✓ تم التحقق بنجاح</span></div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="3">
+        <div style="display:grid; gap:14px;">
+          <div class="soft-card" style="display:grid; gap:10px;">
+            <h3 style="margin:0;">🟡 STEP 3 — نوع النشاط (AI يبدأ التحليل)</h3>
+            <p class="ai-subtitle" style="margin:0;">اختر النشاط ليحسب النظام احتياجات المتجر تلقائيًا.</p>
+            <div class="chips" id="businessChips"></div>
+          </div>
+
+          <div class="analysis-box">
+            <h4>✨ تحليل وصلة يقترح:</h4>
+            <div class="kpis">
+              <div class="kpi"><small>المنتجات المتوقعة</small><strong id="kpiProducts">80</strong></div>
+              <div class="kpi"><small>الحاجة للمتغيرات</small><strong id="kpiVariants">نعم</strong></div>
+              <div class="kpi"><small>الخطة المقترحة</small><strong id="kpiPlan">Pro</strong></div>
+            </div>
+            <div class="soft-card" style="font-weight:700;">
+              <span id="analysisText">تحتاج دعم للمتغيرات (مقاسات) وخطة Pro مناسبة كبداية.</span>
+            </div>
+          </div>
+
+          <div class="suggestion-panel" id="aiSuggestionBox">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+              <strong>🤖 اقتراحات AI لبداية أسرع</strong>
+              <button type="button" class="btn-ai-secondary" id="btnRefreshSuggestions">تحديث الاقتراحات</button>
+            </div>
+            <ul id="aiSuggestionList" class="dash-list" style="margin-top:10px;"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="4">
+        <div style="display:grid; gap:14px;">
+          <div class="soft-card" style="display:grid; gap:8px;">
+            <h3 style="margin:0;">🟠 STEP 4 — اختيار الخطة (AI Assisted)</h3>
+            <p class="ai-subtitle" style="margin:0;">الخطة الأنسب تُعرض بعلامة موصى بها لك.</p>
+          </div>
+
+          <div class="plan-grid" id="planGrid">
+            <div class="plan-card" data-plan="Basic" data-price="0">
+              <h4 style="margin:0;">Basic</h4>
+              <div class="plan-price">0 ر.س</div>
+              <small class="ai-subtitle">بداية بسيطة</small>
+            </div>
+            <div class="plan-card" data-plan="Plus" data-price="99">
+              <h4 style="margin:0;">Plus</h4>
+              <div class="plan-price">99 ر.س</div>
+              <small class="ai-subtitle">نمو سريع</small>
+            </div>
+            <div class="plan-card" data-plan="Pro" data-price="299">
+              <span class="recommended-tag" id="recommendedTag">⭐ موصى بها لك</span>
+              <h4 style="margin:0;">Pro</h4>
+              <div class="plan-price">299 ر.س</div>
+              <small class="ai-subtitle">أدوات متقدمة + AI</small>
+            </div>
+          </div>
+
+          <div class="plan-reason" id="planReason">
+            <h4>التحليل الذكي</h4>
+            <p style="margin:8px 0 0;" id="planReasonText">بناءً على نشاطك (ملابس) ومتوسط 80 منتج مبدئيًا نوصي بخطة Pro.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="5">
+        <div class="grid-2">
+          <div class="soft-card" style="display:grid; gap:12px;">
+            <h3 style="margin:0;">🔵 STEP 5 — اسم المتجر (AI Branding Engine)</h3>
+            <div class="field">
+              <label>اسم المتجر</label>
+              <input class="ai-input" id="storeNameInput" placeholder="مثال: أناقة الشرق" />
+            </div>
+            <div class="field">
+              <label>الدومين المقترح</label>
+              <div class="domain-status" id="domainStatus">اكتب اسم المتجر لفحص الدومين</div>
+            </div>
+            <div class="field">
+              <label>أسماء مشابهة</label>
+              <div class="name-suggestions" id="nameSuggestions"></div>
+            </div>
+          </div>
+
+          <div class="logo-card">
+            <h4>اقتراحات الهوية البصرية</h4>
+            <div style="display:flex; gap:14px; align-items:center;">
+              <div class="logo-placeholder" id="logoPlaceholder">W</div>
+              <div style="display:grid; gap:6px;">
+                <strong id="logoName">Wasla Store</strong>
+                <small class="ai-subtitle">Logo placeholder أولي من الذكاء الاصطناعي</small>
+              </div>
+            </div>
+            <div>
+              <small class="ai-subtitle" style="display:block; margin-bottom:8px;">ألوان ثيم متناسقة</small>
+              <div class="palette" id="palettePreview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="6">
+        <div class="provision-card">
+          <h3 style="margin:0;">🟢 STEP 6 — AI Configuration Engine</h3>
+          <p class="ai-subtitle" style="margin:0;">يتم تجهيز إعدادات متجرك الذكية…</p>
+          <h4>Setting up smart defaults for your business type</h4>
+
+          <div class="provision-line">تهيئة التصنيفات: رجالي / نسائي / أطفال</div>
+          <div class="provision-line">تفعيل Variants وإعداد المقاسات الافتراضية</div>
+          <div class="provision-line">تفعيل إعدادات الشحن المتقدمة</div>
+          <div class="provision-line">اختيار الثيم المناسب للنشاط وتفعيل العملة</div>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="7">
+        <div style="display:grid; gap:14px;">
+          <div class="soft-card" style="display:grid; gap:6px;">
+            <h3 style="margin:0;">🔵 أول دخول للداشبورد</h3>
+            <p style="margin:0; font-weight:700;">مرحبًا بك 👋 جهزنا لك متجر <span id="welcomeBusiness">ملابس</span> جاهز للبداية.</p>
+          </div>
+
+          <div class="dash-grid">
+            <div class="dash-card">
+              <h4>Categories جاهزة</h4>
+              <ul class="dash-list">
+                <li>رجالي</li>
+                <li>نسائي</li>
+                <li>أطفال</li>
+              </ul>
+            </div>
+            <div class="dash-card">
+              <h4>Features مفعلة</h4>
+              <ul class="dash-list">
+                <li>Variant enabled</li>
+                <li>Advanced shipping defaults</li>
+                <li>Theme مناسب للنشاط</li>
+              </ul>
+            </div>
+            <div class="dash-card">
+              <h4>مثال منتج جاهز</h4>
+              <ul class="dash-list">
+                <li>تيشيرت قطني</li>
+                <li>المقاسات: S / M / L / XL</li>
+                <li>SKU تلقائي + سعر ابتدائي</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="suggestion-panel">
+            AI suggestion: أضف أول 10 منتجات وسنحسن عرضهم تلقائيًا.
+          </div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button type="button" class="btn-ai-secondary" id="btnBack">السابق</button>
+        <button type="button" class="btn-ai-primary" id="btnNext">التالي</button>
+        <a href="{% url 'tenants:dashboard_home' %}" id="btnFinish" class="btn-ai-primary is-hidden" style="text-decoration:none;">دخول لوحة التحكم</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ onboarding_seed|json_script:"onboardingSeed" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const seed = JSON.parse(document.getElementById("onboardingSeed").textContent);
+
+  const state = {
+    step: 1,
+    business: seed.business || "ملابس",
+    market: seed.registration.market || "SA",
+    language: seed.registration.language || "ar",
+    device: seed.registration.device || "mobile",
+    recommendedPlan: "Pro",
+    selectedPlan: "Pro",
+    expectedProducts: 80,
+    needVariants: true,
+    needAdvancedShipping: true,
+    storeName: "",
+  };
+
+  const businessRules = {
+    "ملابس": { products: 80, variants: true, shipping: true, plan: "Pro", reason: "تحتاج دعم للمتغيرات (مقاسات) وخطة Pro مناسبة كبداية." },
+    "إلكترونيات": { products: 60, variants: true, shipping: true, plan: "Pro", reason: "المنتجات التقنية تحتاج إدارة متغيرات وضمانات وشحن احترافي، لذلك Pro أفضل." },
+    "تجميل": { products: 45, variants: false, shipping: true, plan: "Plus", reason: "حجم المنتجات متوسط ويستفيد من Plus مع أدوات تسويق مبدئية." },
+    "أثاث": { products: 35, variants: false, shipping: true, plan: "Pro", reason: "الأثاث يحتاج شحن متقدم وتتبع أفضل، لذلك Pro أنسب." },
+    "أغذية": { products: 55, variants: false, shipping: true, plan: "Plus", reason: "نوصي بخطة Plus كبداية مع قابلية الترقية عند زيادة الكتالوج." },
+    "خدمات": { products: 20, variants: false, shipping: false, plan: "Basic", reason: "نشاط الخدمات لا يحتاج متغيرات كثيرة، Basic كافية للانطلاق." }
+  };
+
+  const businessOrder = ["ملابس", "إلكترونيات", "تجميل", "أثاث", "أغذية", "خدمات"];
+
+  const paletteByBusiness = {
+    "ملابس": ["#1F4FD8", "#F28C28", "#0B1C3A", "#E2E8F0"],
+    "إلكترونيات": ["#0F172A", "#1F4FD8", "#38BDF8", "#E2E8F0"],
+    "تجميل": ["#9D174D", "#F28C28", "#FBCFE8", "#1F2937"],
+    "أثاث": ["#78350F", "#1F4FD8", "#D97706", "#E5E7EB"],
+    "أغذية": ["#047857", "#F28C28", "#D1FAE5", "#14532D"],
+    "خدمات": ["#1F4FD8", "#334155", "#94A3B8", "#E2E8F0"]
+  };
+
+  const steps = Array.from(document.querySelectorAll(".wizard-step"));
+  const pills = Array.from(document.querySelectorAll(".step-pill"));
+
+  const btnBack = document.getElementById("btnBack");
+  const btnNext = document.getElementById("btnNext");
+  const btnFinish = document.getElementById("btnFinish");
+  const wizardRoot = document.getElementById("aiWizard");
+  const wizardBody = document.querySelector(".wizard-body");
+  const suggestionsUrl = wizardRoot ? wizardRoot.dataset.suggestionsUrl : "";
+  const suggestionList = document.getElementById("aiSuggestionList");
+  const btnRefreshSuggestions = document.getElementById("btnRefreshSuggestions");
+
+  const businessChips = document.getElementById("businessChips");
+  const planCards = Array.from(document.querySelectorAll(".plan-card"));
+
+  const kpiProducts = document.getElementById("kpiProducts");
+  const kpiVariants = document.getElementById("kpiVariants");
+  const kpiPlan = document.getElementById("kpiPlan");
+  const analysisText = document.getElementById("analysisText");
+  const planReasonText = document.getElementById("planReasonText");
+  const welcomeBusiness = document.getElementById("welcomeBusiness");
+
+  const storeNameInput = document.getElementById("storeNameInput");
+  const domainStatus = document.getElementById("domainStatus");
+  const nameSuggestions = document.getElementById("nameSuggestions");
+  const logoPlaceholder = document.getElementById("logoPlaceholder");
+  const logoName = document.getElementById("logoName");
+  const palettePreview = document.getElementById("palettePreview");
+
+  function setStep(nextStep) {
+    state.step = Math.min(7, Math.max(1, nextStep));
+
+    if (wizardBody) {
+      wizardBody.classList.add("is-transitioning");
+      window.setTimeout(() => wizardBody.classList.remove("is-transitioning"), 240);
+    }
+
+    steps.forEach((stepEl) => {
+      const stepNo = Number(stepEl.dataset.step);
+      stepEl.classList.toggle("is-active", stepNo === state.step);
+    });
+
+    pills.forEach((pill) => {
+      const stepNo = Number(pill.dataset.step);
+      pill.classList.toggle("is-active", stepNo === state.step);
+      pill.classList.toggle("is-done", stepNo < state.step);
+    });
+
+    btnBack.disabled = state.step === 1;
+    btnNext.classList.toggle("is-hidden", state.step === 7);
+    btnFinish.classList.toggle("is-hidden", state.step !== 7);
+
+    if (state.step === 6) {
+      window.clearTimeout(window.__provisionTimer);
+      window.__provisionTimer = window.setTimeout(() => {
+        setStep(7);
+      }, 3400);
+    }
+  }
+
+  function renderBusinessChips() {
+    businessChips.innerHTML = "";
+    businessOrder.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip" + (name === state.business ? " is-active" : "");
+      btn.textContent = name;
+      btn.addEventListener("click", () => {
+        state.business = name;
+        applyBusinessAnalysis();
+        renderBusinessChips();
+      });
+      businessChips.appendChild(btn);
+    });
+  }
+
+  function applyBusinessAnalysis() {
+    const rule = businessRules[state.business] || businessRules["ملابس"];
+    const marketBoost = state.market === "SA" ? 1 : 0.8;
+    const deviceBoost = state.device === "mobile" ? 1.1 : 1;
+    const adjustedProducts = Math.round(rule.products * marketBoost * deviceBoost);
+
+    state.expectedProducts = adjustedProducts;
+    state.needVariants = rule.variants;
+    state.needAdvancedShipping = rule.shipping;
+    state.recommendedPlan = rule.plan;
+
+    kpiProducts.textContent = adjustedProducts;
+    kpiVariants.textContent = rule.variants ? "نعم" : "لا";
+    kpiPlan.textContent = rule.plan;
+    analysisText.textContent = rule.reason;
+    planReasonText.textContent = `بناءً على نشاطك (${state.business}) ومتوسط ${adjustedProducts} منتج مبدئيًا نوصي بخطة ${rule.plan}.`;
+    welcomeBusiness.textContent = state.business;
+
+    state.selectedPlan = rule.plan;
+    refreshPlanSelection();
+    refreshBranding();
+    fetchAiSuggestions();
+  }
+
+  function renderSuggestions(items) {
+    if (!suggestionList) return;
+    suggestionList.innerHTML = "";
+    (items || []).forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      suggestionList.appendChild(li);
+    });
+  }
+
+  function fetchAiSuggestions() {
+    if (!suggestionsUrl || !suggestionList) {
+      return;
+    }
+
+    const query = new URLSearchParams({ business: state.business }).toString();
+    fetch(`${suggestionsUrl}?${query}`, { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("suggestions_failed")))
+      .then((payload) => renderSuggestions(payload.suggestions || []))
+      .catch(() => {
+        renderSuggestions([
+          "ابدأ بـ 10 منتجات أساسية لتجهيز المتجر بسرعة.",
+          "فعّل التصنيفات الرئيسية قبل نشر الكتالوج.",
+          "راجع بيانات الشحن والدفع قبل أول طلب.",
+        ]);
+      });
+  }
+
+  function refreshPlanSelection() {
+    planCards.forEach((card) => {
+      const plan = card.dataset.plan;
+      card.classList.toggle("is-recommended", plan === state.recommendedPlan);
+      card.classList.toggle("is-selected", plan === state.selectedPlan);
+    });
+  }
+
+  function slugifyArabicName(value) {
+    return (value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\u0600-\u06FFa-z0-9-]/gi, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function domainAvailability(domainSlug) {
+    const reserved = ["wasla", "admin", "api", "shop", "store", "test", "demo"];
+    if (!domainSlug) {
+      return { status: "empty", text: "اكتب اسم المتجر لفحص الدومين" };
+    }
+    if (reserved.includes(domainSlug)) {
+      return { status: "taken", text: `${domainSlug}.wasla.shop غير متاح` };
+    }
+
+    const hash = domainSlug.split("").reduce((total, ch) => total + ch.charCodeAt(0), 0);
+    if (hash % 4 === 0) {
+      return { status: "taken", text: `${domainSlug}.wasla.shop محجوز، جرب اسم قريب` };
+    }
+    return { status: "available", text: `${domainSlug}.wasla.shop متاح الآن` };
+  }
+
+  function refreshBranding() {
+    const base = storeNameInput.value.trim() || state.business;
+    const initials = base.slice(0, 2).toUpperCase();
+    logoPlaceholder.textContent = initials;
+    logoName.textContent = base;
+
+    const suggestions = [`${base} ستور`, `${base} بلس`, `${base} برو`, `متجر ${base}`];
+    nameSuggestions.innerHTML = "";
+    suggestions.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "name-suggestion";
+      btn.textContent = name;
+      btn.addEventListener("click", () => {
+        storeNameInput.value = name;
+        refreshBranding();
+      });
+      nameSuggestions.appendChild(btn);
+    });
+
+    const domain = slugifyArabicName(base);
+    const availability = domainAvailability(domain);
+    domainStatus.className = "domain-status";
+    if (availability.status === "available") domainStatus.classList.add("available");
+    if (availability.status === "taken") domainStatus.classList.add("taken");
+    domainStatus.textContent = availability.text;
+
+    const palette = paletteByBusiness[state.business] || paletteByBusiness["ملابس"];
+    palettePreview.innerHTML = "";
+    palette.forEach((hex) => {
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = hex;
+      palettePreview.appendChild(sw);
+    });
+  }
+
+  planCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      state.selectedPlan = card.dataset.plan;
+      refreshPlanSelection();
+      planReasonText.textContent = `تم اختيار خطة ${state.selectedPlan}. التوصية الذكية الأصلية: ${state.recommendedPlan} بناءً على نشاط ${state.business}.`;
+    });
+  });
+
+  if (btnRefreshSuggestions) {
+    btnRefreshSuggestions.addEventListener("click", fetchAiSuggestions);
+  }
+
+  storeNameInput.addEventListener("input", refreshBranding);
+
+  btnBack.addEventListener("click", () => setStep(state.step - 1));
+  btnNext.addEventListener("click", () => {
+    if (state.step < 7) setStep(state.step + 1);
+  });
+
+  renderBusinessChips();
+  applyBusinessAnalysis();
+  refreshBranding();
+  setStep(1);
+})();
+</script>
+{% endblock %}

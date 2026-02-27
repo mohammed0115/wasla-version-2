@@ -60,12 +60,24 @@ class _FakeVisitorRepository:
         return self.visitors_7d
 
 
+class _FakeWalletRepository:
+    def wallet_balance(self, store_id: int) -> Decimal:
+        return Decimal("245.50")
+
+
+class _FakeShipmentRepository:
+    def count_active_shipments(self, store_id: int) -> int:
+        return 4
+
+
 class DashboardMetricsUseCaseTests(SimpleTestCase):
     def test_execute_computes_conversion_when_visitors_exist(self):
         use_case = GetMerchantDashboardMetricsUseCase(
             order_repository=_FakeOrderRepository(),
             visitor_repository=_FakeVisitorRepository(visitors_7d=12),
             inventory_repository=_FakeInventoryRepository(),
+            wallet_repository=_FakeWalletRepository(),
+            shipment_repository=_FakeShipmentRepository(),
         )
 
         result = use_case.execute(
@@ -80,6 +92,8 @@ class DashboardMetricsUseCaseTests(SimpleTestCase):
         self.assertEqual(result.sales_today, Decimal("150.00"))
         self.assertEqual(result.orders_today, 3)
         self.assertEqual(result.revenue_7d, Decimal("700.00"))
+        self.assertEqual(result.wallet_balance, Decimal("245.50"))
+        self.assertEqual(result.active_shipments, 4)
         self.assertEqual(result.visitors_7d, 12)
         self.assertEqual(result.conversion_7d, Decimal("0.8333333333333333333333333333"))
         self.assertEqual(len(result.chart_7d), 7)
@@ -91,6 +105,8 @@ class DashboardMetricsUseCaseTests(SimpleTestCase):
             order_repository=_FakeOrderRepository(),
             visitor_repository=_FakeVisitorRepository(visitors_7d=0),
             inventory_repository=_FakeInventoryRepository(),
+            wallet_repository=_FakeWalletRepository(),
+            shipment_repository=_FakeShipmentRepository(),
         )
 
         result = use_case.execute(

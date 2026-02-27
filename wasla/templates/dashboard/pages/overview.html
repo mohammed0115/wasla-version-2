@@ -25,6 +25,14 @@
     <div class="dash__kpi-value">{{ metrics.revenue_7d }} {{ tenant.currency|default:"SAR" }}</div>
   </div>
   <div class="card dash__kpi-card">
+    <div class="dash__kpi-label">{% trans "Wallet balance" %}</div>
+    <div class="dash__kpi-value">{{ metrics.wallet_balance }} {{ tenant.currency|default:"SAR" }}</div>
+  </div>
+  <div class="card dash__kpi-card">
+    <div class="dash__kpi-label">{% trans "Active shipments" %}</div>
+    <div class="dash__kpi-value">{{ metrics.active_shipments|default:0 }}</div>
+  </div>
+  <div class="card dash__kpi-card">
     <div class="dash__kpi-label">{% trans "Visitors (7 days)" %}</div>
     <div class="dash__kpi-value">{{ metrics.visitors_7d|default:0 }}</div>
   </div>
@@ -32,6 +40,19 @@
     <div class="dash__kpi-label">{% trans "Conversion (7 days)" %}</div>
     <div class="dash__kpi-value">{{ metrics.conversion_7d }}</div>
   </div>
+</section>
+
+<section class="card dbov-ai-welcome" id="aiWelcomePanel" hidden>
+  <div class="dbov-ai-welcome__head">
+    <h2 class="dash__section-title">{% trans "AI Welcome" %}</h2>
+    <button type="button" class="btn btn-soft" id="aiWelcomeDismiss">{% trans "Dismiss" %}</button>
+  </div>
+  <p class="dash__section-note">{% trans "Welcome to your AI-powered workspace. We prepared smart defaults for your store and recommended your next actions." %}</p>
+  <ul class="dash-list" id="aiWelcomeList">
+    <li>{% trans "Add your first 10 products to improve AI recommendations." %}</li>
+    <li>{% trans "Review shipping zones and payment settings before launch." %}</li>
+    <li>{% trans "Use AI Tools to generate product descriptions in Arabic and English." %}</li>
+  </ul>
 </section>
 
 <section class="dash__overview-grid stack-16">
@@ -128,5 +149,65 @@
     {% endif %}
   </section>
 </section>
+
+{% if show_performance_indicator %}
+  <div class="card" style="margin-top: 12px; padding: 10px;">
+    <strong>{% trans "Dev page load" %}:</strong>
+    <span id="devPerfLoadMs">--</span> ms
+  </div>
+  <script>
+    (function () {
+      if (!window.performance || !window.performance.timing) {
+        return;
+      }
+      var timing = window.performance.timing;
+      var loadMs = timing.loadEventEnd && timing.navigationStart
+        ? (timing.loadEventEnd - timing.navigationStart)
+        : 0;
+      if (!loadMs && window.performance.getEntriesByType) {
+        var nav = window.performance.getEntriesByType('navigation');
+        if (nav && nav.length) {
+          loadMs = Math.round(nav[0].duration || 0);
+        }
+      }
+      var el = document.getElementById('devPerfLoadMs');
+      if (el) {
+        el.textContent = String(Math.max(0, Math.round(loadMs)));
+      }
+    })();
+  </script>
+{% endif %}
+
+<script>
+  (function () {
+    var tenantId = "{{ tenant.id|default:'0' }}";
+    var key = "wasla_ai_welcome_seen_" + tenantId;
+    var panel = document.getElementById("aiWelcomePanel");
+    var dismiss = document.getElementById("aiWelcomeDismiss");
+    if (!panel || !tenantId || tenantId === "0") {
+      return;
+    }
+
+    var alreadySeen = false;
+    try {
+      alreadySeen = window.localStorage.getItem(key) === "1";
+    } catch (e) {
+      alreadySeen = false;
+    }
+
+    if (!alreadySeen) {
+      panel.hidden = false;
+    }
+
+    if (dismiss) {
+      dismiss.addEventListener("click", function () {
+        panel.hidden = true;
+        try {
+          window.localStorage.setItem(key, "1");
+        } catch (e) {}
+      });
+    }
+  })();
+</script>
 
 {% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .persiona.views import persona_plans,persona_business
+from .persiona.views import persona_plans, persona_business, ai_onboarding_wizard, ai_onboarding_suggestions
 
 app_name = "accounts"
 
@@ -17,6 +17,8 @@ urlpatterns = [
     path("onboarding/channel/", views.persona_channel, name="persona_channel"),
     path("onboarding/category/", views.persona_category_main, name="persona_category_main"),
     path("onboarding/finish/", views.persona_finish, name="persona_finish"),
+    path("onboarding/ai-wizard/", ai_onboarding_wizard, name="ai_onboarding_wizard"),
+    path("onboarding/ai-suggestions/", ai_onboarding_suggestions, name="ai_onboarding_suggestions"),
     path("persona/plans/", persona_plans, name="persona_plans"),
     path("persona/business/", persona_business, name="persona_business"),
 

@@ -27,6 +27,7 @@ class ProductService:
         quantity: int = 0,
         image_file=None,
         is_active: bool = True,
+        visibility: str | None = None,
         description_ar: str = "",
         description_en: str = "",
     ) -> Product:
@@ -42,30 +43,55 @@ class ProductService:
         if not name:
             raise ValueError("Product name is required")
 
+        normalized_quantity = max(0, int(quantity or 0))
+        requested_visibility = visibility
+        if requested_visibility is None and not is_active:
+            requested_visibility = Product.VISIBILITY_DISABLED
+        resolved_visibility = Product.resolve_visibility(
+            quantity=normalized_quantity,
+            requested_visibility=requested_visibility,
+        )
+
         product = Product.objects.create(
             store_id=store_id,
             sku=str(sku).strip(),
             name=str(name).strip(),
             price=price,
-            is_active=is_active,
+            visibility=resolved_visibility,
+            is_active=Product.is_active_from_visibility(resolved_visibility),
             description_ar=description_ar or "",
             description_en=description_en or "",
             image=image_file,
         )
 
-        if categories:
-            cats = list(categories)
-            for c in cats:
-                if getattr(c, "store_id", None) != store_id:
-                    raise ValueError("Category store_id mismatch")
-            product.categories.add(*cats)
+        ProductService._assign_categories(
+            product=product,
+            store_id=store_id,
+            categories=categories,
+        )
 
         Inventory.objects.update_or_create(
             product=product,
             defaults={
-                "quantity": max(0, int(quantity or 0)),
-                "in_stock": int(quantity or 0) > 0,
+                "quantity": normalized_quantity,
+                "in_stock": normalized_quantity > 0,
             },
         )
 
         return product
+
+    @staticmethod
+    def _assign_categories(*, product: Product, store_id: int, categories: Iterable[Category] | None) -> None:
+        if categories:
+            selected_categories = list(categories)
+            for category in selected_categories:
+                if getattr(category, "store_id", None) != store_id:
+                    raise ValueError("Category store_id mismatch")
+            product.categories.set(selected_categories)
+
+        if not product.categories.exists():
+            default_category, _ = Category.objects.get_or_create(
+                store_id=store_id,
+                name="General",
+            )
+            product.categories.add(default_category)

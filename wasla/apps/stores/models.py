@@ -83,7 +83,7 @@ class Store(models.Model):
     subdomain = models.CharField(
         max_length=255,
         unique=True,
-        help_text="Subdomain for store (e.g., mystore.visualai.sa)"
+        help_text="Subdomain for store (e.g., mystore.w-sala.com)"
     )
     custom_domain = models.CharField(
         max_length=255,
@@ -161,7 +161,8 @@ class Store(models.Model):
         """Get effective domain for store."""
         if self.custom_domain:
             return self.custom_domain
-        return f"{self.subdomain}.visualai.sa"
+        base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
+        return f"{self.subdomain}.{base_domain}"
 
 
 class StoreSettings(models.Model):

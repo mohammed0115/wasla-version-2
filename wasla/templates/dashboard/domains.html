@@ -5,6 +5,8 @@
 {% block page_subtitle %}{% trans "Connect a custom domain to your store." %}{% endblock %}
 
 {% block content %}
+  {% include "dashboard/domains/status.html" %}
+
   <div class="card dash__section">
     <div class="dash__section-header">
       <h2 class="dash__section-title">{% trans "Subdomain" %}</h2>

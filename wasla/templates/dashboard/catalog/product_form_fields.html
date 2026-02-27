@@ -1,0 +1,67 @@
+<!-- Reusable product form fields -->
+
+<!-- SKU -->
+<div class="form-group mb-3">
+  <label for="{{ form.sku.id_for_label }}" class="form-label">SKU *</label>
+  {{ form.sku }}
+  {% if form.sku.errors %}
+    <div class="invalid-feedback d-block">
+      {{ form.sku.errors.0 }}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Name -->
+<div class="form-group mb-3">
+  <label for="{{ form.name.id_for_label }}" class="form-label">اسم المنتج *</label>
+  {{ form.name }}
+  {% if form.name.errors %}
+    <div class="invalid-feedback d-block">
+      {{ form.name.errors.0 }}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Price -->
+<div class="form-group mb-3">
+  <label for="{{ form.price.id_for_label }}" class="form-label">السعر الأساسي *</label>
+  <div class="input-group">
+    {{ form.price }}
+    <span class="input-group-text">ر.س</span>
+  </div>
+  {% if form.price.errors %}
+    <div class="invalid-feedback d-block">
+      {{ form.price.errors.0 }}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Description AR -->
+<div class="form-group mb-3">
+  <label for="{{ form.description_ar.id_for_label }}" class="form-label">الوصف (عربي)</label>
+  {{ form.description_ar }}
+</div>
+
+<!-- Description EN -->
+<div class="form-group mb-3">
+  <label for="{{ form.description_en.id_for_label }}" class="form-label">Description (English)</label>
+  {{ form.description_en }}
+</div>
+
+<div class="form-group mb-3">
+  <label for="{{ form.categories.id_for_label }}" class="form-label">التصنيفات</label>
+  {{ form.categories }}
+  {% if form.categories.errors %}
+    <div class="invalid-feedback d-block">
+      {{ form.categories.errors.0 }}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Is Active -->
+<div class="form-check">
+  {{ form.is_active }}
+  <label for="{{ form.is_active.id_for_label }}" class="form-check-label">
+    نشط / معروض
+  </label>
+</div>

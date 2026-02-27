@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -10,6 +11,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
+from apps.ai_onboarding.services import BusinessAnalyzer, ProvisioningEngine
 
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.application.use_cases.create_store import CreateStoreCommand, CreateStoreUseCase
@@ -64,18 +66,24 @@ from apps.tenants.interfaces.web.decorators import (
     merchant_subscription_required,
 )
 from apps.subscriptions.application.services.feature_gate import FeatureGateService
-from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings
+from apps.tenants.models import StoreDomain, StorePaymentSettings, StoreProfile, StoreShippingSettings, TenantMembership
 from apps.tenants.tasks import enqueue_verify_domain
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.services.audit_service import TenantAuditService
+from apps.domains.models import DomainHealth
 
 from .forms import (
     CustomDomainForm,
     PaymentSettingsForm,
+    MemberInviteForm,
+    MemberRoleForm,
     ShippingSettingsForm,
     StoreInfoSetupForm,
     StoreSettingsForm,
 )
+
+
+User = get_user_model()
 
 
 @login_required
@@ -193,7 +201,7 @@ def dashboard_setup_store(request: HttpRequest) -> HttpResponse:
             request.session["store_id"] = result.tenant.id
             request.tenant = result.tenant
             if result.created:
-                messages.success(request, "Store created successfully.")
+                messages.success(request, "Store profile created. Your store will be provisioned after payment approval.")
             else:
                 messages.info(request, "You already have a store. Redirected to your dashboard.")
             profile = StoreProfile.objects.filter(tenant=result.tenant).first()
@@ -437,6 +445,39 @@ def dashboard_setup_activate(request: HttpRequest) -> HttpResponse:
             if not readiness.ok:
                 for reason in readiness.errors or ["Store is not ready to request activation."]:
                     messages.error(request, reason)
+                return redirect("tenants:dashboard_setup_activate")
+
+            profile_country = "SA"
+            try:
+                profile_country = (request.user.profile.country or "SA").upper()
+            except Exception:
+                profile_country = "SA"
+            business_type = "general"
+            try:
+                business_type = (
+                    request.user.profile.category_sub
+                    or request.user.profile.category_main
+                    or "general"
+                )
+            except Exception:
+                business_type = "general"
+            device_type = "mobile" if "mobile" in (request.META.get("HTTP_USER_AGENT") or "").lower() else "desktop"
+
+            try:
+                analysis = BusinessAnalyzer().analyze(
+                    business_type=business_type,
+                    country=profile_country,
+                    language=getattr(request, "LANGUAGE_CODE", "ar"),
+                    device_type=device_type,
+                )
+                ProvisioningEngine().provision(
+                    user=request.user,
+                    business_type=business_type,
+                    analysis=analysis,
+                    tenant=tenant,
+                )
+            except Exception as exc:
+                messages.error(request, f"AI provisioning failed: {exc}")
                 return redirect("tenants:dashboard_setup_activate")
 
             # Merchant request only: admin must publish.
@@ -794,6 +835,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         {
             "tenant": tenant,
             "metrics": metrics,
+            "show_performance_indicator": bool(settings.DEBUG),
         },
     )
 
@@ -813,6 +855,132 @@ def dashboard_orders(request: HttpRequest) -> HttpResponse:
 
 @login_required
 @tenant_access_required
+@require_http_methods(["GET", "POST"])
+def dashboard_users_roles(request: HttpRequest) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    form = MemberInviteForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"]
+        role = form.cleaned_data["role"]
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            messages.error(request, "User with this email does not exist.")
+            return redirect("tenants:dashboard_users_roles")
+
+        if hasattr(tenant, "store_profile") and tenant.store_profile.owner_id == user.id:
+            messages.info(request, "Store owner is already assigned.")
+            return redirect("tenants:dashboard_users_roles")
+
+        membership, created = TenantMembership.objects.get_or_create(
+            tenant=tenant,
+            user=user,
+            defaults={"role": role, "is_active": True},
+        )
+        if not created:
+            membership.role = role
+            membership.is_active = True
+            membership.save(update_fields=["role", "is_active", "updated_at"])
+            messages.success(request, "Member updated.")
+        else:
+            messages.success(request, "Member added.")
+
+        return redirect("tenants:dashboard_users_roles")
+
+    memberships = (
+        TenantMembership.objects.filter(tenant=tenant)
+        .select_related("user")
+        .order_by("-is_active", "role", "user__email")
+    )
+
+    return render(
+        request,
+        "dashboard/settings/users_roles.html",
+        {
+            "tenant": tenant,
+            "memberships": memberships,
+            "invite_form": form,
+        },
+    )
+
+
+@login_required
+@tenant_access_required
+@require_POST
+def dashboard_member_update_role(request: HttpRequest, membership_id: int) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    membership = TenantMembership.objects.filter(tenant=tenant, id=membership_id).select_related("user").first()
+    if not membership:
+        messages.error(request, "Member not found.")
+        return redirect("tenants:dashboard_users_roles")
+
+    if membership.role == TenantMembership.ROLE_OWNER:
+        messages.error(request, "Owner role cannot be changed here.")
+        return redirect("tenants:dashboard_users_roles")
+
+    form = MemberRoleForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid role.")
+        return redirect("tenants:dashboard_users_roles")
+
+    membership.role = form.cleaned_data["role"]
+    membership.is_active = True
+    membership.save(update_fields=["role", "is_active", "updated_at"])
+    messages.success(request, "Member role updated.")
+    return redirect("tenants:dashboard_users_roles")
+
+
+@login_required
+@tenant_access_required
+@require_POST
+def dashboard_member_deactivate(request: HttpRequest, membership_id: int) -> HttpResponse:
+    tenant = request.tenant
+    try:
+        EnsureTenantOwnershipPolicy.ensure_is_owner(user=request.user, tenant=tenant)
+    except StoreAccessDeniedError as exc:
+        return render(
+            request,
+            "dashboard/access_denied.html",
+            {"message": str(exc)},
+            status=403,
+        )
+
+    membership = TenantMembership.objects.filter(tenant=tenant, id=membership_id).first()
+    if not membership:
+        messages.error(request, "Member not found.")
+        return redirect("tenants:dashboard_users_roles")
+
+    if membership.role == TenantMembership.ROLE_OWNER:
+        messages.error(request, "Owner cannot be deactivated.")
+        return redirect("tenants:dashboard_users_roles")
+
+    membership.is_active = False
+    membership.save(update_fields=["is_active", "updated_at"])
+    messages.success(request, "Member deactivated.")
+    return redirect("tenants:dashboard_users_roles")
+
+
+@login_required
+@tenant_access_required
 @require_GET
 def payment_required(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/payment_required.html", {"tenant": request.tenant})
@@ -822,6 +990,8 @@ def payment_required(request: HttpRequest) -> HttpResponse:
 @tenant_access_required
 @require_GET
 def pending_activation(request: HttpRequest) -> HttpResponse:
+    if getattr(request.tenant, "is_published", False):
+        return redirect("tenants:dashboard_home")
     return render(request, "dashboard/pending_activation.html", {"tenant": request.tenant})
 
 
@@ -839,12 +1009,24 @@ def dashboard_domains(request: HttpRequest) -> HttpResponse:
         )
 
     domains = StoreDomain.objects.filter(tenant=tenant).order_by("-created_at")
+    primary_domain = domains.first()
+    domain_status = None
+    if primary_domain:
+        health = DomainHealth.objects.filter(store_domain=primary_domain).first()
+        if health:
+            domain_status = {
+                "domain": primary_domain.domain,
+                "ssl_valid": health.ssl_valid,
+                "days_until_expiry": health.days_until_expiry,
+                "status": health.status,
+            }
     return render(
         request,
         "dashboard/domains.html",
         {
             "tenant": tenant,
             "domains": domains,
+            "domain_status": domain_status,
             "form": CustomDomainForm(),
             "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", ""),
             "verification_prefix": getattr(settings, "CUSTOM_DOMAIN_VERIFICATION_PATH_PREFIX", ""),

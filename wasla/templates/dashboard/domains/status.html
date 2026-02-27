@@ -1,0 +1,33 @@
+{% if domain_status %}
+  <div class="card dash__section" style="margin-bottom:16px;">
+    <div class="dash__section-header">
+      <h2 class="dash__section-title">Domain Health</h2>
+    </div>
+    <div class="dash__table-wrap">
+      <table class="dash__table">
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>SSL</th>
+            <th>Days Until Expiry</th>
+            <th>Health</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>{{ domain_status.domain }}</strong></td>
+            <td>{{ domain_status.ssl_valid|yesno:'Valid,Invalid' }}</td>
+            <td>{{ domain_status.days_until_expiry|default:'—' }}</td>
+            <td>{{ domain_status.status }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% if domain_status.status == 'WARNING' and domain_status.days_until_expiry %}
+      <div class="alert alert-warning" style="margin-top:12px;">
+        Your SSL expires in {{ domain_status.days_until_expiry }} days
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

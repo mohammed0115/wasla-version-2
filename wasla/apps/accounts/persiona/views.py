@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
 import datetime
@@ -13,6 +14,28 @@ from apps.tenants.models import Tenant, TenantMembership, StoreProfile
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
 from apps.subscriptions.models import SubscriptionPlan, StoreSubscription
 from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
+
+
+def _infer_country_from_request(request) -> str:
+    country = (getattr(request.user.profile, "country", "") or "").upper().strip()
+    if country in {"SA", "AE", "EG", "KW", "QA", "BH", "OM", "JO", "LB", "MA"}:
+        return country
+
+    language = (getattr(request, "LANGUAGE_CODE", "") or "").lower()
+    accept_language = (request.META.get("HTTP_ACCEPT_LANGUAGE") or "").lower()
+    if "ar-sa" in accept_language:
+        return "SA"
+    if "ar-eg" in accept_language:
+        return "EG"
+    if language.startswith("ar"):
+        return "SA"
+    return "US"
+
+
+def _infer_device_from_request(request) -> str:
+    user_agent = (request.META.get("HTTP_USER_AGENT") or "").lower()
+    mobile_hints = ["mobile", "android", "iphone", "ipad", "ipod"]
+    return "mobile" if any(hint in user_agent for hint in mobile_hints) else "desktop"
 
 # ---------
 # Helpers
@@ -143,7 +166,7 @@ def persona_plans(request):
                 store_id=tenant.id,
                 defaults={
                     "plan": chosen,
-                    "status": "active" if is_free else "pending",
+                    "status": "pending",
                     "start_date": timezone.now().date(),
                     "end_date": (
                         timezone.now().date()
@@ -155,12 +178,9 @@ def persona_plans(request):
             request.session["persona_billing_cycle"] = chosen.billing_cycle
             request.session["persona_plan_id"] = chosen.id
 
-        # Next step after choosing plan:
-        # - Free plan: go مباشرة إلى لوحة التحكم
-        # - Paid plan: go to payment setup first
-        if float(getattr(chosen, "price", 0) or 0) <= 0:
-            return redirect("tenants:dashboard_home")
-        return redirect("tenants:dashboard_setup_payment")
+        # Option C flow: do not auto-activate subscriptions or stores.
+        # Merchant must submit/complete manual payment then wait for admin approval.
+        return redirect("tenants:billing_payment_required")
 
     # GET
     selected_plan_id = request.session.get("persona_plan_id")
@@ -232,4 +252,95 @@ def persona_business(request):
             "choices": choices,
             "selected": selected,
         },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def ai_onboarding_wizard(request):
+    profile = request.user.profile
+    registration_time = timezone.localtime(getattr(profile, "created_at", timezone.now()))
+    market = _infer_country_from_request(request)
+    language = (getattr(request, "LANGUAGE_CODE", "ar") or "ar").lower()
+    device = _infer_device_from_request(request)
+    business = (
+        request.session.get("persona_business_category")
+        or getattr(profile, "category_sub", "")
+        or getattr(profile, "category_main", "")
+        or "ملابس"
+    )
+
+    onboarding_seed = {
+        "registration": {
+            "fullName": request.user.get_full_name() or request.user.username,
+            "email": request.user.email,
+            "phoneCountry": getattr(profile, "phone_country", "+966"),
+            "phoneNumber": getattr(profile, "phone_number", ""),
+            "market": market,
+            "language": language,
+            "registrationTime": registration_time.strftime("%Y-%m-%d %H:%M"),
+            "device": device,
+        },
+        "business": business,
+    }
+
+    return render(
+        request,
+        "accounts/ai_onboarding_wizard.html",
+        {
+            "onboarding_seed": onboarding_seed,
+            "registration_time_display": registration_time.strftime("%Y-%m-%d %H:%M"),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def ai_onboarding_suggestions(request):
+    business = (request.GET.get("business") or "").strip() or "ملابس"
+
+    suggestions_by_business = {
+        "ملابس": [
+            "ابدأ بإضافة 10 منتجات أساسية مع المقاسات الأكثر طلبًا.",
+            "فعّل المتغيرات (S/M/L/XL) قبل رفع أول دفعة منتجات.",
+            "استخدم وصفًا عربيًا قصيرًا + نقاط مميزات لتحسين التحويل.",
+        ],
+        "إلكترونيات": [
+            "أضف المواصفات الفنية كحقول ثابتة لكل منتج.",
+            "فعّل الشحن المتقدم وتتبع الطلبات من أول يوم.",
+            "أظهر سياسة الضمان في وصف المنتج بشكل واضح.",
+        ],
+        "تجميل": [
+            "أنشئ تصنيفات بحسب نوع البشرة والاستخدام.",
+            "استخدم صورًا متناسقة المقاس لخلاصة منتجات أوضح.",
+            "ابدأ بحملة عرض ترحيبي لأول طلب لتحفيز التحويل.",
+        ],
+        "أثاث": [
+            "أضف الأبعاد والوزن في كل منتج قبل النشر.",
+            "فعّل مناطق الشحن حسب المدن لتسعير أدق.",
+            "استخدم صورًا متعددة لكل منتج (واجهة/تفاصيل/قياس).",
+        ],
+        "أغذية": [
+            "نظّم المنتجات حسب النوع وتاريخ الصلاحية.",
+            "ابدأ بخيارات توصيل سريعة للمدن الأساسية.",
+            "أضف عبوات متعددة السعر لرفع متوسط السلة.",
+        ],
+        "خدمات": [
+            "حوّل كل خدمة إلى باقة واضحة السعر والمدة.",
+            "أضف أسئلة متكررة لشرح خطوات تنفيذ الخدمة.",
+            "فعّل نماذج الطلب السريعة مع حقول مختصرة.",
+        ],
+    }
+
+    default_suggestions = [
+        "ابدأ بالمنتجات الأعلى طلبًا في نشاطك.",
+        "حافظ على صور موحدة ووصف واضح لكل منتج.",
+        "تابع أول 20 طلبًا واضبط الشحن بناءً على النتائج.",
+    ]
+
+    return JsonResponse(
+        {
+            "business": business,
+            "suggestions": suggestions_by_business.get(business, default_suggestions),
+        }
     )

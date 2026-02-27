@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
 
 from apps.customers.models import Customer
 from apps.catalog.models import Product
@@ -14,9 +15,11 @@ from apps.analytics.application.telemetry import TelemetryService, actor_from_re
 from apps.analytics.domain.types import ObjectRef
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.guards import require_store, require_tenant
+from apps.security.rbac import require_permission
 
 
 class OrderCreateAPI(APIView):
+    @method_decorator(require_permission("orders.create_order"))
     def post(self, request, customer_id):
         store = require_store(request)
         tenant = require_tenant(request)
@@ -77,6 +80,7 @@ class SalesReportAPI(APIView):
       - days: integer (default 30)
     """
 
+    @method_decorator(require_permission("orders.view_reports"))
     def get(self, request):
         store = require_store(request)
         tenant = require_tenant(request)

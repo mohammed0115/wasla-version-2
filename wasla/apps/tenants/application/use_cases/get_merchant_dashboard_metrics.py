@@ -10,10 +10,14 @@ from apps.tenants.application.dto.merchant_dashboard_metrics import (
 )
 from apps.tenants.application.interfaces.inventory_repository_port import InventoryRepositoryPort
 from apps.tenants.application.interfaces.order_repository_port import OrderRepositoryPort
+from apps.tenants.application.interfaces.shipment_repository_port import ShipmentRepositoryPort
 from apps.tenants.application.interfaces.visitor_repository_port import VisitorRepositoryPort
+from apps.tenants.application.interfaces.wallet_repository_port import WalletRepositoryPort
 from apps.tenants.infrastructure.repositories.django_low_stock_repository import DjangoLowStockRepository
 from apps.tenants.infrastructure.repositories.django_order_repository import DjangoOrderRepository
+from apps.tenants.infrastructure.repositories.django_shipment_repository import DjangoShipmentRepository
 from apps.tenants.infrastructure.repositories.django_visitor_repository import DjangoVisitorRepository
+from apps.tenants.infrastructure.repositories.django_wallet_repository import DjangoWalletRepository
 
 
 @dataclass(frozen=True)
@@ -33,10 +37,14 @@ class GetMerchantDashboardMetricsUseCase:
         order_repository: OrderRepositoryPort | None = None,
         visitor_repository: VisitorRepositoryPort | None = None,
         inventory_repository: InventoryRepositoryPort | None = None,
+        wallet_repository: WalletRepositoryPort | None = None,
+        shipment_repository: ShipmentRepositoryPort | None = None,
     ) -> None:
         self._order_repository = order_repository or DjangoOrderRepository()
         self._visitor_repository = visitor_repository or DjangoVisitorRepository()
         self._inventory_repository = inventory_repository or DjangoLowStockRepository()
+        self._wallet_repository = wallet_repository or DjangoWalletRepository()
+        self._shipment_repository = shipment_repository or DjangoShipmentRepository()
 
     def execute(
         self,
@@ -56,6 +64,8 @@ class GetMerchantDashboardMetricsUseCase:
             store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
         )
+        wallet_balance = self._wallet_repository.wallet_balance(store_id=normalized_query.store_id)
+        active_shipments = self._shipment_repository.count_active_shipments(store_id=normalized_query.store_id)
         visitors_7d = self._visitor_repository.count_visitors_last_7_days(
             store_id=normalized_query.store_id,
             tz=normalized_query.timezone,
@@ -80,6 +90,8 @@ class GetMerchantDashboardMetricsUseCase:
             sales_today=sales_today,
             orders_today=orders_today,
             revenue_7d=revenue_7d,
+            wallet_balance=wallet_balance,
+            active_shipments=active_shipments,
             visitors_7d=visitors_7d,
             conversion_7d=conversion_7d,
             chart_7d=chart_7d,

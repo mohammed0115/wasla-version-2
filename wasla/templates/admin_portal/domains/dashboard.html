@@ -1,0 +1,54 @@
+{% extends 'admin_portal/base_portal.html' %}
+
+{% block title %}Domain Monitoring{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Domain Monitoring</h2>
+  <div class="btn-group" role="group">
+    <a class="btn btn-outline-secondary {% if not filter_key %}active{% endif %}" href="?">All</a>
+    <a class="btn btn-outline-success {% if filter_key == 'healthy' %}active{% endif %}" href="?filter=healthy">Healthy</a>
+    <a class="btn btn-outline-warning {% if filter_key == 'expiring' %}active{% endif %}" href="?filter=expiring">Expiring Soon</a>
+    <a class="btn btn-outline-danger {% if filter_key == 'failing' %}active{% endif %}" href="?filter=failing">Failing</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Store</th>
+          <th>Domain</th>
+          <th>Status</th>
+          <th>Days Until Expiry</th>
+          <th>Last Checked</th>
+          <th>Last Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.domain.tenant.name }}</td>
+            <td><a href="{% url 'domains_web:domains_admin_detail' row.domain.id %}">{{ row.domain.domain }}</a></td>
+            <td>
+              {% if row.status == 'HEALTHY' %}
+                <span class="badge bg-success">Healthy</span>
+              {% elif row.status == 'WARNING' %}
+                <span class="badge bg-warning text-dark">Warning</span>
+              {% else %}
+                <span class="badge bg-danger">Error</span>
+              {% endif %}
+            </td>
+            <td>{{ row.health.days_until_expiry|default:'—' }}</td>
+            <td>{{ row.health.last_checked_at|date:'Y-m-d H:i'|default:'—' }}</td>
+            <td>{{ row.health.last_error|default:'—' }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No domains found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

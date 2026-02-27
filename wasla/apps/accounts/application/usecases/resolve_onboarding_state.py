@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import datetime
+
 from django.conf import settings
 from django.db.models import Case, IntegerField, Value, When
 from django.shortcuts import resolve_url
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.subscriptions.services.subscription_service import SubscriptionService
+from apps.subscriptions.models import PaymentTransaction
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
+from apps.tenants.services.provisioning import merchant_has_active_store
 
 
 def _resolve_tenant_for_user(request) -> Tenant | None:
@@ -75,6 +80,12 @@ def resolve_onboarding_state(request) -> str:
         return reverse("tenants:store_create")
 
     active_subscription = SubscriptionService.get_active_subscription(tenant.id)
+    has_submitted_payment = PaymentTransaction.objects.filter(tenant_id=tenant.id).exclude(
+        status__in=[
+            PaymentTransaction.STATUS_FAILED,
+            PaymentTransaction.STATUS_CANCELLED,
+        ]
+    ).exists()
     if active_subscription is None:
         from apps.subscriptions.models import StoreSubscription
         latest = (
@@ -84,7 +95,27 @@ def resolve_onboarding_state(request) -> str:
         )
         if latest is None:
             return reverse("accounts:persona_plans")
-        return reverse("tenants:payment_required")
+
+        if getattr(tenant, "is_published", False) and latest.status != "active":
+            latest.status = "active"
+            today = timezone.now().date()
+            if latest.end_date and latest.end_date < today:
+                cycle = getattr(latest.plan, "billing_cycle", "monthly")
+                latest.end_date = today + datetime.timedelta(days=365 if cycle == "yearly" else 30)
+                latest.save(update_fields=["status", "end_date"])
+            else:
+                latest.save(update_fields=["status"])
+            active_subscription = latest
+
+    if active_subscription is None:
+        if has_submitted_payment:
+            return reverse("tenants:billing_pending_activation")
+        return reverse("tenants:billing_payment_required")
+
+    if not merchant_has_active_store(request.user):
+        if has_submitted_payment:
+            return reverse("tenants:billing_pending_activation")
+        return reverse("tenants:billing_payment_required")
 
     store_profile = StoreProfile.objects.filter(tenant=tenant).order_by("id").first()
     if not store_profile:

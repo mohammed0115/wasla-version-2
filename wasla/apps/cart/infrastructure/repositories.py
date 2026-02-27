@@ -33,4 +33,4 @@ def find_cart(tenant_ctx: TenantContext) -> Cart | None:
 
 
 def list_cart_items(cart: Cart) -> Iterable[CartItem]:
-    return CartItem.objects.select_related("product").filter(cart=cart).order_by("id")
+    return CartItem.objects.select_related("product", "variant").filter(cart=cart).order_by("id")

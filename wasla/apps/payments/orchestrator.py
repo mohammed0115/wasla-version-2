@@ -14,6 +14,7 @@ from apps.payments.infrastructure.gateways.stripe_gateway import StripeProvider
 from apps.payments.infrastructure.gateways.paypal_gateway import PayPalProvider
 from apps.payments.domain.ports import PaymentRedirect
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.wallet.services.wallet_service import WalletService
 
 
 class PaymentOrchestrator:
@@ -191,6 +192,14 @@ class PaymentOrchestrator:
             reason=reason,
             requested_by=requested_by,
         )
+
+        if refund.status == RefundRecord.STATUS_APPROVED:
+            WalletService.on_refund(
+                store_id=intent.store_id,
+                tenant_id=intent.tenant_id,
+                amount=amount,
+                reference=f"refund:{refund.id}",
+            )
 
         return refund
 

@@ -1,0 +1,19 @@
+{% load i18n %}
+<div class="card" style="margin-top:16px;">
+  <div class="card-body">
+    <h3 style="margin-top:0;">{% trans "Payment Timeline" %}</h3>
+    {% if payment_timeline %}
+      <ul style="margin:0; padding-left:18px;">
+        {% for item in payment_timeline %}
+          <li style="margin:6px 0;">
+            <strong>{{ item.status }}</strong>
+            {% if item.provider %}<span style="opacity:.75;">({{ item.provider }})</span>{% endif %}
+            <span style="opacity:.75;">- {{ item.timestamp|date:"Y-m-d H:i" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div style="opacity:.75;">{% trans "No payment events yet." %}</div>
+    {% endif %}
+  </div>
+</div>

@@ -75,3 +75,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+.dbov-ai-welcome {
+  padding: 14px;
+  border-color: color-mix(in oklab, var(--primary) 24%, transparent);
+  background: color-mix(in oklab, var(--primary) 6%, white);
+}
+
+.dbov-ai-welcome__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}

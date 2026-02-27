@@ -6,5 +6,6 @@ These ports are implemented in the infrastructure layer.
 """
 
 from .repository_port import VisualSearchRepositoryPort
+from .stt_provider_port import SpeechToTextProviderPort
 
-__all__ = ["VisualSearchRepositoryPort"]
+__all__ = ["VisualSearchRepositoryPort", "SpeechToTextProviderPort"]

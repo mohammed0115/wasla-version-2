@@ -1,0 +1,67 @@
+{% extends 'admin_portal/base_portal.html' %}
+
+{% block title %}Domain Detail{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">{{ domain.domain }}</h2>
+  <a class="btn btn-outline-secondary" href="{% url 'domains_web:domains_admin_dashboard' %}">Back</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card"><div class="card-body"><small>Status</small><h5>{{ latest.status|default:'UNKNOWN' }}</h5></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><small>SSL Valid</small><h5>{{ latest.ssl_valid|yesno:'Yes,No' }}</h5></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><small>Days Until Expiry</small><h5>{{ latest.days_until_expiry|default:'—' }}</h5></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><small>Last Checked</small><h6>{{ latest.last_checked_at|date:'Y-m-d H:i'|default:'—' }}</h6></div></div></div>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+  <form method="post" action="{% url 'domains_web:domains_admin_check' domain.id %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Re-run health check</button></form>
+  <form method="post" action="{% url 'domains_web:domains_admin_renew' domain.id %}">{% csrf_token %}<button class="btn btn-warning" type="submit">Force renew SSL</button></form>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Health History</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Checked At</th><th>Status</th><th>DNS</th><th>HTTP</th><th>SSL</th><th>Expiry</th><th>Error</th></tr></thead>
+      <tbody>
+        {% for item in history %}
+          <tr>
+            <td>{{ item.last_checked_at|date:'Y-m-d H:i:s' }}</td>
+            <td>{{ item.status }}</td>
+            <td>{{ item.dns_resolves|yesno:'OK,Fail' }}</td>
+            <td>{{ item.http_reachable|yesno:'OK,Fail' }}</td>
+            <td>{{ item.ssl_valid|yesno:'OK,Fail' }}</td>
+            <td>{{ item.days_until_expiry|default:'—' }}</td>
+            <td>{{ item.last_error|default:'—' }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-3">No health records.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Alerts</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Time</th><th>Severity</th><th>Message</th><th>Resolved</th></tr></thead>
+      <tbody>
+        {% for alert in alerts %}
+          <tr>
+            <td>{{ alert.created_at|date:'Y-m-d H:i:s' }}</td>
+            <td>{{ alert.severity }}</td>
+            <td>{{ alert.message }}</td>
+            <td>{{ alert.resolved|yesno:'Yes,No' }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">No alerts.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

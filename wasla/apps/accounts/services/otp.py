@@ -19,7 +19,7 @@ class OtpResult:
     expires_at: int
 
 def generate_code() -> str:
-    return f"{random.randint(0, 9999):04d}"
+    return f"{random.randint(0, 999999):06d}"
 
 def store_otp(request, email: str, user_id: int, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> OtpResult:
     code = generate_code()

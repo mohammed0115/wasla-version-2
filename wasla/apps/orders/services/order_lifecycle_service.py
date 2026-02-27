@@ -9,9 +9,9 @@ from ..models import Order
 
 class OrderLifecycleService:
     ORDER_TRANSITIONS: dict[str, list[str]] = {
-        "pending": ["cancelled"],
+        "pending": ["paid", "cancelled"],
         "paid": ["processing"],
-        "processing": [],
+        "processing": ["shipped"],
         "shipped": ["delivered"],
         "delivered": ["completed"],
         "completed": [],
@@ -39,11 +39,22 @@ class OrderLifecycleService:
 
         if resolved_new_status == "delivered":
             order.shipments.exclude(status__in=["delivered", "cancelled"]).update(status="delivered")
+            WalletService.on_order_delivered(
+                store_id=order.store_id,
+                tenant_id=order.tenant_id,
+                net_amount=order.total_amount,
+                reference=f"order_delivered:{order.id}",
+            )
 
         if resolved_new_status == "completed":
-            wallet = WalletService.get_or_create_wallet(order.store_id, tenant_id=order.tenant_id)
-            reference = f"Order {order.order_number} completed"
-            if not wallet.transactions.filter(transaction_type="credit", reference=reference).exists():
-                WalletService.credit(wallet, order.total_amount, reference)
+            try:
+                WalletService.on_order_delivered(
+                    store_id=order.store_id,
+                    tenant_id=order.tenant_id,
+                    net_amount=order.total_amount,
+                    reference=f"order_delivered:{order.id}",
+                )
+            except ValueError:
+                pass
 
         return order

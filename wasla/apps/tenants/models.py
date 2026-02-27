@@ -239,6 +239,36 @@ class TenantMembership(models.Model):
         return f"{self.tenant.slug}:{self.user_id}:{self.role}"
 
 
+class Permission(models.Model):
+    code = models.CharField(max_length=120, unique=True)
+    module = models.CharField(max_length=60)
+    description = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["module", "code"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.code
+
+
+class RolePermission(models.Model):
+    role = models.CharField(max_length=20, choices=TenantMembership.ROLE_CHOICES)
+    permission = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name="role_permissions")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["role", "permission"], name="uq_role_permission_role_permission"),
+        ]
+        indexes = [
+            models.Index(fields=["role"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.role}:{self.permission.code}"
+
+
 class TenantAuditLog(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="audit_logs")
     action = models.CharField(max_length=100)

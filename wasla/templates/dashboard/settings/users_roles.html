@@ -1,0 +1,78 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Users & Roles" %}{% endblock %}
+{% block page_subtitle %}{% trans "Manage store team access." %}{% endblock %}
+
+{% block content %}
+<section class="card" style="padding:16px; margin-bottom:12px;">
+  <h2 style="margin-top:0;">{% trans "Add Member" %}</h2>
+  <form method="post" action="{% url 'tenants:dashboard_users_roles' %}" style="display:grid; gap:10px; max-width:520px;">
+    {% csrf_token %}
+    {{ invite_form.email.label_tag }}
+    {{ invite_form.email }}
+    {{ invite_form.role.label_tag }}
+    {{ invite_form.role }}
+    <div>
+      <button class="btn btn-primary" type="submit">{% trans "Add / Update" %}</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" style="padding:16px;">
+  <h2 style="margin-top:0;">{% trans "Current Members" %}</h2>
+  {% if memberships %}
+    <table class="dash__table" style="width:100%;">
+      <thead>
+        <tr>
+          <th>{% trans "Email" %}</th>
+          <th>{% trans "Role" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th>{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for member in memberships %}
+        <tr>
+          <td>{{ member.user.email|default:member.user.username }}</td>
+          <td>
+            {% if member.role == 'owner' %}{% trans "Owner" %}
+            {% elif member.role == 'admin' %}{% trans "Admin" %}
+            {% elif member.role == 'staff' %}{% trans "Staff" %}
+            {% elif member.role == 'read_only' %}{% trans "Read-only" %}
+            {% else %}{{ member.role }}
+            {% endif %}
+          </td>
+          <td>
+            {% if member.is_active %}{% trans "Active" %}{% else %}{% trans "Inactive" %}{% endif %}
+          </td>
+          <td>
+            {% if member.role != 'owner' %}
+              <form method="post" action="{% url 'tenants:dashboard_member_update_role' member.id %}" style="display:inline-flex; gap:8px; align-items:center; margin-right:8px;">
+                {% csrf_token %}
+                <select name="role" class="form-select" style="min-width:140px;">
+                  <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>{% trans "Admin" %}</option>
+                  <option value="staff" {% if member.role == 'staff' %}selected{% endif %}>{% trans "Staff" %}</option>
+                  <option value="read_only" {% if member.role == 'read_only' %}selected{% endif %}>{% trans "Read-only" %}</option>
+                </select>
+                <button class="btn btn-soft" type="submit">{% trans "Save" %}</button>
+              </form>
+              {% if member.is_active %}
+                <form method="post" action="{% url 'tenants:dashboard_member_deactivate' member.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="btn btn-soft" type="submit">{% trans "Deactivate" %}</button>
+                </form>
+              {% endif %}
+            {% else %}
+              <span class="muted">{% trans "Owner" %}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">{% trans "No members found." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

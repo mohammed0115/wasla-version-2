@@ -55,7 +55,7 @@
                 <tbody>
                     {% for payment in payments %}
                     <tr>
-                        <td><small>{{ payment.id|truncatechars:10 }}</small></td>
+                        <td><a href="{% url 'admin_portal:payment_attempt_detail' payment.id %}"><small>{{ payment.id|truncatechars:10 }}</small></a></td>
                         <td>{{ payment.store.name|default:"N/A" }}</td>
                         <td><span class="badge bg-info">{{ payment.provider|upper }}</span></td>
                         <td><strong>${{ payment.amount|floatformat:2 }}</strong></td>

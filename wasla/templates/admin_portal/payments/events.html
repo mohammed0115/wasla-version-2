@@ -1,0 +1,62 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Payment Events Log{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+  <h1 class="h3">Payment Events Log</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Store</label>
+        <input type="text" class="form-control" name="store" value="{{ store_filter|default:'' }}" placeholder="Store ID">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Provider</label>
+        <input type="text" class="form-control" name="provider" value="{{ provider_filter|default:'' }}" placeholder="tap/stripe/paypal">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Status</label>
+        <input type="text" class="form-control" name="status" value="{{ status_filter|default:'' }}" placeholder="received/processed/failed">
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body table-responsive">
+    <table class="table table-sm table-hover">
+      <thead>
+        <tr>
+          <th>Store</th>
+          <th>Provider</th>
+          <th>Event ID</th>
+          <th>Signature Valid</th>
+          <th>Processed</th>
+          <th>Received At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+        <tr>
+          <td>{{ event.store_id|default:'-' }}</td>
+          <td>{{ event.provider }}</td>
+          <td>{{ event.event_id }}</td>
+          <td>{% if event.signature_valid %}Yes{% else %}No{% endif %}</td>
+          <td>{% if event.processed %}Yes{% else %}No{% endif %}</td>
+          <td>{{ event.received_at|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">No events found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

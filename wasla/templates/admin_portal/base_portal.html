@@ -160,6 +160,11 @@
                                 <i class="bi bi-arrow-down-square"></i> Webhooks
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'performance_monitoring' %}active{% endif %}" href="{% url 'admin_portal:performance_monitoring' %}">
+                                <i class="bi bi-activity"></i> Performance
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>

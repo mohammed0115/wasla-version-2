@@ -5,3 +5,5 @@ class PaymentInitiateSerializer(serializers.Serializer):
     order_id = serializers.IntegerField(min_value=1)
     provider_code = serializers.CharField(max_length=50)
     return_url = serializers.CharField(max_length=255)
+    idempotency_key = serializers.CharField(max_length=128)
+    client_token = serializers.CharField(max_length=255, required=False, allow_blank=True)

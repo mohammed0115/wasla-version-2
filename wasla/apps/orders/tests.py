@@ -70,15 +70,21 @@ class OrderLifecycleServiceTests(TestCase):
             store_id=self.store_id,
             tenant_id=self.tenant.id,
         )
-        self.assertEqual(order.tenant_id, self.store_id)
+        self.assertEqual(order.tenant_id, self.tenant.id)
         first_item = order.items.first()
         self.assertIsNotNone(first_item)
-        self.assertEqual(first_item.tenant_id, self.store_id)
+        self.assertEqual(first_item.tenant_id, self.tenant.id)
 
     def test_delivered_requires_shipment(self):
         order = self._create_order(status="shipped")
         with self.assertRaisesMessage(ValueError, "Cannot mark delivered/completed without a shipment."):
             OrderLifecycleService.transition(order=order, new_status="delivered")
+
+    def test_processing_to_shipped_is_allowed(self):
+        order = self._create_order(status="processing")
+        OrderLifecycleService.transition(order=order, new_status="shipped")
+        order.refresh_from_db()
+        self.assertEqual(order.status, "shipped")
 
     def test_delivered_updates_shipments_except_cancelled(self):
         order = self._create_order(status="shipped")
@@ -95,25 +101,23 @@ class OrderLifecycleServiceTests(TestCase):
         self.assertEqual(shipped.status, "delivered")
         self.assertEqual(cancelled.status, "cancelled")
 
-    def test_completed_credits_wallet_once(self):
-        order = self._create_order(status="delivered")
+    def test_delivered_moves_wallet_pending_to_available(self):
+        order = self._create_order(status="shipped")
         Shipment.objects.create(order=order, carrier="dhl", status="delivered", tenant_id=self.tenant.id)
         wallet = Wallet.objects.create(
             tenant_id=self.tenant.id,
             store_id=self.store_id,
             balance="0.00",
+            available_balance="0.00",
+            pending_balance="25.00",
             currency="USD",
             is_active=True,
         )
 
-        OrderLifecycleService.transition(order=order, new_status="completed")
+        OrderLifecycleService.transition(order=order, new_status="delivered")
         wallet.refresh_from_db()
-        self.assertEqual(str(wallet.balance), "25.00")
-
-        order.status = "delivered"
-        order.save(update_fields=["status"])
-        OrderLifecycleService.transition(order=order, new_status="completed")
-        wallet.refresh_from_db()
+        self.assertEqual(str(wallet.pending_balance), "0.00")
+        self.assertEqual(str(wallet.available_balance), "25.00")
         self.assertEqual(str(wallet.balance), "25.00")
 
 

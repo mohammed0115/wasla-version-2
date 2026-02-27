@@ -31,6 +31,8 @@ class GetCartUseCase:
                 CartItemDTO(
                     id=item.id,
                     product_id=item.product_id,
+                    variant_id=item.variant_id,
+                    variant_sku=getattr(item.variant, "sku", ""),
                     name=getattr(item.product, "name", ""),
                     quantity=item.quantity,
                     unit_price=unit_price,

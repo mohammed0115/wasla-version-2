@@ -10,6 +10,8 @@ urlpatterns = [
     path("dashboard/orders", wviews.dashboard_orders, name="dashboard_orders"),
     path("dashboard/payment-required", wviews.payment_required, name="payment_required"),
     path("dashboard/pending-activation", wviews.pending_activation, name="pending_activation"),
+    path("billing/payment-required/", wviews.payment_required, name="billing_payment_required"),
+    path("billing/pending-activation/", wviews.pending_activation, name="billing_pending_activation"),
     path("dashboard/domains", wviews.dashboard_domains, name="dashboard_domains"),
 
     # Merchant onboarding / setup
@@ -26,6 +28,17 @@ urlpatterns = [
 
     # Store settings
     path("dashboard/store/info", wviews.store_settings_update, name="store_settings_update"),
+    path("dashboard/store/users-roles", wviews.dashboard_users_roles, name="dashboard_users_roles"),
+    path(
+        "dashboard/store/users-roles/<int:membership_id>/role",
+        wviews.dashboard_member_update_role,
+        name="dashboard_member_update_role",
+    ),
+    path(
+        "dashboard/store/users-roles/<int:membership_id>/deactivate",
+        wviews.dashboard_member_deactivate,
+        name="dashboard_member_deactivate",
+    ),
 
     # Custom domains
     path("dashboard/domains/add", wviews.custom_domain_add, name="custom_domain_add"),

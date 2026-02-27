@@ -1,0 +1,287 @@
+{% extends "dashboard/_base.html" %}
+{% load i18n static %}
+
+{% block page_title %}{% trans "Wallet Ledger" %}{% endblock %}
+{% block page_subtitle %}{% trans "All journal entries and transactions" %}{% endblock %}
+
+{% block content %}
+<div class="wallet-ledger">
+  <!-- Filters -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-body">
+      <form method="get" action="" class="ledger-filters">
+        <div class="dash__grid dash__grid--4">
+          <div class="form-group">
+            <label>{% trans "Entry Type" %}</label>
+            <select name="entry_type" class="form-control">
+              <option value="">{% trans "All Types" %}</option>
+              <option value="payment_captured" {% if request.GET.entry_type == 'payment_captured' %}selected{% endif %}>
+                {% trans "Payment Captured" %}
+              </option>
+              <option value="order_delivered" {% if request.GET.entry_type == 'order_delivered' %}selected{% endif %}>
+                {% trans "Order Delivered" %}
+              </option>
+              <option value="refund" {% if request.GET.entry_type == 'refund' %}selected{% endif %}>
+                {% trans "Refund" %}
+              </option>
+              <option value="withdrawal" {% if request.GET.entry_type == 'withdrawal' %}selected{% endif %}>
+                {% trans "Withdrawal" %}
+              </option>
+              <option value="adjustment" {% if request.GET.entry_type == 'adjustment' %}selected{% endif %}>
+                {% trans "Adjustment" %}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>{% trans "Date From" %}</label>
+            <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+          </div>
+
+          <div class="form-group">
+            <label>{% trans "Date To" %}</label>
+            <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn btn-primary" style="margin-right: 8px;">{% trans "Filter" %}</button>
+            <a href="{% url 'wallet:dashboard_wallet_ledger' %}" class="btn btn-soft">{% trans "Clear" %}</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ledger Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="margin: 0;">{% trans "Journal Entries" %}</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      {% if entries %}
+        <table class="table ledger-table">
+          <thead>
+            <tr>
+              <th>{% trans "Date" %}</th>
+              <th>{% trans "Entry ID" %}</th>
+              <th>{% trans "Type" %}</th>
+              <th>{% trans "Reference" %}</th>
+              <th>{% trans "Description" %}</th>
+              <th class="text-right">{% trans "Debits" %}</th>
+              <th class="text-right">{% trans "Credits" %}</th>
+              <th class="text-center">{% trans "Status" %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+              <tr class="ledger-row" data-entry-id="{{ entry.id }}">
+                <td>
+                  <small class="muted">{{ entry.created_at|date:"Y-m-d" }}</small><br>
+                  <small class="muted">{{ entry.created_at|time:"H:i" }}</small>
+                </td>
+                <td><code>#{{ entry.id }}</code></td>
+                <td>
+                  <span class="badge badge-{{ entry.entry_type }}">
+                    {{ entry.get_entry_type_display }}
+                  </span>
+                </td>
+                <td>
+                  <small>{{ entry.reference_type }}</small><br>
+                  <small class="muted">{{ entry.reference_id|truncatechars:15 }}</small>
+                </td>
+                <td>{{ entry.description|truncatewords:8 }}</td>
+                <td class="text-right">
+                  <strong>{{ entry.total_debit|floatformat:2 }}</strong>
+                </td>
+                <td class="text-right">
+                  <strong>{{ entry.total_credit|floatformat:2 }}</strong>
+                </td>
+                <td class="text-center">
+                  {% if entry.is_balanced %}
+                    <span class="badge badge-success">⚖️ {% trans "Balanced" %}</span>
+                  {% else %}
+                    <span class="badge badge-danger">⚠️ {% trans "Unbalanced" %}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <button 
+                    class="btn btn-sm btn-soft toggle-details" 
+                    data-entry-id="{{ entry.id }}"
+                    onclick="toggleEntryDetails({{ entry.id }})"
+                  >
+                    {% trans "Details" %}
+                  </button>
+                </td>
+              </tr>
+              
+              <!-- Details Row (Hidden by default) -->
+              <tr class="ledger-details" id="details-{{ entry.id }}" style="display: none;">
+                <td colspan="9" style="background-color: #f9fafb; padding: 20px;">
+                  <div class="entry-details-content">
+                    <div class="dash__grid dash__grid--2" style="margin-bottom: 16px;">
+                      <div>
+                        <strong>{% trans "Idempotency Key:" %}</strong><br>
+                        <code>{{ entry.idempotency_key }}</code>
+                      </div>
+                      <div>
+                        <strong>{% trans "Created:" %}</strong><br>
+                        {{ entry.created_at|date:"Y-m-d H:i:s" }}
+                      </div>
+                    </div>
+
+                    <h4 style="margin: 16px 0 12px; font-size: 14px; font-weight: 600;">{% trans "Journal Lines" %}</h4>
+                    <table class="table table-sm" style="background-color: white;">
+                      <thead>
+                        <tr>
+                          <th>{% trans "Account" %}</th>
+                          <th>{% trans "Direction" %}</th>
+                          <th class="text-right">{% trans "Amount" %}</th>
+                          <th>{% trans "Memo" %}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for line in entry.lines.all %}
+                          <tr>
+                            <td>
+                              <strong>{{ line.account.code }}</strong><br>
+                              <small class="muted">{{ line.account.name }}</small>
+                            </td>
+                            <td>
+                              {% if line.direction == 'debit' %}
+                                <span style="color: #ef4444;">⬆ {% trans "Debit" %}</span>
+                              {% else %}
+                                <span style="color: #10b981;">⬇ {% trans "Credit" %}</span>
+                              {% endif %}
+                            </td>
+                            <td class="text-right">
+                              <strong>{{ line.amount|floatformat:2 }}</strong>
+                            </td>
+                            <td>{{ line.memo|default:"—" }}</td>
+                          </tr>
+                        {% endfor %}
+                        <tr style="border-top: 2px solid #e5e7eb; font-weight: 700;">
+                          <td colspan="2">{% trans "Total" %}</td>
+                          <td class="text-right">
+                            {{ entry.total_debit|floatformat:2 }} / {{ entry.total_credit|floatformat:2 }}
+                          </td>
+                          <td>
+                            {% if entry.total_debit == entry.total_credit %}
+                              <span style="color: #10b981;">✓ {% trans "Balanced" %}</span>
+                            {% else %}
+                              <span style="color: #ef4444;">✗ {% trans "Unbalanced" %}</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {% if entry.metadata %}
+                      <h4 style="margin: 16px 0 12px; font-size: 14px; font-weight: 600;">{% trans "Metadata" %}</h4>
+                      <pre style="background-color: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ entry.metadata|safe }}</pre>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+          <div class="pagination" style="padding: 20px; display: flex; justify-content: center;">
+            {% if page_obj.has_previous %}
+              <a href="?page=1{% if request.GET.entry_type %}&entry_type={{ request.GET.entry_type }}{% endif %}" class="btn btn-sm btn-soft">{% trans "First" %}</a>
+              <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.entry_type %}&entry_type={{ request.GET.entry_type }}{% endif %}" class="btn btn-sm btn-soft" style="margin-left: 8px;">{% trans "Previous" %}</a>
+            {% endif %}
+
+            <span class="btn btn-sm" style="margin: 0 8px;">
+              {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}{% if request.GET.entry_type %}&entry_type={{ request.GET.entry_type }}{% endif %}" class="btn btn-sm btn-soft" style="margin-right: 8px;">{% trans "Next" %}</a>
+              <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.entry_type %}&entry_type={{ request.GET.entry_type }}{% endif %}" class="btn btn-sm btn-soft">{% trans "Last" %}</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div style="padding: 60px; text-align: center; color: #9ca3af;">
+          <svg width="64" height="64" fill="currentColor" style="opacity: 0.3; margin-bottom: 16px;">
+            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+          </svg>
+          <p>{% trans "No ledger entries found" %}</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleEntryDetails(entryId) {
+  const detailsRow = document.getElementById('details-' + entryId);
+  if (detailsRow.style.display === 'none') {
+    detailsRow.style.display = 'table-row';
+  } else {
+    detailsRow.style.display = 'none';
+  }
+}
+</script>
+
+<style>
+  .ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .ledger-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .ledger-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .ledger-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .ledger-row:hover {
+    background-color: #f9fafb;
+  }
+  .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .badge-success {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+  .badge-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+  .table-sm {
+    font-size: 13px;
+  }
+  .table-sm th,
+  .table-sm td {
+    padding: 8px 12px;
+  }
+</style>
+{% endblock %}

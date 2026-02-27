@@ -50,6 +50,8 @@ class CartDetailAPI(APIView):
                 {
                     "id": item.id,
                     "product_id": item.product_id,
+                    "variant_id": item.variant_id,
+                    "variant_sku": item.variant_sku,
                     "name": item.name,
                     "quantity": item.quantity,
                     "unit_price": str(item.unit_price),
@@ -72,6 +74,7 @@ class CartAddAPI(APIView):
                     tenant_ctx=tenant_ctx,
                     product_id=serializer.validated_data["product_id"],
                     quantity=serializer.validated_data["quantity"],
+                    variant_id=serializer.validated_data.get("variant_id"),
                 )
             )
         except CartError as exc:

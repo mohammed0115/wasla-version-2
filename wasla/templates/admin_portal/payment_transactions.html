@@ -55,6 +55,7 @@
                         <th>Status</th>
                         <th>Reference</th>
                         <th>Created</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,10 +77,20 @@
                         </td>
                         <td><small>{{ tx.reference|default:"—" }}</small></td>
                         <td>{{ tx.created_at|date:"M d, H:i" }}</td>
+                        <td>
+                            {% if tx.status == 'pending' %}
+                            <form method="post" action="{% url 'admin_portal:payment_transaction_approve_create_store' tx.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">Approve &amp; Create Store</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">No manual payments found</td>
+                        <td colspan="8" class="text-center text-muted py-4">No manual payments found</td>
                     </tr>
                     {% endfor %}
                 </tbody>

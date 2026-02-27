@@ -10,21 +10,23 @@ urlpatterns = [
 
     path('tenants/', views.tenants_view, name='tenants'),
     path('tenants/<int:tenant_id>/', views.tenant_detail_view, name='tenant_detail'),
-    path('tenants/<int:tenant_id>/set-active/', views.tenant_set_active_view, name='tenant_set_active'),
     path('tenants/<int:tenant_id>/publish/', views.tenant_publish_view, name='tenant_publish'),
+    path('tenants/<int:tenant_id>/set-active/', views.tenant_set_active_view, name='tenant_set_active'),
 
     path('stores/', views.stores_view, name='stores'),
     path('stores/<int:store_id>/', views.store_detail_view, name='store_detail'),
     path('stores/<int:store_id>/set-active/', views.store_set_active_view, name='store_set_active'),
 
     path('payments/', views.payments_view, name='payments'),
-    path('subscriptions/', views.subscription_list_view, name='subscriptions'),
-    path('payments/manual/', views.payment_transactions_view, name='payment_transactions'),
-    path('payments/manual/new/', views.payment_transaction_create_view, name='payment_transaction_create'),
+    path('payments/transactions/', views.payment_transactions_view, name='payment_transactions'),
+    path('payments/transactions/create/', views.payment_transaction_create_view, name='payment_transaction_create'),
+    path('payments/transactions/<int:transaction_id>/approve-create-store/', views.payment_transaction_approve_create_store_view, name='payment_transaction_approve_create_store'),
+    path('subscriptions/', views.subscriptions_view, name='subscriptions'),
     path('settlements/', views.settlements_view, name='settlements'),
 
     path('invoices/', views.invoices_view, name='invoices'),
     path('invoices/<int:invoice_id>/mark-paid/', views.invoice_mark_paid_view, name='invoice_mark_paid'),
 
     path('webhooks/', views.webhooks_view, name='webhooks'),
+    path('performance/', views.performance_monitoring_view, name='performance_monitoring'),
 ]

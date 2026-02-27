@@ -1,0 +1,161 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}تعديل: {{ product.name }} - لوحة التحكم{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <div>
+      <h1 style="margin: 0; margin-bottom: 5px;">{{ product.name }}</h1>
+      <p class="text-muted" style="margin: 0;">SKU: <code>{{ product.sku }}</code></p>
+    </div>
+    <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">العودة للمنتجات</a>
+  </div>
+
+  <!-- Product Details Card -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 style="margin: 0;">تفاصيل المنتج</h5>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {% include "dashboard/catalog/product_form_fields.html" %}
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Option Groups Section -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="margin: 0;">خيارات المنتج (اللون، الحجم، إلخ)</h5>
+        <a href="{% url 'catalog:option_group_create' product.id %}" class="btn btn-sm btn-success">
+          + إضافة مجموعة خيارات
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if option_groups %}
+        <div class="row">
+          {% for group in option_groups %}
+            <div class="col-md-6 mb-3">
+              <div class="border rounded p-3">
+                <h6 class="mb-2">
+                  {{ group.name }}
+                  {% if group.is_required %}
+                    <span class="badge bg-danger">إجباري</span>
+                  {% else %}
+                    <span class="badge bg-secondary">اختياري</span>
+                  {% endif %}
+                </h6>
+                <div class="mb-3">
+                  <small class="text-muted">الخيارات:</small>
+                  <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">
+                    {% for option in group.options.all %}
+                      <span class="badge bg-light text-dark">{{ option.value }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+                <a href="{% url 'catalog:option_group_edit' product.id group.id %}" class="btn btn-sm btn-outline-primary">
+                  تعديل
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted">لم تضف أي خيارات بعد. ابدأ بإضافة مجموعة خيارات مثل اللون أو الحجم.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Variants Section -->
+  <div class="card">
+    <div class="card-header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="margin: 0;">النسخ المختلفة (Variants)</h5>
+        {% if option_groups %}
+          <a href="{% url 'catalog:variant_create' product.id %}" class="btn btn-sm btn-success">
+            + إضافة نسخة جديدة
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if variants %}
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>الخيارات</th>
+                <th>السعر</th>
+                <th>المخزون</th>
+                <th>الحالة</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for variant in variants %}
+                <tr>
+                  <td><code>{{ variant.sku }}</code></td>
+                  <td>
+                    {% if variant.options.exists %}
+                      {% for option in variant.options.all %}
+                        <small class="badge bg-info">{{ option.group.name }}: {{ option.value }}</small>
+                      {% endfor %}
+                    {% else %}
+                      <small class="text-muted">-</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if variant.price_override %}
+                      <strong>{{ variant.price_override }} ر.س</strong>
+                      <br><small class="text-muted">(تجاوز)</small>
+                    {% else %}
+                      {{ product.price }} ر.س
+                      <br><small class="text-muted">(الأساسي)</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-{% if variant.stock_quantity > 0 %}success{% else %}danger{% endif %}">
+                      {{ variant.stock_quantity }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if variant.is_active %}
+                      <span class="badge bg-success">نشط</span>
+                    {% else %}
+                      <span class="badge bg-danger">غير نشط</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{% url 'catalog:variant_edit' product.id variant.id %}" class="btn btn-sm btn-outline-primary">
+                      تعديل
+                    </a>
+                    <a href="{% url 'catalog:variant_delete' product.id variant.id %}" class="btn btn-sm btn-outline-danger">
+                      حذف
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">
+          {% if option_groups %}
+            لم تضف أي نسخ مختلفة بعد. 
+            <a href="{% url 'catalog:variant_create' product.id %}" class="alert-link">أضف نسخة الآن</a>
+          {% else %}
+            أضف مجموعات خيارات أولاً قبل إنشاء نسخ مختلفة.
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

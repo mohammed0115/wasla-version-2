@@ -7,6 +7,8 @@ from apps.accounts.models import Profile
 from apps.subscriptions.models import StoreSubscription
 
 from .models import (
+    Permission,
+    RolePermission,
     StoreDomain,
     StorePaymentSettings,
     StoreProfile,
@@ -56,6 +58,22 @@ class TenantMembershipAdmin(admin.ModelAdmin):
     list_filter = ("role", "is_active")
     search_fields = ("tenant__slug", "tenant__name", "user__username", "user__email")
     ordering = ("-id",)
+
+
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    list_display = ("id", "code", "module", "description")
+    list_filter = ("module",)
+    search_fields = ("code", "module", "description")
+    ordering = ("module", "code")
+
+
+@admin.register(RolePermission)
+class RolePermissionAdmin(admin.ModelAdmin):
+    list_display = ("id", "role", "permission")
+    list_filter = ("role", "permission__module")
+    search_fields = ("role", "permission__code", "permission__module")
+    ordering = ("role", "permission__code")
 
 
 @admin.register(StoreProfile)
