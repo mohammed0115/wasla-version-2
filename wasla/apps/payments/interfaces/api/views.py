@@ -151,7 +151,15 @@ class PaymentWebhookAPI(APIView):
     )
     def post(self, request, provider: str):
         payload = request.data if isinstance(request.data, dict) else {}
-        raw_body = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+        raw_body = ""
+        provider_key = (provider or "").strip().lower()
+        if provider_key == "stripe":
+            try:
+                raw_body = request.body.decode("utf-8") if request.body else ""
+            except Exception:
+                raw_body = ""
+        if not raw_body:
+            raw_body = json.dumps(payload, separators=(",", ":"), sort_keys=True)
 
         cmd = HandleWebhookEventCommand(
             provider_code=provider,

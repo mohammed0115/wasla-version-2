@@ -22,12 +22,10 @@ class TapProvider(HostedPaymentAdapter):
     code = "tap"
     name = "Tap"
     payment_method = "card"
+    default_base_url = "https://api.tap.company/v2"
 
     def __init__(self, settings: PaymentProviderSettings):
         super().__init__(settings)
-        # Tap defaults
-        if not self.base_url:
-            self.base_url = "https://api.tap.company/v2"
         if not self.initiate_path:
             self.initiate_path = "/charges"
         self.api_key = self.credentials.get("api_key", "")

@@ -449,6 +449,35 @@ alerts:
 | Idempotency check | 10ms | Negligible |
 | DB storage per payment | 2KB | ~200MB per 1M payments |
 
+## Stripe Live Integration (PaymentIntent)
+
+This release upgrades Stripe from stub mode to **live PaymentIntent** integration.
+
+### Environment Variables (required)
+```
+STRIPE_API_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PUBLIC_KEY=pk_test_...
+```
+
+### Tenant Provider Configuration (DB)
+Store secrets **as env var names** instead of raw values:
+
+```json
+{
+  "api_key_env": "STRIPE_API_KEY",
+  "webhook_secret_env": "STRIPE_WEBHOOK_SECRET",
+  "public_key_env": "STRIPE_PUBLIC_KEY"
+}
+```
+
+### Webhook Events Handled
+- `payment_intent.succeeded`
+- `payment_intent.payment_failed`
+
+### Idempotency
+Stripe requests include `Idempotency-Key` from the platform’s payment idempotency key.
+
 ## Rollback Procedure
 
 All changes are **non-breaking**. To rollback:

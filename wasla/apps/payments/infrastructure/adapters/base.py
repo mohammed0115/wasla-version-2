@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from typing import Any
+import os
 
 import requests
 
@@ -19,13 +20,19 @@ class HostedPaymentAdapter:
     name: str
     payment_method: str
     scheme: str | None = None
+    default_base_url: str | None = None
 
     def __init__(self, settings: PaymentProviderSettings):
         if not settings:
             raise ValueError("Payment provider settings are required.")
         self.settings = settings
-        self.credentials: dict[str, Any] = settings.credentials or {}
-        self.base_url = self.credentials.get("api_base_url") or self.credentials.get("base_url") or ""
+        self.credentials: dict[str, Any] = dict(settings.credentials or {})
+        self._apply_env_overrides()
+        self.base_url = (
+            self.credentials.get("api_base_url")
+            or self.credentials.get("base_url")
+            or (self.default_base_url or "")
+        )
         if not self.base_url:
             raise ValueError(f"Provider '{self.code}' is missing api_base_url.")
         self.initiate_path = self.credentials.get("initiate_path", "/payments/initiate")
@@ -33,15 +40,25 @@ class HostedPaymentAdapter:
         self.timeout_seconds = int(self.credentials.get("timeout_seconds", 20))
         self.signature_header = self.credentials.get("signature_header") or DEFAULT_SIGNATURE_HEADER
         self.signature_encoding = self.credentials.get("signature_encoding", "hex")
-        self.webhook_secret = (
-            settings.webhook_secret
-            or self.credentials.get("webhook_secret")
+        resolved_webhook_secret = (
+            self.credentials.get("webhook_secret")
             or self.credentials.get("api_secret")
             or ""
         )
+        self.webhook_secret = resolved_webhook_secret or settings.webhook_secret or ""
         self.field_map = self.credentials.get("field_map", {})
         self.response_fields = self.credentials.get("response_fields", {})
         self.status_map = self.credentials.get("status_map", {})
+
+    def _apply_env_overrides(self) -> None:
+        """Replace credential values with env-based values when configured."""
+        for key in ("api_key", "api_secret", "webhook_secret", "public_key", "merchant_id"):
+            env_key = self.credentials.get(f"{key}_env")
+            if not env_key:
+                continue
+            value = os.getenv(env_key)
+            if value:
+                self.credentials[key] = value
 
     def initiate_payment(self, *, order, amount, currency, return_url: str) -> PaymentRedirect:
         payload: dict[str, Any] = {

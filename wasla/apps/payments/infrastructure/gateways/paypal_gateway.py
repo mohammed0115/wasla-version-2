@@ -22,6 +22,7 @@ class PayPalProvider(HostedPaymentAdapter):
     code = "paypal"
     name = "PayPal"
     payment_method = "paypal"
+    default_base_url = "https://api-m.sandbox.paypal.com/v2"
 
     def __init__(self, settings: PaymentProviderSettings):
         super().__init__(settings)

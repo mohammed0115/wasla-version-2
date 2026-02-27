@@ -9,6 +9,7 @@ from apps.payments.infrastructure.adapters import (
     TamaraGatewayAdapter,
     VisaGatewayAdapter,
 )
+from apps.payments.infrastructure.gateways.stripe_gateway import StripeProvider
 from apps.payments.infrastructure.gateways.dummy_gateway import DummyGateway
 from apps.payments.infrastructure.gateways.sandbox_stub import SandboxStubGateway
 from apps.payments.models import PaymentProviderSettings
@@ -19,6 +20,7 @@ class PaymentGatewayFacade:
     _registry: dict[str, type[PaymentGatewayPort]] = {
         DummyGateway.code: DummyGateway,
         SandboxStubGateway.code: SandboxStubGateway,
+        StripeProvider.code: StripeProvider,
         MadaGatewayAdapter.code: MadaGatewayAdapter,
         VisaGatewayAdapter.code: VisaGatewayAdapter,
         MastercardGatewayAdapter.code: MastercardGatewayAdapter,
@@ -28,7 +30,13 @@ class PaymentGatewayFacade:
     }
 
     @classmethod
-    def get(cls, provider_code: str, *, tenant_id: int | None = None) -> PaymentGatewayPort:
+    def get(
+        cls,
+        provider_code: str,
+        *,
+        tenant_id: int | None = None,
+        idempotency_key: str | None = None,
+    ) -> PaymentGatewayPort:
         key = (provider_code or "").strip().lower()
         adapter_cls = cls._registry.get(key)
         if not adapter_cls:
@@ -45,7 +53,12 @@ class PaymentGatewayFacade:
         ).first()
         if not settings:
             raise ValueError("Payment provider is not configured or disabled.")
-        return adapter_cls(settings=settings)
+        adapter = adapter_cls(settings=settings)
+        if idempotency_key:
+            setattr(adapter, "idempotency_key", idempotency_key)
+        if tenant_id:
+            setattr(adapter, "tenant_id", tenant_id)
+        return adapter
 
     @classmethod
     def available_providers(cls, tenant_id: int | None = None) -> list[dict]:

@@ -86,7 +86,11 @@ class InitiatePaymentUseCase:
             currency=order.currency or cmd.tenant_ctx.currency,
         )
 
-        gateway = PaymentGatewayFacade.get(cmd.provider_code, tenant_id=cmd.tenant_ctx.tenant_id)
+        gateway = PaymentGatewayFacade.get(
+            cmd.provider_code,
+            tenant_id=cmd.tenant_ctx.tenant_id,
+            idempotency_key=cmd.idempotency_key,
+        )
 
         payment_attempt = PaymentAttempt.objects.create(
             store_id=cmd.tenant_ctx.store_id,

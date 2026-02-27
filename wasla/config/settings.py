@@ -199,6 +199,8 @@ MIDDLEWARE = [
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "apps.tenants.middleware.TenantResolverMiddleware",
+    "apps.tenants.middleware.TenantContextMiddleware",
+    "apps.tenants.middleware.TenantGuardMiddleware",
     "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
     "apps.tenants.middleware.TenantLocaleMiddleware",

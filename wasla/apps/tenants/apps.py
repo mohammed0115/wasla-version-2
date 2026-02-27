@@ -8,3 +8,4 @@ class TenantsConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        signals.register_tenant_save_guards()

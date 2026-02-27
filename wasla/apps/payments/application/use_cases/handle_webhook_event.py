@@ -15,6 +15,10 @@ from apps.payments.application.use_cases.payment_outcomes import (
 )
 from apps.payments.models import PaymentIntent, PaymentEvent, PaymentProviderSettings, WebhookEvent, PaymentAttempt
 from apps.payments.security import WebhookSecurityValidator, ProviderCommunicationLogger
+from apps.payments.infrastructure.webhooks.signatures import (
+    verify_stripe_signature,
+    extract_stripe_timestamp,
+)
 from apps.payments.state_machine import transition_payment_attempt_status
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.payments.structured_logging import log_payment_structured
@@ -32,7 +36,7 @@ class HandleWebhookEventUseCase:
     @staticmethod
     def execute(cmd: HandleWebhookEventCommand) -> WebhookEvent:
         raw_body = cmd.raw_body or ""
-
+        provider_key = (cmd.provider_code or "").strip().lower()
         signature_header = cmd.headers.get("X-Webhook-Signature") or cmd.headers.get("X-Signature") or ""
         timestamp = WebhookSecurityValidator.extract_timestamp_from_header(
             cmd.headers.get("X-Webhook-Timestamp") or cmd.headers.get("X-Timestamp") or ""
@@ -90,6 +94,20 @@ class HandleWebhookEventUseCase:
             secret = getattr(provider_settings, "webhook_secret", "")
             tolerance_seconds = getattr(provider_settings, "webhook_tolerance_seconds", 300) or 300
 
+        if provider_key == "stripe":
+            signature_header = (
+                cmd.headers.get("Stripe-Signature")
+                or cmd.headers.get("stripe-signature")
+                or signature_header
+            )
+            timestamp = extract_stripe_timestamp(signature_header) or timestamp
+            signature_ok = bool(secret) and verify_stripe_signature(
+                signature_header,
+                secret=secret,
+                payload=raw_body,
+                tolerance_seconds=tolerance_seconds,
+            )
+        else:
             signature_ok = bool(secret) and WebhookSecurityValidator.verify_signature(
                 payload=raw_body,
                 signature=signature_header,
