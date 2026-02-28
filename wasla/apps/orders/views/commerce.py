@@ -55,7 +55,7 @@ from wasla.apps.orders.serializers_commerce import (
 from wasla.apps.orders.services.invoice_service import InvoiceService
 from wasla.apps.orders.services.returns_service import ReturnsService, RefundsService
 from wasla.apps.orders.services.stock_reservation_service import StockReservationService
-from wasla.core.infrastructure.tenants import TenantTokenAuth
+from apps.tenants.interfaces.api.authentication import TenantTokenAuth
 
 logger = logging.getLogger(__name__)
 
