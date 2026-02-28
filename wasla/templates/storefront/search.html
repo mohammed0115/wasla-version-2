@@ -1,0 +1,136 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Search:" %} {{ query }}{% endblock %}
+{% block meta_description %}{% trans "Search results for:" %} {{ query }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Filters Sidebar -->
+    {% if settings.enable_filters %}
+    <div class="col-lg-3 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">{% trans "Filters" %}</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" id="filterForm">
+                    <input type="hidden" name="q" value="{{ query }}">
+                    
+                    <!-- Category Filter -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">{% trans "Category" %}</h6>
+                        <select name="category" class="form-select form-select-sm">
+                            <option value="">{% trans "All Categories" %}</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Price Range -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">{% trans "Price Range" %}</h6>
+                        <div class="mb-2">
+                            <input type="number" name="min_price" class="form-control form-control-sm" 
+                                   placeholder="{% trans 'Min' %}">
+                        </div>
+                        <div class="mb-3">
+                            <input type="number" name="max_price" class="form-control form-control-sm" 
+                                   placeholder="{% trans 'Max' %}">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">{% trans "Apply Filters" %}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Search Results -->
+    <div class="col-lg-9">
+        <div class="mb-4">
+            <h2>{% trans "Search Results" %}</h2>
+            <p class="text-muted">
+                {% trans "Showing results for:" %} <strong>"{{ query }}"</strong>
+                {% if products %}({{ products.paginator.count }} {% trans "results found" %}){% endif %}
+            </p>
+        </div>
+        
+        {% if products %}
+        <div class="row g-4 mb-4">
+            {% for product in products %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card product-card h-100">
+                    <div class="product-image-wrapper">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-light" style="height: 200px; display: flex; align-items: center;">
+                                <span class="text-muted w-100 text-center">{% trans "No Image" %}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'storefront:product_detail' product.seo.slug %}" class="text-decoration-none text-dark">
+                                {{ product.name }}
+                            </a>
+                        </h5>
+                        <p class="text-muted small mb-2">{{ product.sku }}</p>
+                        <div class="mb-3">
+                            <span class="h5 fw-bold">{{ product.price|floatformat:2 }} SAR</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-white">
+                        <a href="{% url 'storefront:product_detail' product.seo.slug %}" class="btn btn-sm btn-primary w-100">
+                            {% trans "View Details" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if products.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if products.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page=1">{% trans "First" %}</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ products.previous_page_number }}">{% trans "Previous" %}</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ products.number }} / {{ products.paginator.num_pages }}</span>
+                </li>
+                
+                {% if products.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ products.next_page_number }}">{% trans "Next" %}</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ products.paginator.num_pages }}">{% trans "Last" %}</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="alert alert-info">
+            <h5>{% trans "No products found" %}</h5>
+            <p>{% trans "Try searching with different keywords or browse our categories." %}</p>
+            <a href="{% url 'storefront:home' %}" class="btn btn-primary">{% trans "Back to Home" %}</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

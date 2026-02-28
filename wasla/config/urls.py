@@ -1,11 +1,13 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from apps.observability.views.health import healthz, readyz
 from apps.observability.views.metrics import metrics
+from apps.storefront.sitemaps import sitemaps
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -27,6 +29,9 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 
+    # SEO Sitemaps
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemaps"),
+
     # Language switcher (POST)
     path("i18n/", include("django.conf.urls.i18n")),
 
@@ -36,7 +41,10 @@ urlpatterns = [
     path("", include(("apps.ai.interfaces.web.urls", "ai_web"), namespace="ai_web")),
     path("", include(("apps.analytics.interfaces.web.urls", "analytics_web"), namespace="analytics_web")),
     path("", include(("apps.cart.interfaces.web.urls", "cart_web"), namespace="cart_web")),
+    path("", include(("apps.coupons.urls", "coupons"), namespace="coupons")),
+    path("", include(("apps.bnpl.urls", "bnpl"), namespace="bnpl")),
     path("", include(("apps.checkout.interfaces.web.urls", "checkout_web"), namespace="checkout_web")),
+    path("", include(("apps.storefront.urls", "storefront"), namespace="storefront")),
     path("", include(("apps.visual_search.presentation.urls", "visual_search"), namespace="visual_search")),
     path("", include(("apps.exports.interfaces.web.urls", "exports_web"), namespace="exports_web")),
     path("", include(("apps.imports.interfaces.web.urls", "imports_web"), namespace="imports_web")),

@@ -1,0 +1,78 @@
+# Generated migration
+
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        ("catalog", "0006_product_variants"),
+        ("stores", "0003_store_tenant_relation"),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="ProductSEO",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("slug", models.SlugField(max_length=255, unique=True)),
+                ("meta_title", models.CharField(blank=True, max_length=255)),
+                ("meta_description", models.CharField(blank=True, max_length=500)),
+                ("og_image", models.ImageField(blank=True, null=True, upload_to="seo/og/")),
+                ("canonical_url", models.URLField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("product", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="seo", to="catalog.product")),
+            ],
+            options={"verbose_name": "Product SEO", "verbose_name_plural": "Product SEOs"},
+        ),
+        migrations.CreateModel(
+            name="CategorySEO",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("slug", models.SlugField(max_length=255, unique=True)),
+                ("meta_title", models.CharField(blank=True, max_length=255)),
+                ("meta_description", models.CharField(blank=True, max_length=500)),
+                ("og_image", models.ImageField(blank=True, null=True, upload_to="seo/og/")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("category", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="seo", to="catalog.category")),
+            ],
+            options={"verbose_name": "Category SEO", "verbose_name_plural": "Category SEOs"},
+        ),
+        migrations.CreateModel(
+            name="StorefrontSettings",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("product_per_page", models.PositiveIntegerField(default=20)),
+                ("enable_search", models.BooleanField(default=True)),
+                ("enable_filters", models.BooleanField(default=True)),
+                ("enable_wishlist", models.BooleanField(default=True)),
+                ("enable_reviews", models.BooleanField(default=False)),
+                ("default_currency", models.CharField(default="SAR", max_length=10)),
+                ("vat_rate", models.DecimalField(decimal_places=2, default="0.15", max_digits=5)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("store", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="storefront_settings", to="stores.store")),
+            ],
+            options={"verbose_name": "Storefront Settings", "verbose_name_plural": "Storefront Settings"},
+        ),
+        migrations.CreateModel(
+            name="ProductSearch",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("search_text", models.TextField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("product", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="search_index", to="catalog.product")),
+            ],
+            options={"verbose_name": "Product Search Index", "verbose_name_plural": "Product Search Indexes"},
+        ),
+        migrations.AddIndex(
+            model_name="productsearch",
+            index=models.Index(fields=["search_text"], name="storefront_p_search__123abc_idx"),
+        ),
+    ]

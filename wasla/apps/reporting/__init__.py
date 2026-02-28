@@ -1,0 +1,1 @@
+"""VAT reporting app initialization."""

@@ -1,0 +1,104 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "My Addresses" %}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% trans "My Addresses" %}</h1>
+
+{% if addresses %}
+<div class="row">
+    {% for address in addresses %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ address.nickname|default:"My Address" }}</h5>
+                <p class="mb-2">
+                    <strong>{{ address.full_name }}</strong><br>
+                    {{ address.line1 }}<br>
+                    {% if address.line2 %}<small>{{ address.line2 }}<br></small>{% endif %}
+                    {{ address.city }}, {{ address.country }} {{ address.zip_code|default:"" }}<br>
+                    <i class="fa fa-phone"></i> {{ address.phone }}
+                </p>
+                {% if address.is_default %}
+                <span class="badge bg-success mb-2">{% trans "Default" %}</span>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editAddressModal">
+                    {% trans "Edit" %}
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteAddress({{ address.id }})">
+                    {% trans "Delete" %}
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-dashed">
+            <div class="card-body text-center py-5">
+                <i class="fa fa-plus fa-3x text-muted mb-3"></i>
+                <h5 class="card-title">{% trans "Add New Address" %}</h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newAddressModal">
+                    {% trans "Add Address" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Address Modal -->
+<div class="modal fade" id="newAddressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="#">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Add New Address" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Full Name" %}</label>
+                        <input type="text" class="form-control" name="full_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Phone" %}</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Address Line 1" %}</label>
+                        <input type="text" class="form-control" name="line1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Address Line 2 (Optional)" %}</label>
+                        <input type="text" class="form-control" name="line2">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "City" %}</label>
+                        <input type="text" class="form-control" name="city" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Country" %}</label>
+                        <input type="text" class="form-control" name="country" value="SA" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "ZIP Code" %}</label>
+                        <input type="text" class="form-control" name="zip_code">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Save Address" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
