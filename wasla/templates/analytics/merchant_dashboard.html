@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Merchant Dashboard - KPI Analytics{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
+<style>
+    .dashboard-container {
+        padding: 24px;
+        background: #f5f5f5;
+        min-height: 100vh;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .kpi-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .kpi-card.revenue {
+        border-left-color: #28a745;
+    }
+
+    .kpi-card.orders {
+        border-left-color: #ffc107;
+    }
+
+    .kpi-card.conversion {
+        border-left-color: #dc3545;
+    }
+
+    .kpi-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .kpi-subtext {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .chart-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .funnel-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .funnel-stage {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .funnel-bar {
+        flex: 1;
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        height: 40px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: white;
+        font-weight: 500;
+        margin-right: 12px;
+    }
+
+    .funnel-stats {
+        display: flex;
+        gap: 12px;
+        font-size: 13px;
+    }
+
+    .funnel-count {
+        color: #666;
+        min-width: 50px;
+    }
+
+    .funnel-rate {
+        color: #0056b3;
+        font-weight: bold;
+        min-width: 60px;
+    }
+
+    .low-stock-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .low-stock-table th {
+        background: #f5f5f5;
+        padding: 12px;
+        text-align: left;
+        font-weight: bold;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .low-stock-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .low-stock-table tr:hover {
+        background: #f9f9f9;
+    }
+
+    .stock-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .stock-badge.critical {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .stock-badge.low {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .button-group {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-export {
+        padding: 8px 16px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-export:hover {
+        background: #0056b3;
+    }
+
+    .header {
+        margin-bottom: 30px;
+    }
+
+    .header h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .tab-button {
+        padding: 12px 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+    }
+
+    .tab-button.active {
+        color: #007bff;
+        border-bottom-color: #007bff;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header">
+        <h1>📊 Merchant Dashboard</h1>
+        <p>Real-time KPI analytics and conversion insights</p>
+    </div>
+
+    <!-- Main KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card revenue">
+            <div class="kpi-label">Revenue Today</div>
+            <div class="kpi-value">${{ kpi.revenue_today }}</div>
+            <div class="kpi-subtext">7d: ${{ kpi.revenue_7d }} | 30d: ${{ kpi.revenue_30d }}</div>
+        </div>
+
+        <div class="kpi-card orders">
+            <div class="kpi-label">Orders Today</div>
+            <div class="kpi-value">{{ kpi.orders_today }}</div>
+            <div class="kpi-subtext">7d: {{ kpi.orders_7d }} | 30d: {{ kpi.orders_30d }}</div>
+        </div>
+
+        <div class="kpi-card conversion">
+            <div class="kpi-label">Conversion Rate</div>
+            <div class="kpi-value">{{ kpi.conversion_rate|floatformat:2 }}%</div>
+            <div class="kpi-subtext">Checkout → Purchase</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">Avg Order Value</div>
+            <div class="kpi-value">${{ kpi.avg_order_value }}</div>
+            <div class="kpi-subtext">Last 7 days</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">Cart Abandonment</div>
+            <div class="kpi-value">{{ kpi.cart_abandonment_rate|floatformat:2 }}%</div>
+            <div class="kpi-subtext">7-day average</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">Low Stock Products</div>
+            <div class="kpi-value">{{ kpi.low_stock_products|length }}</div>
+            <div class="kpi-subtext">Need attention</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('overview')">Overview</button>
+        <button class="tab-button" onclick="switchTab('products')">Low Stock Products</button>
+        <button class="tab-button" onclick="switchTab('funnel')">Conversion Funnel</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+        <div class="chart-container">
+            <h3 class="chart-title">📈 Revenue (Last 7 Days)</h3>
+            <canvas id="revenueChart"></canvas>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'analytics_web:export_kpi_csv' %}" class="btn-export">📥 Export KPIs (CSV)</a>
+            <a href="{% url 'analytics_web:export_revenue_csv' %}?days=7" class="btn-export">📥 Export Revenue (CSV)</a>
+            <a href="{% url 'analytics_web:export_funnel_csv' %}?days=7" class="btn-export">📥 Export Funnel (CSV)</a>
+        </div>
+    </div>
+
+    <!-- Low Stock Tab -->
+    <div id="products" class="tab-content">
+        <div class="funnel-container">
+            <h3 class="chart-title">⚠️ Low Stock Products (< 10 units)</h3>
+            {% if kpi.low_stock_products %}
+                <table class="low-stock-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Current Stock</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in kpi.low_stock_products %}
+                        <tr>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.stock }} units</td>
+                            <td>
+                                {% if product.stock < 3 %}
+                                    <span class="stock-badge critical">CRITICAL</span>
+                                {% else %}
+                                    <span class="stock-badge low">LOW</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="color: #666; padding: 20px; text-align: center;">✓ All products well-stocked</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Funnel Tab -->
+    <div id="funnel" class="tab-content">
+        <div class="funnel-container">
+            <h3 class="chart-title">🔥 Conversion Funnel (Last 7 Days)</h3>
+
+            <div class="funnel-stage">
+                <div class="funnel-bar" style="width: 100%;">
+                    👁️ Product Views
+                </div>
+                <div class="funnel-stats">
+                    <span class="funnel-count">{{ funnel.product_views }}</span>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <div class="funnel-bar" style="width: {{ funnel.view_to_cart_rate }}%;">
+                    🛒 Add to Cart
+                </div>
+                <div class="funnel-stats">
+                    <span class="funnel-count">{{ funnel.add_to_cart }}</span>
+                    <span class="funnel-rate">{{ funnel.view_to_cart_rate|floatformat:1 }}%</span>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <div class="funnel-bar" style="width: {{ funnel.cart_to_checkout_rate }}%;">
+                    💳 Checkout Started
+                </div>
+                <div class="funnel-stats">
+                    <span class="funnel-count">{{ funnel.checkout_started }}</span>
+                    <span class="funnel-rate">{{ funnel.cart_to_checkout_rate|floatformat:1 }}%</span>
+                </div>
+            </div>
+
+            <div class="funnel-stage">
+                <div class="funnel-bar" style="width: {{ funnel.checkout_to_purchase_rate }}%;">
+                    ✅ Purchase Completed
+                </div>
+                <div class="funnel-stats">
+                    <span class="funnel-count">{{ funnel.purchase_completed }}</span>
+                    <span class="funnel-rate">{{ funnel.checkout_to_purchase_rate|floatformat:1 }}%</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                <strong>Overall Conversion:</strong> {{ funnel.overall_conversion_rate|floatformat:2 }}%
+                <span style="color: #999; font-size: 12px;">(Views → Purchase)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<script>
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+
+// Load revenue chart data
+fetch('{% url "analytics_web:revenue_chart" %}?days=7')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.points.map(p => p.date),
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: data.points.map(p => parseFloat(p.revenue)),
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.3,
+                        fill: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Orders',
+                        data: data.points.map(p => p.orders),
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    y: {
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Revenue ($)'
+                        }
+                    },
+                    y1: {
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Orders'
+                        }
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => console.error('Error loading chart:', error));
+</script>
+{% endblock %}

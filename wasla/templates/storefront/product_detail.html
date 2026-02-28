@@ -1,0 +1,201 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ product_seo.meta_title }}{% endblock %}
+{% block meta_description %}{{ product_seo.meta_description }}{% endblock %}
+{% block og_title %}{{ product_seo.meta_title }}{% endblock %}
+{% block og_description %}{{ product_seo.meta_description }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'storefront:home' %}">{% trans "Home" %}</a></li>
+        {% for cat in product.categories.all %}
+        <li class="breadcrumb-item"><a href="{% url 'storefront:category' cat.seo.slug %}">{{ cat.name }}</a></li>
+        {% endfor %}
+        <li class="breadcrumb-item active">{{ product.name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- Product Images -->
+    <div class="col-lg-5 mb-4">
+        <div id="productImageCarousel" class="carousel slide mb-3" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                {% if product.image %}
+                <div class="carousel-item active">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="d-block w-100" style="max-height: 500px; object-fit: contain;">
+                </div>
+                {% endif %}
+                {% for img in product.images.all %}
+                <div class="carousel-item">
+                    <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" class="d-block w-100" style="max-height: 500px; object-fit: contain;">
+                </div>
+                {% endfor %}
+            </div>
+            {% if product.images.count > 1 %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#productImageCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#productImageCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+            {% endif %}
+        </div>
+        
+        <!-- Thumbnails -->
+        {% if product.images.count > 1 %}
+        <div class="row small">
+            {% for img in product.images.all %}
+            <div class="col-3 mb-2">
+                <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" class="img-thumbnail" style="cursor: pointer;">
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Product Details -->
+    <div class="col-lg-7">
+        <h1 class="mb-3">{{ product.name }}</h1>
+        <p class="text-muted mb-3">{% trans "SKU" %}: <code>{{ product.sku }}</code></p>
+        
+        <!-- Availability -->
+        {% if in_stock %}
+        <span class="badge bg-success mb-3" style="font-size: 1rem;">{% trans "In Stock" %}</span>
+        {% else %}
+        <span class="badge bg-danger mb-3" style="font-size: 1rem;">{% trans "Out of Stock" %}</span>
+        {% endif %}
+        
+        <!-- Price -->
+        <div class="mb-4">
+            <h2 class="text-primary">{{ product.price|floatformat:2 }} {{ cart.currency|default:"SAR" }}</h2>
+            {% if vat_amount > 0 %}
+            <small class="text-muted">{% trans "Includes VAT 15%" %}</small>
+            {% endif %}
+        </div>
+        
+        <!-- Description -->
+        {% if product.description_en or product.description_ar %}
+        <div class="mb-4">
+            <h5>{% trans "Description" %}</h5>
+            <p>{% if request.LANGUAGE_CODE == 'ar' %}{{ product.description_ar|default:product.description_en }}{% else %}{{ product.description_en|default:product.description_ar }}{% endif %}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Variants / Options -->
+        {% if variants %}
+        <div class="mb-4">
+            <h5>{% trans "Variants" %}</h5>
+            <form action="{% url 'cart_web:cart_add' %}" method="post" id="variantForm">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                
+                <div class="mb-3">
+                    <label for="variantSelect" class="form-label">{% trans "Select Option" %}</label>
+                    <select name="variant_id" id="variantSelect" class="form-select" required onchange="updateVariantInfo()">
+                        <option value="">{% trans "Choose a variant..." %}</option>
+                        {% for variant in variants %}
+                        <option value="{{ variant.id }}" data-stock="{{ variant.stock_quantity }}" 
+                                data-price="{{ variant.price_override|default:product.price }}">
+                            {% for opt in variant.options.all %}{{ opt.group.name }}: {{ opt.value }}{% if not forloop.last %} / {% endif %}{% endfor %}
+                            - {{ variant.price_override|default:product.price|floatformat:2 }} {{ cart.currency|default:"SAR" }} 
+                            ({% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} {% trans 'available'%}{% else %}{% trans 'Out of stock'%}{% endif %})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">{% trans "Quantity" %}</label>
+                    <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1" max="100">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="addToCartBtn">
+                    <i class="fa fa-shopping-cart"></i> {% trans "Add to Cart" %}
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <!-- No variants - simple add to cart -->
+        <form action="{% url 'cart_web:cart_add' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="mb-3">
+                <label for="quantity" class="form-label">{% trans "Quantity" %}</label>
+                <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1">
+            </div>
+            
+            {% if in_stock %}
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+                <i class="fa fa-shopping-cart"></i> {% trans "Add to Cart" %}
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                {% trans "Out of Stock" %}
+            </button>
+            {% endif %}
+        </form>
+        {% endif %}
+        
+        <!-- Product Metadata -->
+        <div class="mt-4 pt-4 border-top">
+            <p class="text-muted small">
+                {% trans "Category" %}:
+                {% for cat in product.categories.all %}
+                <a href="{% url 'storefront:category' cat.seo.slug %}">{{ cat.name }}</a>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+{% if related_products %}
+<hr class="my-5">
+<div>
+    <h3 class="mb-4">{% trans "Related Products" %}</h3>
+    <div class="row g-4">
+        {% for rel_product in related_products %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="card product-card h-100">
+                {% if rel_product.image %}
+                <img src="{{ rel_product.image.url }}" alt="{{ rel_product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{% url 'storefront:product_detail' rel_product.seo.slug %}" class="text-decoration-none text-dark">
+                            {{ rel_product.name }}
+                        </a>
+                    </h5>
+                    <div class="h6 text-primary">{{ rel_product.price|floatformat:2 }} {{ cart.currency|default:"SAR" }}</div>
+                </div>
+                <div class="card-footer bg-white">
+                    <a href="{% url 'storefront:product_detail' rel_product.seo.slug %}" class="btn btn-sm btn-primary w-100">
+                        {% trans "View" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function updateVariantInfo() {
+    const select = document.getElementById('variantSelect');
+    const selected = select.options[select.selectedIndex];
+    const stock = selected.dataset.stock;
+    const btn = document.getElementById('addToCartBtn');
+    
+    if (stock && parseInt(stock) > 0) {
+        btn.style.display = 'block';
+        document.getElementById('quantity').max = stock;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

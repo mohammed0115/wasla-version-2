@@ -1,16 +1,112 @@
-{% extends "base.html" %}
-{% block title %}المتجر{% endblock %}
-{% block body %}
-<div class="container">
-  <div class="storefront-shell">
-    <div class="card storefront-card">
-      <h1 class="storefront-title">مرحبًا بك في متجرك 👋</h1>
-      <p class="muted">هذه صفحة Storefront مؤقتة — اربطها بثيمات المتجر لاحقًا.</p>
-      <div class="storefront-actions">
-        <a class="btn btn-primary" href="/dashboard/ai/tools">لوحة التحكم</a>
-        <a class="btn btn-soft" href="/store/cart">السلة</a>
-      </div>
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ store.name|default:"Wasla Store" }}{% endblock %}
+{% block meta_description %}Welcome to {{ store.name|default:"Wasla" }} - High quality products at great prices{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; border-radius: 8px;">
+    <h1 class="display-4 fw-bold mb-3">{% trans "Welcome" %} {{ store.name|default:"to Wasla" }}</h1>
+    <p class="lead mb-4">{% trans "Discover our amazing collection of quality products" %}</p>
+    {% if settings.enable_search %}
+    <form action="{% url 'storefront:search' %}" method="get" class="d-flex gap-2">
+        <input type="text" name="q" class="form-control form-control-lg" placeholder="{% trans 'Search products...' %}" required>
+        <button type="submit" class="btn btn-light btn-lg">{% trans "Search" %}</button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Featured Categories -->
+{% if categories %}
+<div class="mb-5">
+    <h2 class="mb-4">{% trans "Shop by Category" %}</h2>
+    <div class="row g-4">
+        {% for category in categories %}
+        <div class="col-md-3 col-sm-6">
+            <a href="{% url 'storefront:category' category.seo.slug %}" class="text-decoration-none">
+                <div class="card category-card h-100 text-center hover-effect">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ category.name }}</h5>
+                        <p class="text-muted mb-0">{{ category.products.count }} {% trans "products" %}</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
     </div>
-  </div>
+</div>
+{% endif %}
+
+<!-- Featured Products -->
+<div>
+    <h2 class="mb-4">{% trans "Featured Products" %}</h2>
+    {% if products %}
+    <div class="row g-4">
+        {% for product in products %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="card product-card h-100">
+                <!-- Product Image -->
+                <div class="product-image-wrapper position-relative">
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="card-img-top" style="height: 250px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-light" style="height: 250px; display: flex; align-items: center; justify-content: center;">
+                            <span class="text-muted">{% trans "No Image" %}</span>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Availability Badge -->
+                    {% if product.variants %}
+                        {% with available=product.variants.all|dictsort:"stock_quantity"|first %}
+                            {% if available.stock_quantity > 0 %}
+                                <span class="badge bg-success position-absolute top-0 end-0 m-2">{% trans "In Stock" %}</span>
+                            {% else %}
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-2">{% trans "Out of Stock" %}</span>
+                            {% endif %}
+                        {% endwith %}
+                    {% elif product.visibility == 'enabled' %}
+                        <span class="badge bg-success position-absolute top-0 end-0 m-2">{% trans "In Stock" %}</span>
+                    {% else %}
+                        <span class="badge bg-danger position-absolute top-0 end-0 m-2">{% trans "Out of Stock" %}</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Product Info -->
+                <div class="card-body">
+                    <h5 class="card-title text-truncate">
+                        <a href="{% url 'storefront:product_detail' product.seo.slug %}" class="text-decoration-none text-dark">
+                            {{ product.name }}
+                        </a>
+                    </h5>
+                    <p class="text-muted small mb-2">SKU: {{ product.sku }}</p>
+                    
+                    <div class="mb-3">
+                        <span class="h4 fw-bold">{{ product.price|floatformat:2 }} {{ cart.currency|default:"SAR" }}</span>
+                        {% if vat_amount > 0 %}
+                        <small class="text-muted d-block">+ {% trans "VAT 15%" %}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="card-footer bg-white border-top">
+                    <a href="{% url 'storefront:product_detail' product.seo.slug %}" class="btn btn-sm btn-primary w-100 mb-2">
+                        <i class="fa fa-eye"></i> {% trans "View Details" %}
+                    </a>
+                    {% if product.visibility == 'enabled' %}
+                    <form action="{% url 'cart_web:cart_add' %}" method="post" class="d-inline-block">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="fa fa-shopping-cart"></i> {% trans "Add to Cart" %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

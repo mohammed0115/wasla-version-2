@@ -183,6 +183,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
@@ -210,6 +211,11 @@ INSTALLED_APPS = [
     "apps.plugins.apps.PluginsConfig",
     "apps.reviews.apps.ReviewsConfig",
     "apps.shipping.apps.ShippingConfig",
+    "apps.coupons.apps.CouponsConfig",
+    "apps.bnpl.apps.BnplConfig",
+    "apps.zatca.apps.ZatcaConfig",
+    "apps.privacy.apps.PrivacyConfig",
+    "apps.reporting.apps.ReportingConfig",
     "apps.subscriptions.apps.SubscriptionConfig",
     "apps.wallet.apps.WalletConfig",
     "apps.emails.apps.EmailsConfig",
@@ -218,6 +224,7 @@ INSTALLED_APPS = [
     "apps.stores.apps.StoresConfig",
     "apps.visual_search.apps.VisualSearchConfig",
     "apps.admin_portal.apps.AdminPortalConfig",
+    "apps.storefront.apps.StorefrontConfig",
 ]
 
 if importlib.util.find_spec("django_celery_beat"):
@@ -249,6 +256,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+
+SITE_ID = 1
 
 TEMPLATES = [
     {

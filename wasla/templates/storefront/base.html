@@ -1,0 +1,184 @@
+{% load i18n %}<!DOCTYPE html>
+<html dir="{% if request.LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" lang="{{ request.LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <!-- SEO Meta Tags -->
+    {% block meta %}
+    <title>{% block title %}Welcome to Wasla Storefront{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Online shopping platform powered by Wasla{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}shopping, e-commerce{% endblock %}">
+    <meta name="robots" content="index, follow">
+    
+    <!-- OpenGraph Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="{% block og_title %}{% block title %}Welcome to Wasla Storefront{% endblock %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Online shopping platform powered by Wasla{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{% static 'img/og-image.png' %}{% endblock %}">
+    <meta property="og:locale" content="{% if request.LANGUAGE_CODE == 'ar' %}ar_SA{% else %}en_US{% endif %}">
+    
+    <!-- Social Tags -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="{% block twitter_title %}{% block title %}Welcome to Wasla Storefront{% endblock %}{% endblock %}">
+    <meta property="twitter:description" content="{% block twitter_description %}Online shopping platform powered by Wasla{% endblock %}">
+    
+    <!-- Canonical URL -->
+    {% block canonical %}<link rel="canonical" href="{{ request.build_absolute_uri }}">{% endblock %}
+    {% endblock %}
+    
+    <!-- Bootstrap 5 with RTL Support -->
+    {% if request.LANGUAGE_CODE == 'ar' %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    {% else %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% endif %}
+    
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/storefront.css' %}" rel="stylesheet">
+    {% if request.LANGUAGE_CODE == 'ar' %}<link href="{% static 'css/storefront-ar.css' %}" rel="stylesheet">{% endif %}
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% if request.LANGUAGE_CODE == 'ar' %}direction-rtl{% endif %}">
+    <!-- Header / Navigation -->
+    <header class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'storefront:home' %}">
+                {% if store.logo %}
+                    <img src="{{ store.logo.url }}" alt="{{ store.name }}" height="40">
+                {% else %}
+                    {{ store.name|default:"Wasla Store" }}
+                {% endif %}
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'storefront:home' %}">{% trans "Home" %}</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button" data-bs-toggle="dropdown">
+                            {% trans "Categories" %}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="categoriesDropdown">
+                            {% for cat in categories %}
+                            <li><a class="dropdown-item" href="{% url 'storefront:category' cat.seo.slug %}">{{ cat.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% if settings.enable_search %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'storefront:search' %}">{% trans "Search" %}</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'cart_web:cart_view' %}">
+                            <i class="fa fa-shopping-cart"></i>
+                            {% if cart %}
+                                <span class="badge bg-danger">{{ cart.items|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fa fa-user"></i> {{ user.get_short_name|default:user.email }}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="accountDropdown">
+                            <li><a class="dropdown-item" href="{% url 'storefront:customer_orders' %}">{% trans "My Orders" %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'storefront:customer_addresses' %}">{% trans "My Addresses" %}</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">{% trans "Logout" %}</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:login' %}">{% trans "Login" %}</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="py-4">
+        <div class="container">
+            {% if messages %}
+            <div class="alert-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-5 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h5>{% trans "About Store" %}</h5>
+                    <p>{{ store.description|default:"Quality products at great prices" }}</p>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h5>{% trans "Quick Links" %}</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'storefront:home' %}" class="text-light text-decoration-none">{% trans "Home" %}</a></li>
+                        <li><a href="{% url 'storefront:search' %}" class="text-light text-decoration-none">{% trans "All Products" %}</a></li>
+                        <li><a href="{% url 'cart_web:cart_view' %}" class="text-light text-decoration-none">{% trans "Shopping Cart" %}</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h5>{% trans "Customer Service" %}</h5>
+                    <ul class="list-unstyled">
+                        <li>{% trans "Email" %}: {{ store.contact_email|default:"support@wasla.local" }}</li>
+                        <li>{% trans "Phone" %}: {{ store.contact_phone|default:"+966-1234567890" }}</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; {% now "Y" %} {{ store.name|default:"Wasla Store" }}. {% trans "All rights reserved." %}</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <a href="{% url 'django.views.i18n.set_language' %}" class="text-light text-decoration-none">
+                        {% if request.LANGUAGE_CODE == 'ar' %}
+                            English
+                        {% else %}
+                            العربية
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    {% load static %}
+    <script src="{% static 'js/storefront.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-value.highlight {
+            color: #667eea;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .funnel-list {
+            list-style: none;
+            padding: 0;
+        }
+        .funnel-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .funnel-step {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-color: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .footer {
+            background-color: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+        .cta-button:hover {
+            background-color: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Analytics Report</h1>
+            <p>{{ report_type }} - {{ report_data.generated_at|date:"M d, Y" }}</p>
+        </div>
+
+        <div class="content">
+            {% if report.scheduled_report.report_type == 'kpi_summary' %}
+                <!-- KPI Summary -->
+                <div class="section">
+                    <div class="section-title">Key Performance Indicators</div>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Today's Revenue</div>
+                            <div class="metric-value">{{ report_data.kpi.revenue_today }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Today's Orders</div>
+                            <div class="metric-value">{{ report_data.kpi.orders_today }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Conversion Rate</div>
+                            <div class="metric-value highlight">{{ report_data.kpi.conversion_rate|floatformat:2 }}%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">7-Day Revenue</div>
+                            <div class="metric-value">{{ report_data.kpi.revenue_7d }}</div>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif report.scheduled_report.report_type == 'revenue_analysis' %}
+                <!-- Revenue Analysis -->
+                <div class="section">
+                    <div class="section-title">Revenue Analysis</div>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Total 30-Day Revenue</div>
+                            <div class="metric-value">{{ report_data.chart.total_revenue }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Orders</div>
+                            <div class="metric-value">{{ report_data.chart.total_orders }}</div>
+                        </div>
+                    </div>
+                    <p><em>Chart data averaged across {{ report_data.chart.points_count }} days</em></p>
+                </div>
+
+            {% elif report.scheduled_report.report_type == 'conversion_funnel' %}
+                <!-- Conversion Funnel -->
+                <div class="section">
+                    <div class="section-title">Conversion Funnel (Last 7 Days)</div>
+                    <div class="funnel-list">
+                        <div class="funnel-item">
+                            <span class="funnel-step">1</span>
+                            <strong>Product Views:</strong> {{ report_data.funnel.product_views|default:"N/A" }}
+                        </div>
+                        <div class="funnel-item">
+                            <span class="funnel-step">2</span>
+                            <strong>Add to Cart:</strong> {{ report_data.funnel.add_to_cart|default:"N/A" }}
+                        </div>
+                        <div class="funnel-item">
+                            <span class="funnel-step">3</span>
+                            <strong>Checkout Started:</strong> {{ report_data.funnel.checkout_started|default:"N/A" }}
+                        </div>
+                        <div class="funnel-item success">
+                            <span class="funnel-step">4</span>
+                            <strong>Purchase Completed:</strong> {{ report_data.funnel.purchase_completed|default:"N/A" }}
+                        </div>
+                    </div>
+                    <div class="metric-card" style="margin-top: 20px;">
+                        <div class="metric-label">Overall Conversion Rate</div>
+                        <div class="metric-value highlight">{{ report_data.funnel.overall_conversion_rate|floatformat:2 }}%</div>
+                    </div>
+                </div>
+
+            {% elif report.scheduled_report.report_type == 'executive_summary' %}
+                <!-- Executive Summary -->
+                <div class="section">
+                    <div class="section-title">Platform Metrics</div>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Gross Merchandise Value</div>
+                            <div class="metric-value">{{ report_data.metrics.gmv }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Monthly Recurring Revenue</div>
+                            <div class="metric-value">{{ report_data.metrics.mrr }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Active Stores</div>
+                            <div class="metric-value">{{ report_data.metrics.active_stores }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Churn Rate</div>
+                            <div class="metric-value">{{ report_data.metrics.churn_rate|floatformat:2 }}%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Customers</div>
+                            <div class="metric-value">{{ report_data.metrics.total_customers }}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Platform Conversion</div>
+                            <div class="metric-value highlight">{{ report_data.metrics.conversion_rate|floatformat:2 }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if report_data.top_products %}
+                <div class="section">
+                    <div class="section-title">Top 5 Products</div>
+                    <table>
+                        <tr>
+                            <th>Product</th>
+                            <th>Revenue</th>
+                            <th>Orders</th>
+                        </tr>
+                        {% for product in report_data.top_products %}
+                        <tr>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.revenue }}</td>
+                            <td>{{ product.order_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if report_data.top_merchants %}
+                <div class="section">
+                    <div class="section-title">Top 5 Merchants</div>
+                    <table>
+                        <tr>
+                            <th>Merchant</th>
+                            <th>Revenue</th>
+                            <th>Orders</th>
+                        </tr>
+                        {% for merchant in report_data.top_merchants %}
+                        <tr>
+                            <td>{{ merchant.name }}</td>
+                            <td>{{ merchant.revenue }}</td>
+                            <td>{{ merchant.order_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            <a href="https://wasla.io/dashboard" class="cta-button">View Full Dashboard</a>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated report from Wasla Analytics. <br>
+            Generated on {{ report_data.generated_at|date:"M d, Y H:i" }}</p>
+        </div>
+    </div>
+</body>
+</html>

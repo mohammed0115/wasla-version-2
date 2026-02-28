@@ -1,0 +1,336 @@
+/* Arabic/RTL Styles for Storefront */
+
+/* Text Direction */
+html[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="rtl"] body {
+    direction: rtl;
+}
+
+/* RTL Navigation */
+html[dir="rtl"] .navbar {
+    padding: 1rem 0;
+}
+
+html[dir="rtl"] .navbar-brand {
+    margin-right: auto;
+    margin-left: 0;
+}
+
+html[dir="rtl"] .navbar-nav {
+    margin-left: 0;
+}
+
+html[dir="rtl"] .navbar-nav .nav-link {
+    margin-right: 10px;
+    margin-left: 0;
+}
+
+html[dir="rtl"] .dropdown-menu {
+    text-align: right;
+    /* Dropdown opens to the right in RTL */
+}
+
+html[dir="rtl"] .dropdown-toggle::after {
+    margin-left: 0.25em;
+    margin-right: 0;
+}
+
+/* RTL Forms */
+html[dir="rtl"] .form-check {
+    padding-right: 1.5rem;
+    padding-left: 0;
+}
+
+html[dir="rtl"] .form-check-input {
+    margin-right: -1.5rem;
+    margin-left: 0;
+    float: right;
+}
+
+html[dir="rtl"] .form-control {
+    text-align: right;
+}
+
+html[dir="rtl"] .input-group > .form-control {
+    direction: ltr; /* Keep numbers LTR */
+}
+
+/* RTL Pagination */
+html[dir="rtl"] .pagination {
+    flex-direction: row-reverse;
+}
+
+/* RTL Alerts */
+html[dir="rtl"] .alert .btn-close {
+    position: absolute;
+    right: auto;
+    left: 1rem;
+}
+
+/* RTL Modals */
+html[dir="rtl"] .modal-header {
+    text-align: right;
+}
+
+html[dir="rtl"] .modal-header .btn-close {
+    right: auto;
+    left: 0;
+}
+
+/* RTL Cards */
+html[dir="rtl"] .card-body {
+    text-align: right;
+}
+
+html[dir="rtl"] .card-footer {
+    text-align: right;
+}
+
+/* RTL Badges (positioning) */
+html[dir="rtl"] .badge.position-absolute {
+    right: auto;
+    left: 0;
+    transform: scaleX(-1);
+    transform: none; /* RTL mode already handles */
+}
+
+html[dir="rtl"] .badge.end-0 {
+    left: 0 !important;
+    right: auto !important;
+}
+
+html[dir="rtl"] .badge.start-0 {
+    left: auto !important;
+    right: 0 !important;
+}
+
+/* RTL Text Alignment */
+html[dir="rtl"] .text-end {
+    text-align: left !important;
+}
+
+html[dir="rtl"] .text-start {
+    text-align: right !important;
+}
+
+/* RTL Flexbox */
+html[dir="rtl"] .d-flex {
+    direction: rtl;
+}
+
+html[dir="rtl"] .flex-row {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .flex-row-reverse {
+    flex-direction: row;
+}
+
+html[dir="rtl"] .ms-auto {
+    margin-right: auto !important;
+    margin-left: 0 !important;
+}
+
+html[dir="rtl"] .me-auto {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+html[dir="rtl"] .ps-4 {
+    padding-left: 0 !important;
+    padding-right: 1.5rem !important;
+}
+
+html[dir="rtl"] .pe-4 {
+    padding-right: 0 !important;
+    padding-left: 1.5rem !important;
+}
+
+/* RTL Icons */
+html[dir="rtl"] .fa-arrow-right::before {
+    content: "\f053"; /* Left arrow in RTL */
+}
+
+html[dir="rtl"] .fa-arrow-left::before {
+    content: "\f054"; /* Right arrow in RTL */
+}
+
+html[dir="rtl"] .carousel-control-prev {
+    right: auto;
+    left: 0;
+}
+
+html[dir="rtl"] .carousel-control-next {
+    left: auto;
+    right: 0;
+}
+
+/* RTL Sidebar */
+html[dir="rtl"] .col-lg-3 {
+    order: 2;
+}
+
+html[dir="rtl"] .col-lg-9 {
+    order: 1;
+}
+
+/* RTL Footer */
+html[dir="rtl"] footer {
+    text-align: right;
+}
+
+html[dir="rtl"] footer .row {
+    text-align: right;
+}
+
+html[dir="rtl"] footer .col-md-6:last-child {
+    text-align: left;
+}
+
+/* RTL Typography - Arabic Specific */
+html[dir="rtl"] {
+    font-family: "Segoe UI", "Helvetica Neue", -apple-system, BlinkMacSystemFont, Roboto, "Arabic Typesetting", "Droid Arabic Naskh", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] h4,
+html[dir="rtl"] h5,
+html[dir="rtl"] h6 {
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+/* RTL Breadcrumb */
+html[dir="rtl"] .breadcrumb {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .breadcrumb-item::before {
+    content: "\2F";
+    display: inline-block;
+    padding: 0 0.5rem;
+    color: #6b7280;
+}
+
+html[dir="rtl"] .breadcrumb-item:first-child::before {
+    content: "";
+    padding: 0;
+}
+
+/* Tables RTL */
+html[dir="rtl"] .table {
+    text-align: right;
+}
+
+html[dir="rtl"] .table thead th {
+    border-bottom-width: 2px;
+    vertical-align: bottom;
+}
+
+/* Responsive RTL */
+@media (max-width: 768px) {
+    html[dir="rtl"] {
+        font-size: 14px;
+    }
+
+    html[dir="rtl"] .col-lg-3,
+    html[dir="rtl"] .col-lg-9 {
+        order: 0;
+    }
+}
+
+/* RTL Code blocks (keep LTR for code) */
+code, pre, .code-block {
+    direction: ltr;
+    unicode-bidi: bidi-override;
+}
+
+/* RTL Language-specific adjustments */
+html[dir="rtl"] .fa {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+html[dir="rtl"] .btn .fa {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+html[dir="rtl"] .nav-link .fa {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* RTL List styling */
+html[dir="rtl"] ul,
+html[dir="rtl"] ol {
+    padding-right: 2rem;
+    padding-left: 0;
+}
+
+/* RTL Dropdown in navbar */
+html[dir="rtl"] .navbar-nav .dropdown-menu {
+    transform: translateX(0) !important;
+}
+
+/* RTL Floating action styling */
+html[dir="rtl"] .float-end {
+    float: left !important;
+}
+
+html[dir="rtl"] .float-start {
+    float: right !important;
+}
+
+/* RTL Spacing overrides */
+html[dir="rtl"] .ms-2 {
+    margin-right: 0.5rem !important;
+    margin-left: 0 !important;
+}
+
+html[dir="rtl"] .me-2 {
+    margin-left: 0.5rem !important;
+    margin-right: 0 !important;
+}
+
+html[dir="rtl"] .ps-2 {
+    padding-right: 0.5rem !important;
+    padding-left: 0 !important;
+}
+
+html[dir="rtl"] .pe-2 {
+    padding-left: 0.5rem !important;
+    padding-right: 0 !important;
+}
+
+/* RTL Border radius fixes */
+html[dir="rtl"] .rounded-start {
+    border-radius: 0 0.25rem 0.25rem 0 !important;
+}
+
+html[dir="rtl"] .rounded-end {
+    border-radius: 0.25rem 0 0 0.25rem !important;
+}
+
+/* Makes text smaller for Arabic to maintain visual balance */
+html[dir="rtl"] .lead {
+    font-size: 1.05rem; /* Slightly smaller than the default for Arabic */
+}
+
+/* RTL Textarea */
+html[dir="rtl"] textarea {
+    text-align: right;
+}
+
+/* RTL Select */
+html[dir="rtl"] select {
+    text-align: right;
+}

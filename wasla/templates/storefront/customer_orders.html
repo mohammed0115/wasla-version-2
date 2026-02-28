@@ -1,0 +1,91 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "My Orders" %}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% trans "My Orders" %}</h1>
+
+{% if orders %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>{% trans "Order Number" %}</th>
+                <th>{% trans "Date" %}</th>
+                <th>{% trans "Status" %}</th>
+                <th>{% trans "Total" %}</th>
+                <th>{% trans "Actions" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><strong>#{{ order.order_number }}</strong></td>
+                <td>{{ order.created_at|date:"SHORT_DATE_FORMAT" }}</td>
+                <td>
+                    {% if order.status == 'completed' %}
+                        <span class="badge bg-success">{% trans "Completed" %}</span>
+                    {% elif order.status == 'shipped' %}
+                        <span class="badge bg-info">{% trans "Shipped" %}</span>
+                    {% elif order.status == 'processing' %}
+                        <span class="badge bg-warning">{% trans "Processing" %}</span>
+                    {% elif order.status == 'pending' %}
+                        <span class="badge bg-secondary">{% trans "Pending" %}</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ order.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ order.total_amount|floatformat:2 }} {{ order.currency }}</td>
+                <td>
+                    <a href="{% url 'checkout_web:order_tracking' order.order_number %}" class="btn btn-sm btn-outline-primary">
+                        {% trans "View" %}
+                    </a>
+                    <form action="{% url 'storefront:customer_reorder' order.id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">{% trans "Reorder" %}</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if orders.has_other_pages %}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if orders.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">{% trans "First" %}</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ orders.previous_page_number }}">{% trans "Previous" %}</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">{{ orders.number }} / {{ orders.paginator.num_pages }}</span>
+        </li>
+        
+        {% if orders.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ orders.next_page_number }}">{% trans "Next" %}</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ orders.paginator.num_pages }}">{% trans "Last" %}</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+    <h5>{% trans "No orders yet" %}</h5>
+    <p>{% trans "You haven't placed any orders yet. Start shopping!" %}</p>
+    <a href="{% url 'storefront:home' %}" class="btn btn-primary">{% trans "Continue Shopping" %}</a>
+</div>
+{% endif %}
+{% endblock %}
