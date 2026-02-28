@@ -4,8 +4,11 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.test.utils import override_settings
 
 from apps.plugins.models import Plugin, PluginActivationLog
+from apps.plugins.models import PluginEventSubscription, PluginPermissionScope, PluginRegistration
+from apps.plugins.services.event_dispatcher import PluginEventDispatcher
 from apps.plugins.services.lifecycle_service import PluginLifecycleService
 from apps.stores.models import Store
 from apps.subscriptions.models import StoreSubscription, SubscriptionPlan
@@ -54,6 +57,14 @@ class PluginLifecycleServiceTests(TestCase):
             required_feature="advanced_plugins",
             is_active=True,
         )
+        PluginRegistration.objects.create(
+            plugin=plugin,
+            plugin_key="advanced-analytics",
+            entrypoint="plugins.advanced_analytics:Plugin",
+            min_core_version="1.0.0",
+            verified=True,
+        )
+        PluginPermissionScope.objects.create(plugin=plugin, scope_code="plugin.lifecycle.enable")
 
         with self.assertRaisesMessage(ValueError, "Plugin requires feature 'advanced_plugins'"):
             PluginLifecycleService.enable_plugin(store_id=self.store.id, plugin=plugin, actor_user_id=self.owner.id)
@@ -73,6 +84,30 @@ class PluginLifecycleServiceTests(TestCase):
             provider="wasla",
             required_feature="plugins",
             is_active=True,
+        )
+        PluginRegistration.objects.create(
+            plugin=base_plugin,
+            plugin_key="core-payments",
+            entrypoint="plugins.core_payments:Plugin",
+            min_core_version="1.0.0",
+            verified=True,
+        )
+        PluginRegistration.objects.create(
+            plugin=dependent_plugin,
+            plugin_key="advanced-settlement",
+            entrypoint="plugins.advanced_settlement:Plugin",
+            min_core_version="1.0.0",
+            verified=True,
+        )
+        PluginPermissionScope.objects.bulk_create(
+            [
+                PluginPermissionScope(plugin=base_plugin, scope_code="plugin.lifecycle.enable"),
+                PluginPermissionScope(plugin=base_plugin, scope_code="plugin.lifecycle.disable"),
+                PluginPermissionScope(plugin=base_plugin, scope_code="plugin.lifecycle.uninstall"),
+                PluginPermissionScope(plugin=dependent_plugin, scope_code="plugin.lifecycle.enable"),
+                PluginPermissionScope(plugin=dependent_plugin, scope_code="plugin.lifecycle.disable"),
+                PluginPermissionScope(plugin=dependent_plugin, scope_code="plugin.lifecycle.uninstall"),
+            ]
         )
         dependent_plugin.dependencies.add(base_plugin)
 
@@ -94,6 +129,20 @@ class PluginLifecycleServiceTests(TestCase):
             provider="wasla",
             required_feature="plugins",
             is_active=True,
+        )
+        PluginRegistration.objects.create(
+            plugin=plugin,
+            plugin_key="shipping-label",
+            entrypoint="plugins.shipping_label:Plugin",
+            min_core_version="1.0.0",
+            verified=True,
+        )
+        PluginPermissionScope.objects.bulk_create(
+            [
+                PluginPermissionScope(plugin=plugin, scope_code="plugin.lifecycle.enable"),
+                PluginPermissionScope(plugin=plugin, scope_code="plugin.lifecycle.disable"),
+                PluginPermissionScope(plugin=plugin, scope_code="plugin.lifecycle.uninstall"),
+            ]
         )
 
         installed = PluginLifecycleService.install_plugin(
@@ -122,3 +171,75 @@ class PluginLifecycleServiceTests(TestCase):
             action=PluginActivationLog.ACTION_DISABLE,
         )
         self.assertEqual(disable_logs.count(), 1)
+
+    def test_enable_fails_without_verified_registration(self):
+        self._activate_plan(features=["plugins"])
+        plugin = Plugin.objects.create(
+            name="Unverified Plugin",
+            version="1.0.0",
+            provider="wasla",
+            required_feature="plugins",
+            is_active=True,
+        )
+        PluginRegistration.objects.create(
+            plugin=plugin,
+            plugin_key="unverified-plugin",
+            entrypoint="plugins.unverified:Plugin",
+            min_core_version="1.0.0",
+            verified=False,
+        )
+        PluginPermissionScope.objects.create(plugin=plugin, scope_code="plugin.lifecycle.enable")
+
+        with self.assertRaisesMessage(ValueError, "Plugin registration is not verified"):
+            PluginLifecycleService.enable_plugin(store_id=self.store.id, plugin=plugin, actor_user_id=self.owner.id)
+
+    @override_settings(APP_VERSION="1.0.0")
+    def test_event_dispatcher_is_tenant_isolated_and_scope_enforced(self):
+        self._activate_plan(features=["plugins"])
+        plugin = Plugin.objects.create(
+            name="Order Hooks",
+            version="1.0.0",
+            provider="wasla",
+            required_feature="plugins",
+            is_active=True,
+        )
+        PluginRegistration.objects.create(
+            plugin=plugin,
+            plugin_key="order-hooks",
+            entrypoint="plugins.order_hooks:Plugin",
+            min_core_version="1.0.0",
+            verified=True,
+        )
+        PluginPermissionScope.objects.bulk_create(
+            [
+                PluginPermissionScope(plugin=plugin, scope_code="plugin.lifecycle.enable"),
+                PluginPermissionScope(plugin=plugin, scope_code="events.consume.order.created"),
+            ]
+        )
+        installed = PluginLifecycleService.install_plugin(
+            store_id=self.store.id,
+            plugin=plugin,
+            actor_user_id=self.owner.id,
+        )
+        PluginEventSubscription.objects.create(
+            installed_plugin=installed,
+            tenant_id=self.tenant.id,
+            event_key="order.created",
+            is_active=True,
+        )
+
+        deliveries = PluginEventDispatcher.dispatch_event(
+            tenant_id=self.tenant.id,
+            event_key="order.created",
+            payload={"order_id": 123},
+        )
+        self.assertEqual(len(deliveries), 1)
+        self.assertEqual(deliveries[0].status, "queued")
+
+        other_tenant = Tenant.objects.create(slug="other-tenant", name="Other", is_active=True)
+        other_deliveries = PluginEventDispatcher.dispatch_event(
+            tenant_id=other_tenant.id,
+            event_key="order.created",
+            payload={"order_id": 555},
+        )
+        self.assertEqual(other_deliveries, [])

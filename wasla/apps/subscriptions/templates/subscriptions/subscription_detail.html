@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Subscription Details - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .subscription-detail {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  
+  .detail-header {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .detail-header h1 {
+    margin: 0 0 1rem 0;
+  }
+  
+  .detail-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+  }
+  
+  .detail-field {
+    border-right: 1px solid #e0e0e0;
+    padding-right: 2rem;
+  }
+  
+  .detail-field:last-child {
+    border-right: none;
+    padding-right: 0;
+  }
+  
+  .detail-label {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  
+  .detail-value {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  .status-active { background-color: #d4edda; color: #155724; }
+  .status-past-due { background-color: #fff3cd; color: #856404; }
+  .status-grace { background-color: #cfe2ff; color: #084298; }
+  .status-suspended { background-color: #f8d7da; color: #842029; }
+  .status-cancelled { background-color: #e2e3e5; color: #383d41; }
+  
+  .card-section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .card-header h3 {
+    margin: 0;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  
+  .btn-primary {
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0052a3;
+  }
+  
+  .btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-danger:hover {
+    background-color: #c82333;
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  }
+  
+  .alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+  }
+  
+  .alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+  }
+  
+  .modal-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .modal-header h2 {
+    margin: 0;
+  }
+  
+  .modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-detail">
+  <a href="{% url 'subscriptions:dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+  <!-- Alert Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Subscription Header -->
+  <div class="detail-header">
+    <h1>{{ subscription.plan.name }}</h1>
+    <div class="detail-row">
+      <div class="detail-field">
+        <div class="detail-label">Plan</div>
+        <div class="detail-value">{{ subscription.plan.name }}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Status</div>
+        <div class="detail-value">
+          <span class="status-badge status-{{ subscription.state }}">
+            {{ subscription.get_state_display }}
+          </span>
+        </div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Billing Date</div>
+        <div class="detail-value">{{ subscription.billing_cycle_anchor }}{{ subscription.billing_cycle_anchor|stringformat:"s"|slice:":-1"|add:"th" }}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Currency</div>
+        <div class="detail-value">{{ subscription.currency }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan Features -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Plan Features</h3>
+    </div>
+    <div class="card-body">
+      {% if subscription.plan.features %}
+        <ul style="list-style: none; padding: 0;">
+          {% for feature in subscription.plan.features %}
+            <li style="padding: 0.5rem 0; border-bottom: 1px solid #e0e0e0;">
+              ✓ {{ feature }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No specific features listed for this plan.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Subscription Items -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Subscription Items</h3>
+    </div>
+    <div class="card-body">
+      {% if subscription.items.all %}
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #dee2e6;">
+              <th style="text-align: left; padding: 0.75rem; background-color: #f8f9fa;">Name</th>
+              <th style="text-align: left; padding: 0.75rem; background-color: #f8f9fa;">Type</th>
+              <th style="text-align: left; padding: 0.75rem; background-color: #f8f9fa;">Price</th>
+              <th style="text-align: left; padding: 0.75rem; background-color: #f8f9fa;">Usage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in subscription.items.all %}
+              <tr style="border-bottom: 1px solid #e0e0e0;">
+                <td style="padding: 0.75rem;">{{ item.name }}</td>
+                <td style="padding: 0.75rem;">{{ item.get_billing_type_display }}</td>
+                <td style="padding: 0.75rem;">{{ subscription.currency }} {{ item.price }}</td>
+                <td style="padding: 0.75rem;">
+                  {% if item.usage_limit %}
+                    {{ item.current_usage }} / {{ item.usage_limit }}
+                  {% else %}
+                    {{ item.current_usage }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No items on this subscription.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Plan Change Section -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Change Plan</h3>
+    </div>
+    <div class="card-body">
+      <p>Upgrade or downgrade your plan. Changes take effect immediately with proration applied to your next invoice.</p>
+      <a href="{% url 'subscriptions:change-plan' subscription.id %}" class="btn btn-primary">Change Plan</a>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Subscription Actions</h3>
+    </div>
+    <div class="card-body">
+      <p>Manage your subscription state and billing.</p>
+      <div class="btn-group">
+        {% if subscription.state != 'cancelled' %}
+          <button onclick="openModal('cancelModal')" class="btn btn-danger">Cancel Subscription</button>
+        {% endif %}
+        
+        {% if subscription.state in 'suspended,grace' %}
+          <button onclick="openModal('gracePeriodModal')" class="btn btn-primary">Request Grace Period</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscription History -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Subscription Timeline</h3>
+    </div>
+    <div class="card-body">
+      <div style="border-left: 3px solid #0066cc; padding-left: 1.5rem;">
+        <div style="margin-bottom: 2rem;">
+          <div style="font-weight: bold; color: #333;">Created</div>
+          <div style="color: #666; font-size: 0.875rem;">{{ subscription.created_at|date:"F d, Y H:i" }}</div>
+        </div>
+
+        {% if subscription.suspended_at %}
+          <div style="margin-bottom: 2rem;">
+            <div style="font-weight: bold; color: #333;">Suspended</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ subscription.suspended_at|date:"F d, Y H:i" }}</div>
+            <div style="color: #666; font-size: 0.875rem;">Reason: {{ subscription.suspension_reason }}</div>
+          </div>
+        {% endif %}
+
+        {% if subscription.cancelled_at %}
+          <div style="margin-bottom: 2rem;">
+            <div style="font-weight: bold; color: #333;">Cancelled</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ subscription.cancelled_at|date:"F d, Y H:i" }}</div>
+            <div style="color: #666; font-size: 0.875rem;">Reason: {{ subscription.cancellation_reason }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Subscription Modal -->
+<div id="cancelModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Cancel Subscription</h2>
+    </div>
+    <form method="post" action="{% url 'subscriptions:subscription-cancel' subscription.id %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="reason">Reason (optional)</label>
+        <textarea id="reason" name="reason" placeholder="Tell us why you're cancelling..." rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="immediately">
+          <input type="checkbox" id="immediately" name="immediately" value="on">
+          Cancel immediately (store goes offline)
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('cancelModal')">Keep Subscription</button>
+        <button type="submit" class="btn btn-danger">Cancel Subscription</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Grace Period Modal -->
+<div id="gracePeriodModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Request Grace Period</h2>
+    </div>
+    <form method="post" action="{% url 'subscriptions:add-grace-period' subscription.id %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="days">Number of days</label>
+        <input type="number" id="days" name="days" min="1" max="30" value="7" required>
+      </div>
+      <p style="color: #666; font-size: 0.875rem;">
+        A grace period extends your payment deadline, giving you more time to update your payment method.
+      </p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('gracePeriodModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Request Grace Period</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openModal(modalId) {
+  document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  if (event.target.classList.contains('modal')) {
+    event.target.classList.remove('active');
+  }
+}
+</script>
+{% endblock %}

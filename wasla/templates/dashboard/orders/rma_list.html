@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Returns & RMA" %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header">
+        <div class="page-header__content">
+            <h1 class="page-title">{% trans "Returns & RMA" %}</h1>
+            <p class="page-subtitle">{% trans "Manage return requests and merchandise authorization" %}</p>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="{% trans 'Search RMA number or order...' %}" 
+                       value="{{ request.GET.search }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <select name="status" class="form-control">
+                    <option value="">{% trans "All Status" %}</option>
+                    <option value="requested" {% if request.GET.status == 'requested' %}selected{% endif %}>{% trans "Requested" %}</option>
+                    <option value="approved" {% if request.GET.status == 'approved' %}selected{% endif %}>{% trans "Approved" %}</option>
+                    <option value="in_transit" {% if request.GET.status == 'in_transit' %}selected{% endif %}>{% trans "In Transit" %}</option>
+                    <option value="received" {% if request.GET.status == 'received' %}selected{% endif %}>{% trans "Received" %}</option>
+                    <option value="inspected" {% if request.GET.status == 'inspected' %}selected{% endif %}>{% trans "Inspected" %}</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>{% trans "Completed" %}</option>
+                    <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>{% trans "Rejected" %}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
+        </form>
+    </div>
+
+    <!-- RMAs List -->
+    <div class="content-section">
+        {% if rmas %}
+        <div class="rmas-grid">
+            {% for rma in rmas %}
+            <div class="rma-card">
+                <div class="rma-card__header">
+                    <div>
+                        <h3 class="rma-number">{{ rma.rma_number }}</h3>
+                        <p class="rma-meta">
+                            {% trans "Order" %} <a href="{% url 'admin:orders_order_change' rma.order.id %}">#{{ rma.order.id }}</a>
+                        </p>
+                    </div>
+                    <span class="badge badge-{{ rma.status|lower }}">{{ rma.get_status_display }}</span>
+                </div>
+
+                <div class="rma-card__content">
+                    <p class="customer-name">{{ rma.order.customer_name }}</p>
+                    <p class="customer-email">{{ rma.order.customer_email }}</p>
+
+                    <div class="rma-details">
+                        <div class="detail-item">
+                            <span class="label">{% trans "Reason" %}</span>
+                            <span class="value">{{ rma.get_reason_display }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">{% trans "Items" %}</span>
+                            <span class="value">{{ rma.items.count }}</span>
+                        </div>
+                        {% if rma.is_exchange %}
+                        <div class="detail-item exchange">
+                            <span class="label">{% trans "Type" %}</span>
+                            <span class="value">
+                                <span class="badge badge-info">{% trans "Exchange" %}</span>
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="rma-timeline">
+                        <div class="timeline-item {% if rma.requested_at %}active{% endif %}">
+                            <span class="status-dot"></span>
+                            <span class="label">{% trans "Requested" %}</span>
+                            {% if rma.requested_at %}<span class="date">{{ rma.requested_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}
+                        </div>
+                        <div class="timeline-item {% if rma.approved_at %}active{% endif %}">
+                            <span class="status-dot"></span>
+                            <span class="label">{% trans "Approved" %}</span>
+                            {% if rma.approved_at %}<span class="date">{{ rma.approved_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}
+                        </div>
+                        <div class="timeline-item {% if rma.received_at %}active{% endif %}">
+                            <span class="status-dot"></span>
+                            <span class="label">{% trans "Received" %}</span>
+                            {% if rma.received_at %}<span class="date">{{ rma.received_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}
+                        </div>
+                        <div class="timeline-item {% if rma.completed_at %}active{% endif %}">
+                            <span class="status-dot"></span>
+                            <span class="label">{% trans "Completed" %}</span>
+                            {% if rma.completed_at %}<span class="date">{{ rma.completed_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rma-card__actions">
+                    <a href="{% url 'rma-detail' rma.id %}" class="btn btn-outline">
+                        {% trans "View Details" %}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">{% trans "First" %}</a>
+                <a href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
+            {% endif %}
+
+            <span class="pagination-info">
+                {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 10h18M7 15h10M5 20h14M5 3h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+            </svg>
+            <p>{% trans "No return requests found." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        padding: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 32px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 8px 0;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .filters-section {
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid #ddd;
+        color: #666;
+        padding: 8px 12px;
+    }
+
+    .rmas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .rma-card {
+        background: white;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rma-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: #ddd;
+    }
+
+    .rma-card__header {
+        padding: 16px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .rma-number {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .rma-meta {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .rma-meta a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .rma-meta a:hover {
+        text-decoration: underline;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-requested {
+        background: #e8e8e8;
+        color: #666;
+    }
+
+    .badge-approved {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .badge-in_transit {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .badge-received {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .badge-inspected {
+        background: #fffde7;
+        color: #f57f17;
+    }
+
+    .badge-completed {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .badge-rejected {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .badge-info {
+        background: #e1f5fe;
+        color: #01579b;
+    }
+
+    .rma-card__content {
+        padding: 16px;
+        flex: 1;
+    }
+
+    .customer-name {
+        margin: 0 0 4px 0;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .customer-email {
+        margin: 0 0 12px 0;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .rma-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        font-size: 12px;
+    }
+
+    .detail-item .label {
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .detail-item .value {
+        color: #1a1a1a;
+        font-weight: 500;
+    }
+
+    .detail-item.exchange {
+        grid-column: 1 / -1;
+    }
+
+    .rma-timeline {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .timeline-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 11px;
+        color: #999;
+    }
+
+    .timeline-item.active {
+        color: #333;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ddd;
+        margin-bottom: 4px;
+    }
+
+    .timeline-item.active .status-dot {
+        background: #388e3c;
+    }
+
+    .timeline-item .label {
+        text-align: center;
+        margin-bottom: 4px;
+    }
+
+    .timeline-item .date {
+        font-size: 10px;
+        opacity: 0.7;
+    }
+
+    .rma-card__actions {
+        padding: 12px 16px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 8px;
+    }
+
+    .rma-card__actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 64px 24px;
+        color: #999;
+    }
+
+    .empty-state svg {
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        margin-top: 32px;
+    }
+
+    .pagination a {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .pagination-info {
+        padding: 0 12px;
+        font-size: 14px;
+        color: #666;
+    }
+
+    @media (max-width: 768px) {
+        .rmas-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filters-form {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+
+        .rma-timeline {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}

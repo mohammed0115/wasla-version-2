@@ -9,6 +9,7 @@ from django.db import connection
 from django.utils.deprecation import MiddlewareMixin
 
 from apps.observability.logging import bind_request_context
+from apps.observability.metrics_registry import REQUEST_TOTAL, REQUEST_LATENCY_MS, SLOW_QUERY_TOTAL
 from core.infrastructure.store_cache import StoreCacheService
 logger = logging.getLogger("wasla.request")
 performance_logger = logging.getLogger("wasla.performance")
@@ -18,6 +19,7 @@ class TimingMiddleware(MiddlewareMixin):
     def process_request(self, request):
         request._start_time = monotonic()
         request._db_query_count_start = len(getattr(connection, "queries", []))
+        request._db_queries_start = list(getattr(connection, "queries", []))
         StoreCacheService.set_cache_hit(False)
 
     def process_exception(self, request, exception):
@@ -66,6 +68,7 @@ class TimingMiddleware(MiddlewareMixin):
         response["X-Cache"] = "HIT" if cache_hit else "MISS"
         status_code = getattr(response, "status_code", 200)
         _increment_metrics(status_code=status_code)
+        _observe_metrics(request=request, status_code=status_code, latency_ms=latency_ms)
         logger.info(
             "request_complete",
             extra={
@@ -105,6 +108,7 @@ class TimingMiddleware(MiddlewareMixin):
             query_count=query_count,
             cache_hit=cache_hit,
         )
+        _log_slow_queries(request)
         return response
 
     def _persist_metric(self, *, request, status_code: int, latency_ms: int, query_count: int, cache_hit: bool):
@@ -178,3 +182,58 @@ def _increment_metrics(*, status_code: int):
         cache.incr(key, 1)
     except Exception:
         cache.set(key, 1, timeout=None)
+
+
+def _normalize_path(path: str) -> str:
+    if not path:
+        return "/"
+    if path.startswith("/api/"):
+        return "/api/*"
+    if path.startswith("/admin-portal/"):
+        return "/admin-portal/*"
+    return path
+
+
+def _observe_metrics(*, request, status_code: int, latency_ms: int):
+    try:
+        method = (getattr(request, "method", "GET") or "GET").upper()
+        path = _normalize_path(getattr(request, "path", "") or "")
+        REQUEST_TOTAL.labels(method=method, path=path, status=str(status_code)).inc()
+        REQUEST_LATENCY_MS.labels(method=method, path=path).observe(float(latency_ms))
+    except Exception:
+        return
+
+
+def _log_slow_queries(request):
+    threshold_ms = float(getattr(settings, "PERFORMANCE_SLOW_QUERY_THRESHOLD_MS", 250.0) or 250.0)
+    if threshold_ms <= 0:
+        return
+
+    all_queries = list(getattr(connection, "queries", []))
+    start_count = len(getattr(request, "_db_queries_start", []) or [])
+    request_queries = all_queries[start_count:]
+
+    for item in request_queries:
+        elapsed_s = float(item.get("time", 0.0) or 0.0)
+        elapsed_ms = elapsed_s * 1000.0
+        if elapsed_ms < threshold_ms:
+            continue
+
+        sql_text = (item.get("sql") or "").strip()
+        sql_signature = " ".join(sql_text.split())[:120]
+        performance_logger.warning(
+            "slow_query",
+            extra={
+                "duration_ms": round(elapsed_ms, 2),
+                "path": getattr(request, "path", ""),
+                "query_count": len(request_queries),
+                "error_code": "SLOW_QUERY",
+                "cache_status": "N/A",
+                "store_id": _resolve_store_id(request),
+                "query_signature": sql_signature,
+            },
+        )
+        try:
+            SLOW_QUERY_TOTAL.labels(path=_normalize_path(getattr(request, "path", "") or "")).inc()
+        except Exception:
+            pass

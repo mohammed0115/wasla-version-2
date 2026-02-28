@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Invoices - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .invoices-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .page-header h1 {
+    margin: 0;
+  }
+  
+  .filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .filters select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+  
+  .card-section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  td {
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem;
+  }
+  
+  tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .invoice-number {
+    font-weight: 600;
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .invoice-number:hover {
+    text-decoration: underline;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  .status-draft { background-color: #e2e3e5; color: #383d41; }
+  .status-issued { background-color: #d1ecf1; color: #0c5460; }
+  .status-overdue { background-color: #f8d7da; color: #842029; }
+  .status-partial { background-color: #fff3cd; color: #856404; }
+  .status-paid { background-color: #d4edda; color: #155724; }
+  .status-void { background-color: #e2e3e5; color: #383d41; }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #666;
+  }
+  
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #ccc;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn:hover {
+    background-color: #0052a3;
+  }
+  
+  .amount-due {
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    padding: 1rem 0;
+  }
+  
+  .pagination a,
+  .pagination span {
+    display: inline-block;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #0066cc;
+  }
+  
+  .pagination a:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .pagination a.active {
+    background-color: #0066cc;
+    color: white;
+    border-color: #0066cc;
+  }
+  
+  .pagination span.current {
+    background-color: #0066cc;
+    color: white;
+    border-color: #0066cc;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoices-page">
+  <div class="page-header">
+    <h1>Invoices</h1>
+    <a href="{% url 'subscriptions:dashboard' %}" class="btn">Back to Dashboard</a>
+  </div>
+
+  <!-- Filters -->
+  {% if request.GET.status or request.GET.overdue_only %}
+    <div class="filters">
+      <form method="get" style="display: flex; gap: 1rem;">
+        <select name="status" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          <option value="issued" {% if request.GET.status == 'issued' %}selected{% endif %}>Issued</option>
+          <option value="overdue" {% if request.GET.status == 'overdue' %}selected{% endif %}>Overdue</option>
+          <option value="paid" {% if request.GET.status == 'paid' %}selected{% endif %}>Paid</option>
+          <option value="partial" {% if request.GET.status == 'partial' %}selected{% endif %}>Partial</option>
+        </select>
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" name="overdue_only" value="true" {% if request.GET.overdue_only %}checked{% endif %} onchange="this.form.submit()">
+          Overdue Only
+        </label>
+        <a href="{% url 'subscriptions:invoice-list' %}" style="padding: 0.5rem 1rem; border-radius: 4px; background-color: #6c757d; color: white; text-decoration: none;">Clear Filters</a>
+      </form>
+    </div>
+  {% else %}
+    <form method="get" style="margin-bottom: 1.5rem;">
+      <select name="status" onchange="this.form.submit()" style="padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem;">
+        <option value="">All Statuses</option>
+        <option value="issued">Issued</option>
+        <option value="overdue">Overdue</option>
+        <option value="paid">Paid</option>
+        <option value="partial">Partial</option>
+      </select>
+    </form>
+  {% endif %}
+
+  <!-- Invoices Table -->
+  {% if invoices %}
+    <div class="card-section">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Billing Period</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Due Date</th>
+              <th>Due Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in invoices %}
+              <tr>
+                <td>
+                  <a href="{% url 'subscriptions:invoice-detail' invoice.id %}" class="invoice-number">
+                    {{ invoice.number }}
+                  </a>
+                </td>
+                <td>
+                  {{ invoice.billing_cycle.period_start|date:"M d" }} — 
+                  {{ invoice.billing_cycle.period_end|date:"M d, Y" }}
+                </td>
+                <td>{{ invoice.subscription.currency }} {{ invoice.total|floatformat:2 }}</td>
+                <td>
+                  <span class="status-badge status-{{ invoice.status }}">
+                    {{ invoice.get_status_display }}
+                  </span>
+                </td>
+                <td>{{ invoice.due_date|date:"M d, Y" }}</td>
+                <td>
+                  {% if invoice.amount_due > 0 %}
+                    <span class="amount-due">{{ invoice.subscription.currency }} {{ invoice.amount_due|floatformat:2 }}</span>
+                  {% else %}
+                    {{ invoice.subscription.currency }} 0.00
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'subscriptions:invoice-detail' invoice.id %}" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    View
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+      <div class="pagination">
+        {% if page_obj.has_previous %}
+          <a href="?page=1">First</a>
+          <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <span class="current">{{ num }}</span>
+          {% else %}
+            <a href="?page={{ num }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}">Next</a>
+          <a href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="card-section">
+      <div class="empty-state">
+        <div class="empty-state-icon">📄</div>
+        <h3>No invoices found</h3>
+        <p>
+          {% if request.GET.status %}
+            No invoices match your selected filter. <a href="{% url 'subscriptions:invoice-list' %}">View all invoices</a>
+          {% else %}
+            You don't have any invoices yet. Your first invoice will be created when your billing cycle starts.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

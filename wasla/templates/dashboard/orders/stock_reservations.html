@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Stock Reservations" %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header">
+        <div class="page-header__content">
+            <h1 class="page-title">{% trans "Stock Reservations" %}</h1>
+            <p class="page-subtitle">{% trans "Manage reserved inventory items" %}</p>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Active Reservations" %}</span>
+            <span class="stat-value">{{ active_reservations_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Expiring Soon" %}</span>
+            <span class="stat-value">{{ expiring_soon_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Expired/Released" %}</span>
+            <span class="stat-value">{{ expired_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Total Items Reserved" %}</span>
+            <span class="stat-value">{{ total_reserved_qty }}</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="{% trans 'Search product, order...' %}" 
+                       value="{{ request.GET.search }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <select name="status" class="form-control">
+                    <option value="">{% trans "All Status" %}</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>{% trans "Active" %}</option>
+                    <option value="expiring" {% if request.GET.status == 'expiring' %}selected{% endif %}>{% trans "Expiring Soon" %}</option>
+                    <option value="released" {% if request.GET.status == 'released' %}selected{% endif %}>{% trans "Released" %}</option>
+                    <option value="expired" {% if request.GET.status == 'expired' %}selected{% endif %}>{% trans "Expired" %}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
+        </form>
+    </div>
+
+    <!-- Reservations Table -->
+    <div class="content-section">
+        {% if reservations %}
+        <div class="table-wrapper">
+            <table class="reservations-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Order" %}</th>
+                        <th>{% trans "Product SKU" %}</th>
+                        <th>{% trans "Product Name" %}</th>
+                        <th>{% trans "Quantity" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "TTL Status" %}</th>
+                        <th>{% trans "Reserved At" %}</th>
+                        <th>{% trans "Expires At" %}</th>
+                        <th>{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr class="reservation-row reservation-{{ reservation.status }}">
+                        <td>
+                            <a href="{% url 'admin:orders_order_change' reservation.order.id %}" class="order-link">
+                                #{{ reservation.order.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <code class="sku">{{ reservation.product.sku }}</code>
+                        </td>
+                        <td>
+                            <span class="product-name">{{ reservation.product.name }}</span>
+                        </td>
+                        <td>
+                            <span class="quantity">{{ reservation.quantity }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ reservation.status }}">{{ reservation.get_status_display }}</span>
+                        </td>
+                        <td>
+                            {% if reservation.status == 'active' %}
+                                {% if reservation.time_remaining_seconds < 300 %}
+                                    <span class="ttl-status ttl-critical">
+                                        ⚠️ {% trans "Expires soon" %} ({{ reservation.time_remaining_seconds|add:'60'|add:'60'|truncatechars:2 }}s)
+                                    </span>
+                                {% elif reservation.time_remaining_seconds < 900 %}
+                                    <span class="ttl-status ttl-warning">
+                                        ⏱️ {% blocktrans count counter=reservation.time_remaining_minutes %}{{ counter }} min{% endblocktrans %}
+                                    </span>
+                                {% else %}
+                                    <span class="ttl-status ttl-ok">
+                                        ✓ {% trans "Time remaining" %}
+                                    </span>
+                                {% endif %}
+                            {% elif reservation.status == 'expired' %}
+                                <span class="ttl-status ttl-expired">{% trans "Expired" %}</span>
+                            {% elif reservation.status == 'released' %}
+                                <span class="ttl-status ttl-released">{% trans "Released" %}</span>
+                            {% else %}
+                                <span class="ttl-status">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ reservation.created_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+                        <td>
+                            {% if reservation.status == 'active' %}
+                                <strong class="expires-text">{{ reservation.expires_at|date:"SHORT_DATETIME_FORMAT" }}</strong>
+                            {% else %}
+                                {{ reservation.expires_at|date:"SHORT_DATETIME_FORMAT" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                {% if reservation.status == 'active' %}
+                                    <button class="btn-action btn-action-extend" 
+                                            onclick="extendReservation({{ reservation.id }})"
+                                            title="{% trans 'Extend TTL by 15 minutes' %}">
+                                        ⏳ {% trans "Extend" %}
+                                    </button>
+                                    <button class="btn-action btn-action-release" 
+                                            onclick="releaseReservation({{ reservation.id }})"
+                                            title="{% trans 'Release stock immediately' %}">
+                                        🔓 {% trans "Release" %}
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">{% trans "First" %}</a>
+                <a href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
+            {% endif %}
+
+            <span class="pagination-info">
+                {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            <p>{% trans "No stock reservations found." %}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Legend & Info -->
+    <div class="info-section">
+        <h2 class="section-title">{% trans "About Stock Reservations" %}</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>{% trans "What is a Stock Reservation?" %}</h3>
+                <p>{% trans "When a customer places an order, items are automatically reserved to prevent overselling. Reservations have a Time-To-Live (TTL) that determines how long items remain reserved." %}</p>
+            </div>
+            <div class="info-card">
+                <h3>{% trans "TTL Timeouts" %}</h3>
+                <ul class="info-list">
+                    <li><strong>{% trans "15 minutes" %}</strong>: {% trans "For items in a pending order awaiting payment confirmation" %}</li>
+                    <li><strong>{% trans "30 minutes" %}</strong>: {% trans "For paid orders awaiting fulfillment" %}</li>
+                </ul>
+            </div>
+            <div class="info-card">
+                <h3>{% trans "Automatic Release" %}</h3>
+                <p>{% trans "A background task runs every 5 minutes to automatically release expired reservations, making stock available again. If an order is confirmed before expiration, the reservation is extended." %}</p>
+            </div>
+            <div class="info-card">
+                <h3>{% trans "Manual Management" %}</h3>
+                <p>{% trans "You can manually extend a reservation's TTL by 15 minutes if an order is still being processed, or immediately release stock if it's no longer needed." %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 32px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 8px 0;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .stat-card:nth-child(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-card:nth-child(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-card:nth-child(4) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .filters-section {
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .content-section {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 32px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    .reservations-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .reservations-table thead {
+        background: #f5f5f5;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .reservations-table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .reservations-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .reservations-table tbody tr:hover {
+        background: #fafafa;
+    }
+
+    .order-link {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .order-link:hover {
+        text-decoration: underline;
+    }
+
+    .sku {
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .product-name {
+        color: #1a1a1a;
+    }
+
+    .quantity {
+        font-weight: 600;
+        background: #f9f9f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-active {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .badge-released {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .badge-expired {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .ttl-status {
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .ttl-ok {
+        color: #388e3c;
+    }
+
+    .ttl-warning {
+        color: #f57c00;
+        font-weight: 600;
+    }
+
+    .ttl-critical {
+        color: #c62828;
+        font-weight: 600;
+    }
+
+    .ttl-released {
+        color: #1976d2;
+    }
+
+    .ttl-expired {
+        color: #999;
+    }
+
+    .expires-text {
+        color: #1a1a1a;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 4px 8px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .btn-action-extend {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .btn-action-extend:hover {
+        background: #ffe0b2;
+    }
+
+    .btn-action-release {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .btn-action-release:hover {
+        background: #bbdefb;
+    }
+
+    .text-muted {
+        color: #999;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 64px 24px;
+        color: #999;
+    }
+
+    .empty-state svg {
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        padding: 16px;
+        border-top: 1px solid #eee;
+    }
+
+    .pagination a {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 12px;
+    }
+
+    .pagination-info {
+        padding: 0 8px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .info-section {
+        margin-top: 48px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #1a1a1a;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .info-card {
+        background: white;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .info-card h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+        color: #1a1a1a;
+    }
+
+    .info-card p {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .info-list {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .info-list li {
+        margin-bottom: 8px;
+        color: #666;
+        font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 16px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .filters-form {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+
+        .table-wrapper {
+            font-size: 12px;
+        }
+
+        .reservations-table th,
+        .reservations-table td {
+            padding: 8px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-action {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+function extendReservation(reservationId) {
+    if (confirm('{% trans "Extend reservation TTL by 15 minutes?" %}')) {
+        fetch(`/api/reservations/${reservationId}/extend/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('{% trans "Reservation extended successfully!" %}');
+                location.reload();
+            } else {
+                alert('{% trans "Failed to extend reservation." %}');
+            }
+        });
+    }
+}
+
+function releaseReservation(reservationId) {
+    if (confirm('{% trans "Release this reservation and make stock available?" %}')) {
+        fetch(`/api/reservations/${reservationId}/release/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('{% trans "Reservation released successfully!" %}');
+                location.reload();
+            } else {
+                alert('{% trans "Failed to release reservation." %}');
+            }
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

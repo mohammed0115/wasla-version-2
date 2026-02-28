@@ -1,0 +1,119 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Manage Scopes - {{ registration.plugin.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <div>
+        <h1 class="h2"><i class="bi bi-shield-lock"></i> Permission Scopes</h1>
+        <p class="text-muted mb-0">{{ registration.plugin.name }}</p>
+    </div>
+    <a href="{% url 'admin_portal:plugin_registry_detail' registration_id=registration.id %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Add New Scope</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_scope">
+
+                    <div class="mb-3">
+                        <label for="scope_code" class="form-label">Scope Code <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="scope_code" name="scope_code" 
+                               placeholder="e.g., plugin.data.read" required>
+                        <small class="form-text text-muted">
+                            Use dot notation for hierarchical scopes (e.g., <code>plugin.lifecycle.enable</code>).
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="2" placeholder="What this scope allows the plugin to do..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Scope
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="mb-3">Common Scopes</h6>
+                    <div class="list-group list-group-sm">
+                        {% for preset in preset_scopes %}
+                        <button type="button" class="list-group-item list-group-item-action text-start small"
+                            onclick="document.getElementById('scope_code').value = '{{ preset }}'; 
+                                     document.getElementById('scope_code').focus();">
+                            <code>{{ preset }}</code>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Configured Scopes</h5>
+                <span class="badge bg-light text-dark">{{ scopes.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if scopes %}
+                    <div class="list-group">
+                        {% for scope in scopes %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1"><code class="text-primary">{{ scope.scope_code }}</code></h6>
+                                    {% if scope.description %}
+                                    <p class="mb-0"><small class="text-muted">{{ scope.description }}</small></p>
+                                    {% endif %}
+                                    <small class="text-muted d-block mt-1">
+                                        Created {{ scope.created_at|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                                <form method="post" class="ms-2 flex-shrink-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_scope">
+                                    <input type="hidden" name="scope_id" value="{{ scope.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Delete this scope?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> No scopes defined yet.
+                        <br><small>Add scopes to specify what resources this plugin can access.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <h6>About Permission Scopes</h6>
+    <p class="mb-0">
+        Permission scopes define what resources and actions the plugin is allowed to access.
+        Use a deny-by-default security model:<br>
+        - Each scope must be explicitly granted<br>
+        - Use hierarchical naming (e.g., <code>plugin.data.read</code>)<br>
+        - Document what each scope allows<br>
+        Scopes are enforced when the plugin is enabled and when it receives events.
+    </p>
+</div>
+{% endblock %}

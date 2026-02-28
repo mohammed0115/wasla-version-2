@@ -1,0 +1,66 @@
+{% autoescape off %}
+Dear {{ merchant_name }},
+
+Your Wasla subscription has been suspended due to unpaid invoices.
+
+SUBSCRIPTION SUSPENDED
+=====================
+Suspension Date: {{ suspension_date }}
+Suspended Since: {{ days_suspended }} day{{ days_suspended|pluralize }}
+
+OUTSTANDING INVOICE
+===================
+Invoice Number: {{ invoice_number }}
+Amount Due: {{ currency }} {{ amount_due }}
+Original Due Date: {{ original_due_date }}
+Days Overdue: {{ days_overdue }}
+
+WHAT THIS MEANS
+===============
+Your store is currently OFFLINE:
+- ❌ Customers cannot browse your store
+- ❌ Orders cannot be placed
+- ❌ All integrations are paused
+- ❌ Inventory sync is suspended
+
+REACTIVATION REQUIRED
+====================
+To restore your store to full operation, you must:
+
+1. PAY THE OUTSTANDING INVOICE
+   Amount: {{ currency }} {{ amount_due }}
+   
+2. UPDATE YOUR PAYMENT METHOD (if it's expired)
+   Link: {{ dashboard_url }}/payment-methods/
+
+3. REACTIVATE YOUR STORE
+   Your store will be automatically restored within 1 hour of receiving payment.
+
+IMMEDIATE ACTION LINK
+====================
+Pay Invoice Now: {{ payment_url }}
+
+PAYMENT OPTIONS
+===============
+- Credit/Debit Card
+- Bank Transfer
+- Digital Wallet
+
+GRACE PERIOD
+============
+A grace extension may still be available. Contact support to request additional time to pay.
+
+URGENT SUPPORT
+==============
+Email: support@wasla.sa
+Phone: +966-50-XXX-XXXX
+Live Chat: {{ dashboard_url }}/support/
+
+TIME-SENSITIVE
+==============
+Your account data is secure, but continued suspension may affect your business operations.
+Please resolve this immediately.
+
+Best regards,
+Wasla Billing Team
+{% endautoescape %}

@@ -4,6 +4,8 @@ from django.db import transaction
 
 from apps.plugins.models import InstalledPlugin, Plugin, PluginActivationLog
 from apps.stores.models import Store
+from apps.plugins.services.security_scope_service import PluginSecurityScopeService
+from apps.plugins.services.version_compatibility_service import PluginVersionCompatibilityService
 from apps.subscriptions.services.feature_policy import FeaturePolicy
 from apps.subscriptions.services.subscription_service import SubscriptionService
 
@@ -68,6 +70,11 @@ class PluginLifecycleService:
         raise ValueError(f"Missing active dependencies: {', '.join(missing_names)}")
 
     @staticmethod
+    def _check_registration_and_compatibility(*, plugin: Plugin) -> None:
+        PluginVersionCompatibilityService.assert_compatible(plugin)
+        PluginSecurityScopeService.require_scope(plugin=plugin, scope_code="plugin.lifecycle.enable")
+
+    @staticmethod
     def _assert_can_uninstall(*, store_id: int, plugin: Plugin) -> None:
         dependent_ids = list(plugin.dependents.values_list("id", flat=True))
         if not dependent_ids:
@@ -109,6 +116,7 @@ class PluginLifecycleService:
         if not plugin.is_active:
             raise ValueError("Plugin is not active")
 
+        PluginLifecycleService._check_registration_and_compatibility(plugin=plugin)
         PluginLifecycleService._check_plan_feature_gate(store_id=store_id, plugin=plugin)
         PluginLifecycleService._check_dependencies_for_enable(store_id=store_id, plugin=plugin)
 
@@ -125,6 +133,8 @@ class PluginLifecycleService:
     @staticmethod
     @transaction.atomic
     def disable_plugin(*, store_id: int, plugin: Plugin, actor_user_id: int | None = None) -> InstalledPlugin:
+        PluginSecurityScopeService.require_scope(plugin=plugin, scope_code="plugin.lifecycle.disable")
+
         installed = InstalledPlugin.objects.filter(store_id=store_id, plugin=plugin).first()
         if not installed or installed.status == "uninstalled":
             raise ValueError("Plugin is not installed")
@@ -139,6 +149,8 @@ class PluginLifecycleService:
     @staticmethod
     @transaction.atomic
     def uninstall_plugin(*, store_id: int, plugin: Plugin, actor_user_id: int | None = None) -> InstalledPlugin:
+        PluginSecurityScopeService.require_scope(plugin=plugin, scope_code="plugin.lifecycle.uninstall")
+
         installed = InstalledPlugin.objects.filter(store_id=store_id, plugin=plugin).first()
         if not installed or installed.status == "uninstalled":
             raise ValueError("Plugin is not installed")

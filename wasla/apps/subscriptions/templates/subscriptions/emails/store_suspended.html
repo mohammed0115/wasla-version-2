@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Suspended - Wasla</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 20px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .critical-notice {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .critical-title {
+            color: #721c24;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        .critical-content {
+            color: #721c24;
+            margin: 0;
+        }
+        .status-badge {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin: 10px 0;
+        }
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        .status-icon.critical {
+            background: #f8d7da;
+        }
+        .status-content {
+            flex: 1;
+        }
+        .status-label {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        .status-detail {
+            font-size: 13px;
+            color: #666;
+            margin: 3px 0 0 0;
+        }
+        .invoice-details {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .detail-value {
+            font-weight: 600;
+            text-align: right;
+        }
+        .reactivation-steps {
+            background: #e7f5ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #004085;
+        }
+        .reactivation-steps h3 {
+            margin: 0 0 15px 0;
+            color: #004085;
+        }
+        .step {
+            display: flex;
+            margin-bottom: 12px;
+        }
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background: #0066cc;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content p {
+            margin: 0;
+            font-size: 14px;
+        }
+        .action-button {
+            display: inline-block;
+            background: #0066cc;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: all 0.2s;
+        }
+        .action-button:hover {
+            background: #0052a3;
+        }
+        .suspended-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .suspended-warning h3 {
+            margin: 0 0 10px 0;
+        }
+        .suspended-warning ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .suspended-warning li {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .payment-info {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .payment-info strong {
+            display: block;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .urgency-banner {
+            background: #dc3545;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer-links {
+            margin: 10px 0;
+        }
+        .footer-links a {
+            color: #0066cc;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔒 Store Suspended</h1>
+            <p>Your service has been suspended due to unpaid invoices</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                Hi {{ subscription.user.first_name|default:"Merchant" }},
+            </div>
+
+            <p>
+                Your store has been temporarily suspended. This action was taken because payment(s) remain outstanding.
+            </p>
+
+            <!-- Critical Notice -->
+            <div class="critical-notice">
+                <h2 class="critical-title">⚠️ Immediate Action Required</h2>
+                <p class="critical-content">
+                    Your store is currently suspended and inaccessible to your customers. You must pay your outstanding balance immediately to restore service.
+                </p>
+                <div class="status-badge">SUSPENDED</div>
+            </div>
+
+            <div class="urgency-banner">
+                ⚡ ACTION REQUIRED: Pay Now to Reactivate Your Store
+            </div>
+
+            <!-- Current Status -->
+            <div class="section-title">Suspension Details</div>
+            <div class="status-box">
+                <div class="status-item">
+                    <div class="status-icon critical">🔒</div>
+                    <div class="status-content">
+                        <p class="status-label">Service Status</p>
+                        <p class="status-detail">Suspended - {{ suspension_date|date:"F d, Y" }}</p>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-icon critical">📋</div>
+                    <div class="status-content">
+                        <p class="status-label">Reason</p>
+                        <p class="status-detail">Payment not received after grace period expiration</p>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-icon critical">💳</div>
+                    <div class="status-content">
+                        <p class="status-label">Amount Due</p>
+                        <p class="status-detail" style="color: #dc3545; font-weight: 700; font-size: 16px;">
+                            {{ invoice.currency }}{{ invoice.amount_due }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What's Suspended -->
+            <div class="suspended-warning">
+                <h3>❌ Currently Unavailable</h3>
+                <ul>
+                    <li>Customers cannot access your store or make purchases</li>
+                    <li>Your inventory management is disabled</li>
+                    <li>Subscription processing is paused</li>
+                    <li>Order processing is disabled</li>
+                    <li>Analytics and reporting are unavailable</li>
+                    <li>Customer communications are restricted</li>
+                </ul>
+            </div>
+
+            <!-- Overdue Invoice -->
+            <div class="section-title">Overdue Invoice</div>
+            <div class="invoice-details">
+                <div class="detail-row">
+                    <span class="detail-label">Invoice Number</span>
+                    <span class="detail-value">{{ invoice.invoice_number }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Invoice Date</span>
+                    <span class="detail-value">{{ invoice.issued_date|date:"F d, Y" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Due Date</span>
+                    <span class="detail-value">{{ invoice.due_date|date:"F d, Y" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Days Overdue</span>
+                    <span class="detail-value" style="color: #dc3545;">{{ invoice.days_overdue }} days</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Due</span>
+                    <span class="detail-value" style="color: #dc3545; font-size: 18px; font-weight: 700;">
+                        {{ invoice.currency }}{{ invoice.amount_due }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- How to Reactivate -->
+            <div class="reactivation-steps">
+                <h3>✅ How to Reactivate Your Store</h3>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <p><strong>Click "Pay Now" button below</strong> or visit your billing dashboard</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <p><strong>Review the outstanding amount</strong> of {{ invoice.currency }}{{ invoice.amount_due }}</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <p><strong>Confirm your payment method</strong> and process the payment</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <p><strong>Your store will be reactivated immediately</strong> after successful payment processing</p>
+                    </div>
+                </div>
+
+                <div class="action-button" style="display: block; text-align: center;">
+                    <a href="{{ payment_url }}" style="color: white; text-decoration: none;">💳 Pay Outstanding Balance</a>
+                </div>
+            </div>
+
+            <!-- Payment Method Info -->
+            <div class="payment-info">
+                <strong>Current Payment Method</strong>
+                {{ payment_method.display_name }}
+                {% if payment_method.expires_at %}
+                    <br>Expires: {{ payment_method.expires_at|date:"M/Y" }}
+                {% endif %}
+                <p style="margin-top: 10px; margin-bottom: 0; color: #666;">
+                    <a href="{{ update_payment_url }}" style="color: #0066cc;">Update Payment Method</a>
+                </p>
+            </div>
+
+            <!-- Important Info -->
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 15px; margin: 20px 0; color: #856404;">
+                <h3 style="margin: 0 0 10px 0;">ℹ️ Important Information</h3>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Your data and settings are safe and will not be affected by suspension</li>
+                    <li>You can pay at any time, even outside of business hours</li>
+                    <li>Reactivation is automatic upon successful payment</li>
+                    <li>No additional fees will be added due to suspension</li>
+                    <li>Future billing will continue on your regular schedule after reactivation</li>
+                </ul>
+            </div>
+
+            <!-- Need Help -->
+            <div style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 15px; margin: 20px 0; color: #0c5460;">
+                <h3 style="margin: 0 0 10px 0;">🆘 Need Payment Arrangement?</h3>
+                <p style="margin: 0;">
+                    If you're facing difficulties with payment, our billing team can help. Please contact us immediately to discuss available options.
+                </p>
+                <p style="margin: 10px 0 0 0;">
+                    <strong>Contact:</strong> support@wasla.com
+                </p>
+            </div>
+
+            <!-- Quick Links -->
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                <a href="{{ payment_url }}" style="color: white; text-decoration: none; display: inline-block; background: #0066cc; padding: 12px 30px; border-radius: 4px; font-weight: 600; margin-right: 10px;">Pay Now</a>
+                <a href="{{ support_url }}" style="color: #0066cc; text-decoration: none; display: inline-block; padding: 12px 30px; border: 1px solid #0066cc; border-radius: 4px; font-weight: 600;">Contact Support</a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                This notice is urgent. Your store is currently inaccessible. Please pay your outstanding balance to restore service.
+            </p>
+            <div class="footer-links">
+                <a href="{{ billing_dashboard_url }}">Billing Dashboard</a>
+                <a href="{{ support_url }}">Support Team</a>
+                <a href="{{ faq_url }}">FAQ</a>
+            </div>
+            <p style="margin-top: 15px; font-size: 11px;">
+                This is an automated message, please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

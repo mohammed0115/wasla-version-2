@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Billing Dashboard - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .billing-dashboard {
+    padding: 2rem;
+  }
+  
+  .dashboard-header {
+    margin-bottom: 2rem;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .stat-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .stat-card h4 {
+    color: #666;
+    font-size: 0.875rem;
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+  }
+  
+  .stat-card .value {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .stat-card .subtext {
+    font-size: 0.875rem;
+    color: #999;
+    margin-top: 0.5rem;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  .status-active { background-color: #d4edda; color: #155724; }
+  .status-past-due { background-color: #fff3cd; color: #856404; }
+  .status-grace { background-color: #cfe2ff; color: #084298; }
+  .status-suspended { background-color: #f8d7da; color: #842029; }
+  .status-cancelled { background-color: #e2e3e5; color: #383d41; }
+  .status-paid { background-color: #d4edda; color: #155724; }
+  .status-overdue { background-color: #f8d7da; color: #842029; }
+  
+  .card-section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .card-header h3 {
+    margin: 0;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  td {
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem;
+  }
+  
+  tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0052a3;
+  }
+  
+  .btn-small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #666;
+  }
+  
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #ccc;
+  }
+  
+  .alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+  }
+  
+  .alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  .alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="billing-dashboard">
+  <div class="dashboard-header">
+    <h1>Billing Dashboard</h1>
+    <p>Manage your subscription and billing information</p>
+  </div>
+
+  {% if subscription %}
+    <!-- Status Alerts -->
+    {% if subscription.state == 'suspended' %}
+      <div class="alert alert-danger">
+        <strong>Your store is suspended!</strong> Payment is required to reactivate. 
+        <a href="{% url 'subscriptions:invoice-list' %}">Pay now</a>
+      </div>
+    {% elif subscription.state == 'grace' %}
+      <div class="alert alert-warning">
+        <strong>Grace period active.</strong> Your grace period expires on {{ subscription.grace_until|date:"M d, Y" }}. 
+        Please update your payment method to avoid suspension.
+      </div>
+    {% elif subscription.state == 'past_due' %}
+      <div class="alert alert-warning">
+        <strong>Payment overdue.</strong> Please submit payment immediately.
+      </div>
+    {% endif %}
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h4>Plan</h4>
+        <div class="value" style="font-size: 1.25rem;">{{ subscription.plan.name }}</div>
+        <div class="subtext">
+          {{ subscription.currency }} {{ subscription.plan.price }}/month
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <h4>Status</h4>
+        <div class="value">
+          <span class="status-badge status-{{ subscription.state }}">
+            {{ subscription.get_state_display }}
+          </span>
+        </div>
+        <div class="subtext">Active since {{ subscription.started_at|date:"M d, Y" }}</div>
+      </div>
+
+      <div class="stat-card">
+        <h4>Outstanding Balance</h4>
+        <div class="value">{{ subscription.currency }} {{ outstanding_balance|floatformat:2 }}</div>
+        <div class="subtext">
+          {% if outstanding_invoices %}
+            {{ outstanding_invoices|length }} overdue invoice(s)
+          {% else %}
+            No overdue invoices
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <h4>Next Billing</h4>
+        <div class="value" style="font-size: 1.25rem;">
+          {{ subscription.next_billing_date|date:"m/d/y" }}
+        </div>
+        <div class="subtext">
+          {% widthratio days_until_billing 1 1 %} day{{ days_until_billing|pluralize }} away
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="margin-bottom: 2rem;">
+      <a href="{% url 'subscriptions:subscription-detail' subscription.id %}" class="btn btn-primary">
+        Manage Subscription
+      </a>
+      <a href="{% url 'subscriptions:payment-method' %}" class="btn btn-primary" style="background-color: #666;">
+        Update Payment Method
+      </a>
+    </div>
+
+    <!-- Invoices Section -->
+    <div class="card-section">
+      <div class="card-header">
+        <h3>Recent Invoices</h3>
+        <a href="{% url 'subscriptions:invoice-list' %}" class="btn btn-primary btn-small">View All</a>
+      </div>
+      <div class="card-body">
+        {% if recent_invoices %}
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Period</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Due Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for invoice in recent_invoices %}
+                  <tr>
+                    <td>
+                      <a href="{% url 'subscriptions:invoice-detail' invoice.id %}">
+                        {{ invoice.number }}
+                      </a>
+                    </td>
+                    <td>
+                      {{ invoice.billing_cycle.period_start|date:"M d" }} — 
+                      {{ invoice.billing_cycle.period_end|date:"M d, Y" }}
+                    </td>
+                    <td>{{ subscription.currency }} {{ invoice.total|floatformat:2 }}</td>
+                    <td>
+                      <span class="status-badge status-{{ invoice.status }}">
+                        {{ invoice.get_status_display }}
+                      </span>
+                    </td>
+                    <td>{{ invoice.due_date|date:"M d, Y" }}</td>
+                    <td>
+                      <a href="{% url 'subscriptions:invoice-detail' invoice.id %}" class="btn btn-small" style="background-color: #0066cc; color: white; padding: 0.25rem 0.5rem; border-radius: 3px;">
+                        View
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-state-icon">📄</div>
+            <p>No invoices yet. Your first invoice will be created on {{ subscription.next_billing_date|date:"M d, Y" }}.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Billing Cycles Section -->
+    <div class="card-section">
+      <div class="card-header">
+        <h3>Billing History</h3>
+      </div>
+      <div class="card-body">
+        {% if billing_cycles %}
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Subtotal</th>
+                  <th>Tax</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cycle in billing_cycles %}
+                  <tr>
+                    <td>{{ cycle.period_start|date:"M d" }} — {{ cycle.period_end|date:"M d, Y" }}</td>
+                    <td>{{ subscription.currency }} {{ cycle.subtotal|floatformat:2 }}</td>
+                    <td>{{ subscription.currency }} {{ cycle.tax|floatformat:2 }}</td>
+                    <td><strong>{{ subscription.currency }} {{ cycle.total|floatformat:2 }}</strong></td>
+                    <td>
+                      <span class="status-badge" style="background-color: #e8f4f8; color: #0066cc;">
+                        {{ cycle.get_status_display }}
+                      </span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <p>No billing cycles yet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  {% else %}
+    <div class="card-section">
+      <div class="card-body empty-state">
+        <div class="empty-state-icon">🎯</div>
+        <h3>No active subscription</h3>
+        <p>Start your subscription to get access to Wasla's powerful commerce platform.</p>
+        <a href="{% url 'subscriptions:subscription-create' %}" class="btn btn-primary">
+          Create Subscription
+        </a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

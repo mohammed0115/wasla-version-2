@@ -11,6 +11,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
+from apps.security.audit import log_security_event
+from apps.security.models import SecurityAuditLog
 
 from .forms import (
     LoginForm,
@@ -61,10 +63,23 @@ def auth_page(request: HttpRequest) -> HttpResponse:
             if login_form.is_valid():
                 user = login_form.cleaned_data["user"]
                 login(request, user)
+                log_security_event(
+                    request=request,
+                    event_type=SecurityAuditLog.EVENT_LOGIN,
+                    outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+                    metadata={"scope": "merchant_auth"},
+                    user=user,
+                )
                 # If persona not completed, continue
                 if hasattr(user, "profile") and not user.profile.persona_completed:
                     return redirect("accounts:persona_welcome")
                 return redirect("tenants:dashboard_home")
+            log_security_event(
+                request=request,
+                event_type=SecurityAuditLog.EVENT_LOGIN,
+                outcome=SecurityAuditLog.OUTCOME_FAILURE,
+                metadata={"scope": "merchant_auth"},
+            )
             active_tab = "login"
 
         elif action == "register":
@@ -126,9 +141,22 @@ def verify_otp(request: HttpRequest) -> HttpResponse:
                 clear_otp(request)
 
                 login(request, user)
+                log_security_event(
+                    request=request,
+                    event_type=SecurityAuditLog.EVENT_OTP,
+                    outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+                    metadata={"scope": "merchant_auth"},
+                    user=user,
+                )
                 return redirect(resolve_onboarding_state(request))
 
             form.add_error(None, "رمز غير صحيح أو منتهي الصلاحية.")
+            log_security_event(
+                request=request,
+                event_type=SecurityAuditLog.EVENT_OTP,
+                outcome=SecurityAuditLog.OUTCOME_FAILURE,
+                metadata={"scope": "merchant_auth"},
+            )
         else:
             form.add_error(None, "أدخل رمز التحقق بشكل صحيح.")
 
@@ -147,6 +175,12 @@ def resend_otp(request: HttpRequest) -> HttpResponse:
         return redirect("accounts:auth")
     otp = store_otp(request, email=email, user_id=pending_user_id)
     send_otp_email(to_email=email, code=otp.code)
+    log_security_event(
+        request=request,
+        event_type=SecurityAuditLog.EVENT_OTP,
+        outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+        metadata={"scope": "merchant_auth", "action": "resend"},
+    )
     messages.success(request, "تم إرسال رمز جديد.")
     return redirect("accounts:verify_otp")
 

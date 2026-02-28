@@ -4,12 +4,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from apps.observability.views.health import healthz, readyz
+from apps.observability.views.metrics import metrics
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("healthz", healthz, name="healthz"),
+    path("readyz", readyz, name="readyz"),
+    path("metrics", metrics, name="metrics"),
     
     # Wasla Admin Portal
     path("admin-portal/", include(("apps.admin_portal.urls", "admin_portal"), namespace="admin_portal")),
+    
+    # Billing Customer Portal
+    path("billing/", include(("apps.subscriptions.urls_web", "subscriptions_web"), namespace="subscriptions_web")),
     
     # Settlement Admin Monitoring
     path("admin/settlements/", include(("apps.settlements.interfaces.admin_urls", "settlements_admin"), namespace="settlements_admin")),
@@ -58,6 +66,7 @@ urlpatterns = [
     path("api/", include(("apps.themes.interfaces.api.urls", "themes_api"), namespace="themes_api")),
     path("api/", include(("apps.wallet.urls", "wallet_api"), namespace="wallet_api")),
     path("api/", include(("apps.domains.interfaces.api_urls", "domains_api"), namespace="domains_api")),
+    path("api/", include(("apps.subscriptions.urls_billing", "subscriptions_billing"), namespace="subscriptions_billing")),
 ]
 
 if getattr(settings, "WASLA_ENABLE_AR", False):

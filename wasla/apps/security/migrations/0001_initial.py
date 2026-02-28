@@ -1,0 +1,71 @@
+from django.conf import settings
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="SecurityAuditLog",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "event_type",
+                    models.CharField(
+                        choices=[
+                            ("login", "Login"),
+                            ("otp", "OTP"),
+                            ("payment", "Payment"),
+                            ("admin_2fa", "Admin2FA"),
+                            ("rate_limit", "RateLimit"),
+                        ],
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "outcome",
+                    models.CharField(
+                        choices=[("success", "Success"), ("failure", "Failure"), ("blocked", "Blocked")],
+                        max_length=20,
+                    ),
+                ),
+                ("path", models.CharField(blank=True, default="", max_length=255)),
+                ("method", models.CharField(blank=True, default="", max_length=12)),
+                ("ip_address", models.CharField(blank=True, default="", max_length=64)),
+                ("metadata", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="security_audit_logs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+            options={
+                "ordering": ["-created_at"],
+            },
+        ),
+        migrations.AddIndex(
+            model_name="securityauditlog",
+            index=models.Index(fields=["event_type", "created_at"], name="security_sec_event_t_83a64e_idx"),
+        ),
+        migrations.AddIndex(
+            model_name="securityauditlog",
+            index=models.Index(fields=["outcome", "created_at"], name="security_sec_outcome_0c8df1_idx"),
+        ),
+        migrations.AddIndex(
+            model_name="securityauditlog",
+            index=models.Index(fields=["user", "created_at"], name="security_sec_user_id_5a8ead_idx"),
+        ),
+    ]

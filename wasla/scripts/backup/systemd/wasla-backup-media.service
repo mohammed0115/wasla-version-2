@@ -1,0 +1,11 @@
+[Unit]
+Description=Wassla media backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+EnvironmentFile=/etc/wasla/backup.env
+ExecStart=/var/www/wasla/wasla/scripts/backup/media_backup.sh

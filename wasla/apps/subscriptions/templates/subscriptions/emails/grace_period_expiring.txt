@@ -1,0 +1,45 @@
+{% autoescape off %}
+Dear {{ merchant_name }},
+
+We need your attention regarding invoice #{{ invoice_number }}.
+
+URGENT: GRACE PERIOD EXPIRING SOON
+===================================
+Invoice Number: {{ invoice_number }}
+Amount Due: {{ currency }} {{ amount_due }}
+Grace Period Ends: {{ grace_until_date }}
+Days Remaining: {{ days_remaining }}
+
+WHAT HAPPENS NEXT?
+==================
+Once your grace period expires in {{ days_remaining }} day{{ days_remaining|pluralize }}, your store will be automatically suspended. This means:
+- Your online store will be taken offline
+- Customers cannot place orders
+- All integrations will be paused
+
+ACTION REQUIRED
+===============
+Please submit payment immediately to avoid suspension:
+{{ currency }} {{ amount_due }}
+
+PAYMENT OPTIONS
+================
+1. Pay Online: {{ payment_url }}
+2. Invoice Details: {{ dashboard_url }}/invoices/{{ invoice_id }}/
+3. Update Payment Method: {{ dashboard_url }}/payment-methods/
+
+If payment has already been submitted, this may be a duplicate notice. Please check your Wasla dashboard to confirm payment status.
+
+STILL HAVING ISSUES?
+====================
+Our support team is ready to help:
+Email: support@wasla.sa
+Phone: +966-50-XXX-XXXX
+
+IMPORTANT
+=========
+Automatic suspension will occur on {{ grace_until_date }} at 00:00 (Makkah Time).
+
+Best regards,
+Wasla Billing Team
+{% endautoescape %}

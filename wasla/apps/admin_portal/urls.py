@@ -1,5 +1,15 @@
 from django.urls import path
 from . import views
+from apps.plugins.views.web import (
+    plugins_dashboard_view,
+    plugin_registry_list_view,
+    plugin_registry_create_view,
+    plugin_registry_detail_view,
+    plugin_scopes_view,
+    plugin_subscriptions_view,
+    plugin_event_deliveries_view,
+    installed_plugins_view,
+)
 
 app_name = 'admin_portal'
 
@@ -29,4 +39,14 @@ urlpatterns = [
 
     path('webhooks/', views.webhooks_view, name='webhooks'),
     path('performance/', views.performance_monitoring_view, name='performance_monitoring'),
+
+    # Plugin Management Routes
+    path('plugins/', plugins_dashboard_view, name='plugins_dashboard'),
+    path('plugins/registry/', plugin_registry_list_view, name='plugin_registry_list'),
+    path('plugins/registry/create/', plugin_registry_create_view, name='plugin_registry_create'),
+    path('plugins/registry/<int:registration_id>/', plugin_registry_detail_view, name='plugin_registry_detail'),
+    path('plugins/registry/<int:registration_id>/scopes/', plugin_scopes_view, name='plugin_scopes'),
+    path('plugins/subscriptions/', plugin_subscriptions_view, name='plugin_subscriptions'),
+    path('plugins/deliveries/', plugin_event_deliveries_view, name='plugin_event_deliveries'),
+    path('plugins/installed/', installed_plugins_view, name='installed_plugins'),
 ]

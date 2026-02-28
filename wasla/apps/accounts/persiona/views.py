@@ -59,14 +59,14 @@ def ensure_default_subscription_plans() -> list[SubscriptionPlan]:
             "name": "Plus",
             "price": 99,
             "billing_cycle": "monthly",
-            "features": ["custom_domain"],
+            "features": ["custom_domain", "tap", "stripe"],
             "is_active": True,
         },
         {
             "name": "Pro",
             "price": 299,
             "billing_cycle": "monthly",
-            "features": ["custom_domain", "ai_tools", "ai_visual_search"],
+            "features": ["custom_domain", "ai_tools", "ai_visual_search", "tap", "stripe", "stc_pay"],
             "is_active": True,
         },
     ]

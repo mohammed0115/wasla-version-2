@@ -6,7 +6,7 @@ from django.conf import settings
 def build_security_headers() -> dict[str, str]:
     headers = {
         "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "SAMEORIGIN",
+        "X-Frame-Options": "DENY",
         "Referrer-Policy": "same-origin",
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     }
@@ -17,7 +17,12 @@ def build_security_headers() -> dict[str, str]:
 
     hsts_seconds = int(getattr(settings, "SECURE_HSTS_SECONDS", 0) or 0)
     if hsts_seconds > 0 and bool(getattr(settings, "SECURE_SSL_REDIRECT", False)):
-        headers["Strict-Transport-Security"] = f"max-age={hsts_seconds}; includeSubDomains"
+        hsts_parts = [f"max-age={hsts_seconds}"]
+        if bool(getattr(settings, "SECURE_HSTS_INCLUDE_SUBDOMAINS", False)):
+            hsts_parts.append("includeSubDomains")
+        if bool(getattr(settings, "SECURE_HSTS_PRELOAD", False)):
+            hsts_parts.append("preload")
+        headers["Strict-Transport-Security"] = "; ".join(hsts_parts)
 
     return headers
 

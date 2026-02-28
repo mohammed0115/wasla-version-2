@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Change Plan - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .plan-change-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .page-header {
+    margin-bottom: 2rem;
+  }
+  
+  .page-header h1 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .page-header p {
+    margin: 0;
+    color: #666;
+  }
+  
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  
+  .alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+  }
+  
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+  }
+  
+  .alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  .current-plan-banner {
+    background: #e7f5ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .current-plan-banner h3 {
+    margin: 0 0 0.5rem 0;
+    color: #004085;
+  }
+  
+  .current-plan-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .plan-info-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+  }
+  
+  .plan-info-label {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+  }
+  
+  .plan-info-value {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+    margin-top: 0.25rem;
+  }
+  
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+  }
+  
+  .plan-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  
+  .plan-card:hover {
+    border-color: #0066cc;
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+  }
+  
+  .plan-card.current {
+    border-color: #0066cc;
+    background: #f8f9ff;
+  }
+  
+  .plan-header {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .plan-header h3 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .plan-price {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0066cc;
+  }
+  
+  .plan-price-subtext {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+  
+  .plan-body {
+    padding: 1.5rem;
+  }
+  
+  .plan-features {
+    list-style: none;
+    margin: 0 0 1.5rem 0;
+    padding: 0;
+  }
+  
+  .plan-features li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: #333;
+  }
+  
+  .plan-features li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #28a745;
+    font-weight: bold;
+  }
+  
+  .plan-footer {
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .btn-primary {
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0052a3;
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-current {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: default;
+  }
+  
+  .btn-current:hover {
+    background-color: #e9ecef;
+  }
+  
+  .proration-notice {
+    background: #e7f5ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    color: #004085;
+    font-size: 0.875rem;
+  }
+  
+  .proration-details {
+    margin-top: 1rem;
+  }
+  
+  .proration-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .proration-row:last-child {
+    border-bottom: none;
+  }
+  
+  .proration-label {
+    font-weight: 500;
+  }
+  
+  .proration-amount {
+    text-align: right;
+  }
+  
+  .proration-amount.credit {
+    color: #28a745;
+  }
+  
+  .proration-amount.charge {
+    color: #dc3545;
+  }
+  
+  .plan-comparison {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: auto;
+    margin: 2rem 0;
+  }
+  
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .comparison-table th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  
+  .comparison-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .comparison-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .comparison-feature {
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .comparison-value {
+    text-align: center;
+    color: #666;
+  }
+  
+  .comparison-value.included {
+    color: #28a745;
+    font-weight: bold;
+  }
+  
+  .downgrade-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    color: #856404;
+    font-size: 0.875rem;
+  }
+  
+  .downgrade-warning strong {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal.active {
+    display: flex;
+  }
+  
+  .modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .modal-header h2 {
+    margin: 0;
+  }
+  
+  .modal-body {
+    margin-bottom: 1.5rem;
+  }
+  
+  .modal-footer {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .modal-footer .btn {
+    flex: 1;
+  }
+  
+  .btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+    float: right;
+  }
+  
+  .btn-close:hover {
+    color: #333;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="plan-change-page">
+  <a href="{% url 'subscriptions:subscription-detail' subscription.id %}" class="back-link">← Back to Subscription</a>
+
+  <div class="page-header">
+    <h1>Change Your Plan</h1>
+    <p>Upgrade or downgrade your subscription plan</p>
+  </div>
+
+  <!-- Current Plan Banner -->
+  <div class="current-plan-banner">
+    <h3>Current Plan</h3>
+    <div class="current-plan-info">
+      <div class="plan-info-item">
+        <div class="plan-info-label">Plan</div>
+        <div class="plan-info-value">{{ subscription.plan.name }}</div>
+      </div>
+      <div class="plan-info-item">
+        <div class="plan-info-label">Price</div>
+        <div class="plan-info-value">{{ subscription.plan.currency }}{{ subscription.plan.price }}</div>
+      </div>
+      <div class="plan-info-item">
+        <div class="plan-info-label">Billing Cycle</div>
+        <div class="plan-info-value">{{ subscription.plan.get_billing_period_display }}</div>
+      </div>
+      <div class="plan-info-item">
+        <div class="plan-info-label">Next Billing</div>
+        <div class="plan-info-value">{{ subscription.next_billing_date|date:"M d, Y" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Available Plans -->
+  <h2>Available Plans</h2>
+  <div class="plans-grid">
+    {% for plan in available_plans %}
+      <div class="plan-card {% if plan.id == subscription.plan.id %}current{% endif %}">
+        <div class="plan-header">
+          <h3>{{ plan.name }}</h3>
+          {% if plan.id == subscription.plan.id %}
+            <div style="color: #0066cc; font-size: 0.875rem; font-weight: 600;">Current Plan</div>
+          {% endif %}
+          <div class="plan-price">
+            {{ plan.currency }}{{ plan.price }}
+            <div class="plan-price-subtext">per {{ plan.get_billing_period_display }}</div>
+          </div>
+        </div>
+
+        <div class="plan-body">
+          <ul class="plan-features">
+            {% for feature in plan.features %}
+              <li>{{ feature }}</li>
+            {% endfor %}
+          </ul>
+
+          <!-- Proration Notice -->
+          {% if plan.id != subscription.plan.id %}
+            <div class="proration-notice">
+              <strong>Proration Calculation</strong>
+              <div class="proration-details">
+                {% if plan.price > subscription.plan.price %}
+                  <div class="proration-row">
+                    <span class="proration-label">You'll be charged:</span>
+                    <span class="proration-amount charge">{{ plan.currency }}{{ proration_amount }}{{ plan.get_billing_period_display }}</span>
+                  </div>
+                  <div class="proration-row" style="font-size: 0.75rem; color: #666;">
+                    Difference applied to your next billing date
+                  </div>
+                {% else %}
+                  <div class="proration-row">
+                    <span class="proration-label">You'll receive credit:</span>
+                    <span class="proration-amount credit">{{ plan.currency }}{{ proration_amount }}</span>
+                  </div>
+                  <div class="proration-row" style="font-size: 0.75rem; color: #666;">
+                    Applied to your next billing date
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Downgrade Warning -->
+          {% if plan.price < subscription.plan.price %}
+            <div class="downgrade-warning">
+              <strong>ℹ️ Downgrade Notice</strong>
+              You're downgrading from {{ subscription.plan.name }} to {{ plan.name }}. Some features may no longer be available.
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="plan-footer">
+          {% if plan.id == subscription.plan.id %}
+            <button class="btn btn-current" disabled>Current Plan</button>
+          {% else %}
+            <button 
+              class="btn btn-primary" 
+              onclick="confirmPlanChange('{{ plan.id }}', '{{ plan.name }}', '{{ plan.price }}', '{{ plan.currency }}')"
+            >
+              {% if plan.price > subscription.plan.price %}
+                Upgrade Plan
+              {% elif plan.price < subscription.plan.price %}
+                Downgrade Plan
+              {% else %}
+                Change Plan
+              {% endif %}
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Plan Comparison Table -->
+  <h2 style="margin-top: 3rem;">Plan Comparison</h2>
+  <div class="plan-comparison">
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          {% for plan in available_plans %}
+            <th style="{% if plan.id == subscription.plan.id %}background: #f0f7ff;{% endif %}">
+              {{ plan.name }}
+              {% if plan.id == subscription.plan.id %}
+                <div style="font-size: 0.75rem; color: #666;">Current</div>
+              {% endif %}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for feature in comparison_features %}
+          <tr>
+            <td class="comparison-feature">{{ feature.name }}</td>
+            {% for plan in available_plans %}
+              <td class="comparison-value {% if feature.plans|dict_lookup:plan.id %}included{% endif %}">
+                {% if feature.plans|dict_lookup:plan.id %}
+                  ✓
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FAQ Section -->
+  <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 2rem; margin-top: 3rem;">
+    <h2>Frequently Asked Questions</h2>
+    
+    <div style="margin-top: 1.5rem;">
+      <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">When does my plan change take effect?</h4>
+      <p style="margin: 0; color: #666;">Your plan change takes effect immediately. You'll have access to new features right away.</p>
+    </div>
+    
+    <div>
+      <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">How does proration work?</h4>
+      <p style="margin: 0; color: #666;">If you upgrade mid-cycle, we calculate the difference between plans and apply it to your next billing date. If you downgrade, you receive a credit.</p>
+    </div>
+    
+    <div>
+      <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Can I change my plan back?</h4>
+      <p style="margin: 0; color: #666;">Yes, you can change your plan at any time. Each change is calculated with proration.</p>
+    </div>
+    
+    <div>
+      <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">What happens to my data if I downgrade?</h4>
+      <p style="margin: 0; color: #666;">Your data remains safe. However, some features may be restricted based on your new plan. Contact support if you need help.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button class="btn-close" onclick="closeModal()">&times;</button>
+      <h2 style="margin: 0;">Confirm Plan Change</h2>
+    </div>
+    <div class="modal-body">
+      <p>You're about to change from <strong>{{ subscription.plan.name }}</strong> to <strong id="newPlanName"></strong>.</p>
+      
+      <div style="background: #f8f9fa; border-radius: 4px; padding: 1rem; margin: 1rem 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>Current Price:</span>
+          <strong>{{ subscription.plan.currency }}{{ subscription.plan.price }}/{{ subscription.plan.get_billing_period_display }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>New Price:</span>
+          <strong id="newPlanPrice"></strong>
+        </div>
+        <div style="border-top: 1px solid #ddd; padding-top: 0.5rem; display: flex; justify-content: space-between;">
+          <span>Adjustment on Next Billing:</span>
+          <strong id="proratedAmount"></strong>
+        </div>
+      </div>
+
+      <p style="color: #666; font-size: 0.875rem;">
+        The change will take effect immediately. Your payment method on file will be used for any charges.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <form id="changeForm" method="post" style="flex: 1;">
+        {% csrf_token %}
+        <input type="hidden" name="new_plan_id" id="newPlanId">
+        <button type="submit" class="btn btn-primary">Confirm Change</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmPlanChange(planId, planName, price, currency) {
+  document.getElementById('newPlanName').textContent = planName;
+  document.getElementById('newPlanPrice').textContent = currency + price + '/{{ subscription.plan.get_billing_period_display }}';
+  document.getElementById('newPlanId').value = planId;
+  
+  // TODO: Calculate proration amount
+  document.getElementById('proratedAmount').textContent = currency + '0.00';
+  
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('confirmModal').classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeModal();
+  }
+});
+</script>
+{% endblock %}

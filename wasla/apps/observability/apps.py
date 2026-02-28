@@ -7,3 +7,6 @@ class ObservabilityConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from .sentry import init_sentry
+
+        init_sentry()

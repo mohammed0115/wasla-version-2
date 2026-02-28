@@ -1,0 +1,126 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Register Plugin - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-plus-circle"></i> Register New Plugin</h1>
+    <a href="{% url 'admin_portal:plugin_registry_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="plugin_id" class="form-label">Plugin <span class="text-danger">*</span></label>
+                        <select class="form-select" id="plugin_id" name="plugin_id" required>
+                            <option value="">-- Select Plugin --</option>
+                            {% for plugin in available_plugins %}
+                            <option value="{{ plugin.id }}">
+                                {{ plugin.name }} ({{ plugin.key }})
+                                {% if plugin.description %} - {{ plugin.description|truncatewords:5 }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">
+                            Select the plugin to register. Only unregistered plugins appear here.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="plugin_key" class="form-label">Plugin Key <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="plugin_key" name="plugin_key" 
+                               placeholder="e.g., payment_gateway, inventory_sync" required>
+                        <small class="form-text text-muted">
+                            Unique identifier for the plugin. Used in registrations and configurations.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="entrypoint" class="form-label">Entrypoint <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="entrypoint" name="entrypoint" 
+                               value="apps.plugins.builtins" placeholder="e.g., apps.plugins.custom">
+                        <small class="form-text text-muted">
+                            Python module path where the plugin is defined.
+                        </small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="min_core_version" class="form-label">Min Core Version</label>
+                            <input type="text" class="form-control" id="min_core_version" name="min_core_version" 
+                                   value="1.0.0" placeholder="e.g., 1.0.0">
+                            <small class="form-text text-muted">
+                                Minimum Wasla core version required.
+                            </small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="max_core_version" class="form-label">Max Core Version</label>
+                            <input type="text" class="form-control" id="max_core_version" name="max_core_version" 
+                                   placeholder="e.g., 2.0.0 (leave empty for no limit)">
+                            <small class="form-text text-muted">
+                                Maximum Wasla core version supported (optional).
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="isolation_mode" class="form-label">Isolation Mode</label>
+                        <select class="form-select" id="isolation_mode" name="isolation_mode">
+                            <option value="STANDARD">Standard (Default)</option>
+                            <option value="ISOLATED">Isolated (Sandboxed)</option>
+                            <option value="PRIVILEGED">Privileged (Full Access)</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            <strong>Standard:</strong> Normal plugin with scope-based access<br>
+                            <strong>Isolated:</strong> Sandboxed, no direct system access<br>
+                            <strong>Privileged:</strong> Full platform access (requires verification)
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> After registration, you must verify the plugin before it can be enabled.
+                        You will also need to configure permission scopes for the specific resources it can access.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Register Plugin
+                        </button>
+                        <a href="{% url 'admin_portal:plugin_registry_list' %}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if not available_plugins %}
+        <div class="alert alert-warning mt-3">
+            <i class="bi bi-exclamation-triangle"></i>
+            All plugins are already registered. <a href="{% url 'admin_portal:plugin_registry_list' %}">View registrations</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Auto-populate plugin_key from selected plugin name
+document.getElementById('plugin_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const text = selectedOption.text;
+    const key = text.match(/\(([^)]+)\)/)?.[1];
+    if (key) {
+        document.getElementById('plugin_key').value = key;
+    }
+});
+</script>
+{% endblock %}

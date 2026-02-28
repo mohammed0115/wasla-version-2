@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Billing Admin Dashboard - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .admin-dashboard {
+    padding: 2rem;
+  }
+  
+  .page-title {
+    margin-bottom: 2rem;
+  }
+  
+  .page-title h1 {
+    margin: 0;
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .metric-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  .metric-label {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0066cc;
+  }
+  
+  .metric-subtext {
+    font-size: 0.875rem;
+    color: #999;
+    margin-top: 0.5rem;
+  }
+  
+  .metric-card.danger .metric-value {
+    color: #dc3545;
+  }
+  
+  .metric-card.warning .metric-value {
+    color: #ffc107;
+  }
+  
+  .metric-card.success .metric-value {
+    color: #28a745;
+  }
+  
+  .section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .section-header {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .section-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  
+  .section-body {
+    padding: 1.5rem;
+  }
+  
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .table th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e0e0e0;
+    font-size: 0.875rem;
+    color: #666;
+  }
+  
+  .table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .table tr:hover {
+    background: #f8f9fa;
+  }
+  
+  .link {
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .link:hover {
+    text-decoration: underline;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .badge-success {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  .badge-warning {
+    background: #fff3cd;
+    color: #856404;
+  }
+  
+  .badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #999;
+  }
+  
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+  
+  .empty-state-text {
+    color: #999;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+  <div class="page-title">
+    <h1>Billing Analytics</h1>
+    <p>Dashboard for monitoring billing health and metrics</p>
+  </div>
+
+  <!-- Key Metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card success">
+      <div class="metric-label">Monthly Recurring Revenue</div>
+      <div class="metric-value">${{ total_mrr|floatformat:0 }}</div>
+      <div class="metric-subtext">Across all active subscriptions</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Active Subscriptions</div>
+      <div class="metric-value">{{ active_count }}</div>
+      <div class="metric-subtext">Currently billing customers</div>
+    </div>
+
+    <div class="metric-card warning">
+      <div class="metric-label">Overdue Subscriptions</div>
+      <div class="metric-value">{{ overdue_count }}</div>
+      <div class="metric-subtext">Require payment attention</div>
+    </div>
+
+    <div class="metric-card danger">
+      <div class="metric-label">Suspended Subscriptions</div>
+      <div class="metric-value">{{ suspended_count }}</div>
+      <div class="metric-subtext">Due to non-payment</div>
+    </div>
+  </div>
+
+  <!-- Recent Invoices -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Recent Invoices</h2>
+    </div>
+    <div class="section-body">
+      {% if recent_invoices %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Invoice Number</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Due Date</th>
+              <th>Days Overdue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in recent_invoices %}
+              <tr>
+                <td>
+                  <a href="{% url 'subscriptions:invoice-detail' invoice.id %}" class="link">
+                    {{ invoice.invoice_number }}
+                  </a>
+                </td>
+                <td>{{ invoice.billing_cycle.subscription.user.email }}</td>
+                <td>
+                  <strong>{{ invoice.currency }}{{ invoice.total_amount }}</strong>
+                </td>
+                <td>
+                  {% if invoice.status == 'issued' %}
+                    <span class="badge badge-info">Issued</span>
+                  {% elif invoice.status == 'overdue' %}
+                    <span class="badge badge-danger">Overdue</span>
+                  {% elif invoice.status == 'paid' %}
+                    <span class="badge badge-success">Paid</span>
+                  {% elif invoice.status == 'partial' %}
+                    <span class="badge badge-warning">Partial</span>
+                  {% endif %}
+                </td>
+                <td>{{ invoice.due_date|date:"M d, Y" }}</td>
+                <td>
+                  {% if invoice.days_overdue > 0 %}
+                    <span style="color: #dc3545; font-weight: bold;">{{ invoice.days_overdue }} days</span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">No Invoices</div>
+          <div class="empty-state-text">No invoices have been created yet</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Payments -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Recent Payments</h2>
+    </div>
+    <div class="section-body">
+      {% if recent_payments %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Transaction ID</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Provider</th>
+              <th>Processed Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in recent_payments %}
+              <tr>
+                <td>
+                  <a href="#" class="link">{{ payment.transaction_id|truncatechars:12 }}</a>
+                </td>
+                <td>{{ payment.subscription.user.email }}</td>
+                <td><strong>{{ payment.amount_paid }}</strong></td>
+                <td>
+                  <span class="badge badge-info">{{ payment.get_provider_display }}</span>
+                </td>
+                <td>{{ payment.processed_at|date:"M d, Y H:i" }}</td>
+                <td>
+                  <span class="badge badge-success">{{ payment.get_status_display }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">💳</div>
+          <div class="empty-state-title">No Payments</div>
+          <div class="empty-state-text">No payments have been processed yet</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Subscription Overview -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Subscription Overview</h2>
+    </div>
+    <div class="section-body">
+      {% if subscriptions %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th>Price (Monthly)</th>
+              <th>Next Billing</th>
+              <th>Outstanding</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sub in subscriptions %}
+              <tr>
+                <td>
+                  <a href="#" class="link">{{ sub.user.email }}</a>
+                </td>
+                <td>{{ sub.plan.name }}</td>
+                <td>
+                  {% if sub.status == 'active' %}
+                    <span class="badge badge-success">Active</span>
+                  {% elif sub.status == 'past_due' %}
+                    <span class="badge badge-warning">Past Due</span>
+                  {% elif sub.status == 'grace' %}
+                    <span class="badge badge-warning">Grace</span>
+                  {% elif sub.status == 'suspended' %}
+                    <span class="badge badge-danger">Suspended</span>
+                  {% elif sub.status == 'cancelled' %}
+                    <span class="badge">Cancelled</span>
+                  {% endif %}
+                </td>
+                <td>{{ sub.plan.currency }}{{ sub.plan.price }}</td>
+                <td>{{ sub.next_billing_date|date:"M d, Y" }}</td>
+                <td>
+                  {% with outstanding=sub.outstanding_balance %}
+                    {% if outstanding > 0 %}
+                      <span style="color: #dc3545; font-weight: bold;">
+                        {{ sub.plan.currency }}{{ outstanding }}
+                      </span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  {% endwith %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <div class="empty-state-title">No Subscriptions</div>
+          <div class="empty-state-text">No subscriptions have been created yet</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

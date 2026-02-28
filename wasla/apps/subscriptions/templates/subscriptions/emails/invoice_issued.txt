@@ -1,0 +1,46 @@
+{% autoescape off %}
+Dear {{ merchant_name }},
+
+We're pleased to inform you that your invoice #{{ invoice_number }} has been issued.
+
+INVOICE DETAILS
+===============
+Invoice Number: {{ invoice_number }}
+Invoice Date: {{ invoice_date }}
+Due Date: {{ due_date }}
+Status: {{ invoice_status }}
+
+BILLING PERIOD
+===============
+From: {{ period_start }}
+To: {{ period_end }}
+
+AMOUNT BREAKDOWN
+================
+Subtotal: {{ currency }} {{ subtotal }}
+Tax (15% VAT): {{ currency }} {{ tax }}
+Discount: {{ currency }} {{ discount }}
+Total: {{ currency }} {{ total }}
+
+{% if items %}
+INVOICE ITEMS
+=============
+{% for item in items %}{{ item.name }} - {{ currency }} {{ item.amount }}
+{% endfor %}
+{% endif %}
+
+SUBSCRIPTION PLAN: {{ plan_name }}
+BILLING CYCLE: Monthly on the {{ billing_day }}
+
+You can view and manage your invoice in your Wasla dashboard:
+{{ dashboard_url }}/invoices/{{ invoice_id }}/
+
+If you have any questions about this invoice, please contact our support team:
+Email: support@wasla.sa
+Phone: +966-50-XXX-XXXX
+
+Thank you for using Wasla!
+
+Best regards,
+Wasla Billing Team
+{% endautoescape %}

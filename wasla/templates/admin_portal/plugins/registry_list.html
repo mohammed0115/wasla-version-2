@@ -1,0 +1,108 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Plugin Registry - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-check"></i> Plugin Registry</h1>
+    <a href="{% url 'admin_portal:plugin_registry_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Register Plugin
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       placeholder="Plugin name, key, or entrypoint..." value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <label for="verified" class="form-label">Verification Status</label>
+                <select class="form-select" id="verified" name="verified">
+                    <option value="">All Statuses</option>
+                    <option value="yes" {% if verified_filter == 'yes' %}selected{% endif %}>Verified</option>
+                    <option value="no" {% if verified_filter == 'no' %}selected{% endif %}>Unverified</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if registrations %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Plugin Name</th>
+                <th>Key</th>
+                <th>Entrypoint</th>
+                <th>Status</th>
+                <th>Core Version</th>
+                <th>Scopes</th>
+                <th>Subscriptions</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reg in registrations %}
+            <tr>
+                <td>
+                    <strong>{{ reg.plugin.name }}</strong>
+                    {% if reg.plugin.description %}
+                        <br><small class="text-muted">{{ reg.plugin.description|truncatewords:10 }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <code class="bg-light px-2 py-1">{{ reg.plugin_key }}</code>
+                </td>
+                <td>
+                    <small class="text-muted">{{ reg.entrypoint }}</small>
+                </td>
+                <td>
+                    {% if reg.verified %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i> Verified
+                        </span>
+                    {% else %}
+                        <span class="badge bg-warning">
+                            <i class="bi bi-exclamation-circle"></i> Unverified
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small class="text-muted">
+                        {% if reg.min_core_version %}{{ reg.min_core_version }}{% else %}-{% endif %}
+                        {% if reg.max_core_version %}to {{ reg.max_core_version }}{% endif %}
+                    </small>
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark">{{ reg.scope_count }} scopes</span>
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark">{{ reg.subscription_count }} subs</span>
+                </td>
+                <td>
+                    <a href="{% url 'admin_portal:plugin_registry_detail' registration_id=reg.id %}" 
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Manage
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No registrations found. 
+    <a href="{% url 'admin_portal:plugin_registry_create' %}">Register your first plugin</a>.
+</div>
+{% endif %}
+{% endblock %}
