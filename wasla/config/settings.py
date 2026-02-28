@@ -238,7 +238,12 @@ MIDDLEWARE = [
     "apps.security.middleware.rate_limit.RateLimitMiddleware",
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "apps.tenants.middleware.TenantResolverMiddleware",
+    # ========== TENANT ISOLATION (runs early, before auth) ==========
+    "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
+    "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
+    "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements
+    "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access
+    # ================================================================
     "apps.security.middleware.headers.SecurityHeadersMiddleware",
     "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",

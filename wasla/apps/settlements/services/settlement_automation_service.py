@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
+import hashlib
 
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Sum, Count, Q
@@ -190,13 +191,15 @@ class SettlementAutomationService:
         if not order_ids:
             return {"success": False, "reason": "No order IDs provided"}
         
-        # Generate idempotency key (hash of order IDs)
+        # Generate deterministic idempotency key using SHA256 (not Python hash())
         sorted_ids = sorted(order_ids)
+        ids_str = ",".join(str(id_) for id_ in sorted_ids)
+        deterministic_hash = hashlib.sha256(ids_str.encode()).hexdigest()
         batch_ref = f"BATCH-{store_id}-{timezone.now().strftime('%Y%m%d')}-{batch_num:03d}"
-        idempotency_key = f"{batch_ref}-{hash(tuple(sorted_ids))}"
+        idempotency_key = f"{batch_ref}-{deterministic_hash}"
         
-        # Check if batch already exists (idempotency)
-        existing_batch = SettlementBatch.objects.filter(
+        # Check if batch already exists (idempotency) - with select_for_update
+        existing_batch = SettlementBatch.objects.select_for_update().filter(
             idempotency_key=idempotency_key
         ).first()
         
@@ -213,8 +216,10 @@ class SettlementAutomationService:
                 "idempotent_reuse": True,
             }
         
-        # Fetch orders and calculate totals
-        orders = Order.objects.filter(id__in=order_ids).select_related("store")
+        # Fetch orders with select_for_update to prevent double-settlement
+        orders = Order.objects.select_for_update().filter(
+            id__in=order_ids
+        ).select_related("store")
         
         if not orders.exists():
             return {"success": False, "reason": "No orders found"}
