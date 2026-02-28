@@ -1,0 +1,103 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Installed Plugins - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-check-circle"></i> Installed Plugins</h1>
+    <a href="{% url 'admin_portal:plugins_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <label for="store" class="form-label">Store</label>
+                <select class="form-select" id="store" name="store">
+                    <option value="">All Stores</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}" {% if selected_store|stringformat:"s" == store.id|stringformat:"s" %}selected{% endif %}>
+                        {{ store.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="enabled" class="form-label">Status</label>
+                <select class="form-select" id="enabled" name="enabled">
+                    <option value="">All Statuses</option>
+                    <option value="yes" {% if enabled_filter == 'yes' %}selected{% endif %}>Enabled</option>
+                    <option value="no" {% if enabled_filter == 'no' %}selected{% endif %}>Disabled</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if installed %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Plugin</th>
+                <th>Store</th>
+                <th>Version</th>
+                <th>Status</th>
+                <th>Installed</th>
+                <th>Enabled Since</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for install in installed %}
+            <tr>
+                <td>
+                    <strong>{{ install.plugin.name }}</strong>
+                    {% if install.plugin.description %}
+                    <br><small class="text-muted">{{ install.plugin.description|truncatewords:5 }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <small>{{ install.store.name }}</small>
+                </td>
+                <td>
+                    <code class="bg-light px-2 py-1">{{ install.version }}</code>
+                </td>
+                <td>
+                    {% if install.is_enabled %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i> Enabled
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-dash-circle"></i> Disabled
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small class="text-muted">{{ install.created_at|date:"M d, Y" }}</small>
+                </td>
+                <td>
+                    {% if install.enabled_at %}
+                        <small class="text-muted">{{ install.enabled_at|date:"M d, Y" }}</small>
+                    {% else %}
+                        <em class="text-muted">-</em>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No installed plugins found.
+</div>
+{% endif %}
+{% endblock %}

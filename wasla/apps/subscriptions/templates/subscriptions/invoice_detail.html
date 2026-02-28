@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Invoice {{ invoice.number }} - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .invoice-detail {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .invoice-header {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .invoice-title h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.875rem;
+  }
+  
+  .invoice-title .invoice-number {
+    color: #0066cc;
+    font-weight: bold;
+  }
+  
+  .invoice-title p {
+    margin: 0;
+    color: #666;
+  }
+  
+  .invoice-status {
+    text-align: right;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  
+  .status-issued { background-color: #d1ecf1; color: #0c5460; }
+  .status-overdue { background-color: #f8d7da; color: #842029; }
+  .status-partial { background-color: #fff3cd; color: #856404; }
+  .status-paid { background-color: #d4edda; color: #155724; }
+  .status-draft { background-color: #e2e3e5; color: #383d41; }
+  
+  .invoice-dates {
+    font-size: 0.875rem;
+    color: #666;
+    line-height: 1.8;
+  }
+  
+  .card-section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem;
+  }
+  
+  .card-header h3 {
+    margin: 0;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  td {
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem;
+  }
+  
+  .summary-table {
+    margin-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+  }
+  
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .summary-row:last-child {
+    border-bottom: none;
+  }
+  
+  .summary-row.total {
+    font-weight: bold;
+    font-size: 1.25rem;
+    padding: 1.5rem 0;
+    border-top: 2px solid #333;
+  }
+  
+  .summary-label {
+    color: #666;
+  }
+  
+  .summary-value {
+    text-align: right;
+    font-weight: 500;
+  }
+  
+  .amount-due {
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  
+  .btn-primary {
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0052a3;
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+  }
+  
+  .alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+  
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  
+  .dunning-info {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    color: #856404;
+  }
+  
+  .print-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+  
+  @media print {
+    .invoice-header, .alert, .btn-group, .back-link, .print-button {
+      display: none;
+    }
+    
+    body {
+      background: white;
+    }
+    
+    .invoice-detail {
+      max-width: 100%;
+      padding: 0;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoice-detail">
+  <a href="{% url 'subscriptions:invoice-list' %}" class="back-link">← Back to Invoices</a>
+
+  <!-- Invoice Header -->
+  <div class="invoice-header">
+    <div class="invoice-title">
+      <h1>Invoice</h1>
+      <p class="invoice-number">#{{ invoice.number }}</p>
+      <div class="invoice-dates">
+        <strong>Issued:</strong> {{ invoice.issued_date|date:"F d, Y" }}<br>
+        <strong>Due:</strong> {{ invoice.due_date|date:"F d, Y" }}<br>
+        {% if invoice.paid_date %}
+          <strong>Paid:</strong> {{ invoice.paid_date|date:"F d, Y" }}<br>
+        {% endif %}
+      </div>
+    </div>
+    <div class="invoice-status">
+      <span class="status-badge status-{{ invoice.status }}">
+        {{ invoice.get_status_display }}
+      </span>
+      <button class="print-button" onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Overdue Alert -->
+  {% if invoice.status == 'overdue' %}
+    <div class="alert alert-warning">
+      This invoice is <strong>overdue</strong>. Please submit payment immediately to avoid service suspension.
+    </div>
+  {% endif %}
+
+  <!-- Dunning Info -->
+  {% if dunning_attempts %}
+    <div class="dunning-info">
+      <strong>⚠️ Payment Attempts:</strong> This invoice has {{ dunning_attempts|length }} failed payment attempt(s).
+      Please update your payment method to complete the charge.
+    </div>
+  {% endif %}
+
+  <!-- Invoice Items -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Invoice Details</h3>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Period</th>
+            <th style="text-align: right;">Quantity</th>
+            <th style="text-align: right;">Unit Price</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in invoice.billing_cycle.subscription.items.all %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>
+                {{ invoice.billing_cycle.period_start|date:"M d" }} — 
+                {{ invoice.billing_cycle.period_end|date:"M d, Y" }}
+              </td>
+              <td style="text-align: right;">1</td>
+              <td style="text-align: right;">{{ invoice.subscription.currency }} {{ item.price|floatformat:2 }}</td>
+              <td style="text-align: right;">{{ invoice.subscription.currency }} {{ item.price|floatformat:2 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Summary -->
+      <div class="summary-table">
+        <div class="summary-row">
+          <div class="summary-label">Subtotal</div>
+          <div class="summary-value">{{ invoice.subscription.currency }} {{ invoice.subtotal|floatformat:2 }}</div>
+        </div>
+        
+        {% if invoice.discount > 0 %}
+          <div class="summary-row">
+            <div class="summary-label">Discount</div>
+            <div class="summary-value">-{{ invoice.subscription.currency }} {{ invoice.discount|floatformat:2 }}</div>
+          </div>
+        {% endif %}
+        
+        <div class="summary-row">
+          <div class="summary-label">Tax (15% VAT)</div>
+          <div class="summary-value">{{ invoice.subscription.currency }} {{ invoice.tax|floatformat:2 }}</div>
+        </div>
+        
+        {% if invoice.billing_cycle.proration_total != 0 %}
+          <div class="summary-row">
+            <div class="summary-label">Proration ({{ invoice.billing_cycle.proration_reason }})</div>
+            <div class="summary-value">
+              {% if invoice.billing_cycle.proration_total > 0 %}
+                {{ invoice.subscription.currency }} {{ invoice.billing_cycle.proration_total|floatformat:2 }}
+              {% else %}
+                -{{ invoice.subscription.currency }} {{ invoice.billing_cycle.proration_total|floatformat:2 }}
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+        
+        <div class="summary-row total">
+          <div class="summary-label">Total Amount</div>
+          <div class="summary-value">{{ invoice.subscription.currency }} {{ invoice.total|floatformat:2 }}</div>
+        </div>
+        
+        {% if invoice.status != 'paid' %}
+          <div class="summary-row">
+            <div class="summary-label" style="color: #155724; font-weight: bold;">Amount Paid</div>
+            <div class="summary-value">{{ invoice.subscription.currency }} {{ invoice.amount_paid|floatformat:2 }}</div>
+          </div>
+          
+          <div class="summary-row">
+            <div class="summary-label" style="color: #dc3545; font-weight: bold;">Amount Due</div>
+            <div class="summary-value amount-due">{{ invoice.subscription.currency }} {{ invoice.amount_due|floatformat:2 }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Billing Period Info -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Billing Information</h3>
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+        <div>
+          <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.5rem;">BILLING PERIOD</div>
+          <div style="font-weight: bold; font-size: 1.125rem;">
+            {{ invoice.billing_cycle.period_start|date:"F d" }} — {{ invoice.billing_cycle.period_end|date:"F d, Y" }}
+          </div>
+        </div>
+        <div>
+          <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.5rem;">PLAN</div>
+          <div style="font-weight: bold; font-size: 1.125rem;">
+            {{ invoice.subscription.plan.name }}
+          </div>
+        </div>
+        <div>
+          <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.5rem;">CURRENCY</div>
+          <div style="font-weight: bold; font-size: 1.125rem;">
+            {{ invoice.subscription.currency }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Section -->
+  {% if invoice.status in 'issued,overdue,partial' %}
+    <div class="card-section">
+      <div class="card-header">
+        <h3>Payment</h3>
+      </div>
+      <div class="card-body">
+        <p>Amount due: <strong>{{ invoice.subscription.currency }} {{ invoice.amount_due|floatformat:2 }}</strong></p>
+        <div class="btn-group">
+          <a href="{% url 'subscriptions:payment-method' %}" class="btn btn-primary">Update Payment Method</a>
+          <a href="{% url 'subscriptions:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Dunning Attempts -->
+  {% if dunning_attempts %}
+    <div class="card-section">
+      <div class="card-header">
+        <h3>Payment Attempts</h3>
+      </div>
+      <div class="card-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Attempt #</th>
+              <th>Status</th>
+              <th>Attempted</th>
+              <th>Next Retry</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attempt in dunning_attempts %}
+              <tr>
+                <td>{{ attempt.attempt_number }}</td>
+                <td>
+                  <span style="
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 20px;
+                    font-size: 0.75rem;
+                    font-weight: bold;
+                    background-color: {% if attempt.status == 'success' %}#d4edda{% elif attempt.status == 'failed' %}#f8d7da{% else %}#fff3cd{% endif %};
+                    color: {% if attempt.status == 'success' %}#155724{% elif attempt.status == 'failed' %}#842029{% else %}#856404{% endif %};
+                  ">
+                    {{ attempt.get_status_display }}
+                  </span>
+                </td>
+                <td>{% if attempt.attempted_at %}{{ attempt.attempted_at|date:"M d, Y H:i" }}{% else %}—{% endif %}</td>
+                <td>{% if attempt.next_retry_at %}{{ attempt.next_retry_at|date:"M d, Y H:i" }}{% else %}—{% endif %}</td>
+                <td>
+                  {% if attempt.error_message %}
+                    <small style="color: #dc3545;">{{ attempt.error_message|truncatewords:5 }}</small>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -8,6 +8,9 @@ from django.core.cache import cache
 from django.http import JsonResponse, HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 
+from apps.security.audit import log_security_event
+from apps.security.models import SecurityAuditLog
+
 
 @dataclass(frozen=True)
 class RateLimitRule:
@@ -39,6 +42,12 @@ class RateLimitMiddleware(MiddlewareMixin):
                     cache.set(cache_key, 1, timeout=rule.window)
                     return None
                 if count >= rule.limit:
+                    log_security_event(
+                        request=request,
+                        event_type=SecurityAuditLog.EVENT_RATE_LIMIT,
+                        outcome=SecurityAuditLog.OUTCOME_BLOCKED,
+                        metadata={"rule": rule.key, "window": rule.window, "limit": rule.limit},
+                    )
                     return _rate_limited_response(request, rule.message_key, rule.window)
                 cache.set(cache_key, count + 1, timeout=rule.window)
                 return None

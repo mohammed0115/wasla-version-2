@@ -1,0 +1,39 @@
+{% autoescape off %}
+Dear {{ merchant_name }},
+
+Great news! We've received your payment for invoice #{{ invoice_number }}.
+
+PAYMENT CONFIRMATION
+====================
+Invoice Number: {{ invoice_number }}
+Payment Date: {{ payment_date }}
+Amount Paid: {{ currency }} {{ amount_paid }}
+Payment Method: {{ payment_method }}
+Reference ID: {{ reference_id }}
+
+INVOICE STATUS
+==============
+Previous Status: Overdue
+New Status: Paid ✓
+Amount Due: {{ currency }} 0.00
+
+SUBSCRIPTION STATUS
+===================
+Your subscription is now active and in good standing.
+Plan: {{ plan_name }}
+Next Billing Date: {{ next_billing_date }}
+
+Thank you for your prompt payment!
+
+NEED HELP?
+==========
+Access your Wasla dashboard to view all invoices and manage your subscription:
+{{ dashboard_url }}/subscriptions/
+
+Contact us anytime:
+Email: support@wasla.sa
+Phone: +966-50-XXX-XXXX
+
+Best regards,
+Wasla Billing Team
+{% endautoescape %}

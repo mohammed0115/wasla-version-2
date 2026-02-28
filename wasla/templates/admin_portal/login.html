@@ -322,7 +322,13 @@
 
         <section class="auth-form">
             <div class="form-title">Sign in</div>
-            <div class="form-caption">Use your staff credentials to access the admin workspace.</div>
+            <div class="form-caption">
+                {% if otp_required %}
+                Enter the 6-digit verification code sent to your admin email.
+                {% else %}
+                Use your staff credentials to access the admin workspace.
+                {% endif %}
+            </div>
 
             {% if error %}
             <div class="auth-alert" role="alert">
@@ -332,6 +338,22 @@
 
             <form method="post">
                 {% csrf_token %}
+                {% if otp_required %}
+                <input type="hidden" name="action" value="verify_otp">
+                <div class="auth-field">
+                    <label for="otp_code">Verification code</label>
+                    <input type="text" id="otp_code" name="otp_code" maxlength="6" required autofocus>
+                </div>
+                <button type="submit" class="auth-submit">
+                    Verify & Continue <i class="bi bi-shield-check"></i>
+                </button>
+                <div class="auth-meta" style="margin-top:12px;">
+                    <span><i class="bi bi-clock"></i> Expires in {{ otp_remaining }}s</span>
+                    <button type="submit" name="action" value="resend_otp" class="auth-submit" style="padding:8px 12px; font-size:0.88rem;">
+                        Resend code
+                    </button>
+                </div>
+                {% else %}
                 <div class="auth-field">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" required autofocus>
@@ -343,6 +365,7 @@
                 <button type="submit" class="auth-submit">
                     Login <i class="bi bi-arrow-right-circle"></i>
                 </button>
+                {% endif %}
             </form>
 
             <div class="auth-divider"></div>

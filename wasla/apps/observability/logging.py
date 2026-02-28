@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from contextvars import ContextVar
 from typing import Any
@@ -12,6 +13,13 @@ tenant_id_var: ContextVar[int | None] = ContextVar("tenant_id", default=None)
 user_id_var: ContextVar[int | None] = ContextVar("user_id", default=None)
 path_var: ContextVar[str | None] = ContextVar("path", default=None)
 method_var: ContextVar[str | None] = ContextVar("method", default=None)
+
+_SENSITIVE_KEY_PATTERN = re.compile(r"(password|token|secret|authorization|api[_-]?key|cookie)", re.IGNORECASE)
+_SENSITIVE_VALUE_PATTERNS = [
+    re.compile(r"Bearer\s+[A-Za-z0-9\-\._~\+\/=]+", re.IGNORECASE),
+    re.compile(r"sk_[A-Za-z0-9_\-]+", re.IGNORECASE),
+    re.compile(r"pk_[A-Za-z0-9_\-]+", re.IGNORECASE),
+]
 
 
 def bind_request_context(*, request_id: str, tenant_id: int | None, user_id: int | None, path: str, method: str):
@@ -35,7 +43,7 @@ class JSONFormatter(logging.Formatter):
         payload: dict[str, Any] = {
             "timestamp": int(time.time() * 1000),
             "level": record.levelname,
-            "message": record.getMessage(),
+            "message": _sanitize_value(record.getMessage()),
             "logger": record.name,
             "request_id": request_id_var.get(),
             "tenant_id": tenant_id_var.get(),
@@ -51,7 +59,28 @@ class JSONFormatter(logging.Formatter):
             "store_id",
             "query_count",
             "cache_status",
+            "query_signature",
         ):
             if hasattr(record, key):
-                payload[key] = getattr(record, key)
+                payload[key] = _sanitize_kv(key, getattr(record, key))
         return json.dumps(payload, ensure_ascii=False)
+
+
+def _sanitize_kv(key: str, value: Any) -> Any:
+    if _SENSITIVE_KEY_PATTERN.search(key or ""):
+        return "[REDACTED]"
+    return _sanitize_value(value)
+
+
+def _sanitize_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _sanitize_kv(str(k), v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_value(v) for v in value]
+    if not isinstance(value, str):
+        return value
+
+    sanitized = value
+    for pattern in _SENSITIVE_VALUE_PATTERNS:
+        sanitized = pattern.sub("[REDACTED]", sanitized)
+    return sanitized

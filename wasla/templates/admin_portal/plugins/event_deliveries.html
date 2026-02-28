@@ -1,0 +1,123 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Event Deliveries - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-send"></i> Event Deliveries</h1>
+    <a href="{% url 'admin_portal:plugins_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Statuses</option>
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="event_key" class="form-label">Event Key</label>
+                <input type="text" class="form-control" id="event_key" name="event_key" 
+                       placeholder="Search event key..." value="{{ event_key }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if page_obj %}
+<div class="table-responsive mb-4">
+    <table class="table table-hover table-sm">
+        <thead class="table-light">
+            <tr>
+                <th>Event Key</th>
+                <th>Plugin</th>
+                <th>Tenant</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for delivery in page_obj %}
+            <tr>
+                <td>
+                    <code class="bg-light px-2 py-1 small">{{ delivery.event_key }}</code>
+                </td>
+                <td>
+                    <small>{{ delivery.event_subscription.registration.plugin.name }}</small>
+                </td>
+                <td>
+                    <small>{{ delivery.event_subscription.tenant.name }}</small>
+                </td>
+                <td>
+                    {% if delivery.status == 'QUEUED' %}
+                        <span class="badge bg-info">Queued</span>
+                    {% elif delivery.status == 'DELIVERED' %}
+                        <span class="badge bg-success">Delivered</span>
+                    {% elif delivery.status == 'SKIPPED' %}
+                        <span class="badge bg-warning">Skipped</span>
+                    {% elif delivery.status == 'FAILED' %}
+                        <span class="badge bg-danger">Failed</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small class="text-muted">{{ delivery.created_at|date:"M d H:i" }}</small>
+                </td>
+                <td>
+                    <small class="text-muted">{{ delivery.updated_at|date:"M d H:i" }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if event_key %}&event_key={{ event_key }}{% endif %}">First</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if event_key %}&event_key={{ event_key }}{% endif %}">Previous</a>
+        </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if event_key %}&event_key={{ event_key }}{% endif %}">Next</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if event_key %}&event_key={{ event_key }}{% endif %}">Last</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No event deliveries found.
+</div>
+{% endif %}
+{% endblock %}

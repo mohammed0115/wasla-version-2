@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Invoices" %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header">
+        <div class="page-header__content">
+            <h1 class="page-title">{% trans "Invoices" %}</h1>
+            <p class="page-subtitle">{% trans "Manage and view your invoices" %}</p>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="{% trans 'Search invoice number...' %}" 
+                       value="{{ request.GET.search }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <select name="status" class="form-control">
+                    <option value="">{% trans "All Status" %}</option>
+                    <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>{% trans "Draft" %}</option>
+                    <option value="issued" {% if request.GET.status == 'issued' %}selected{% endif %}>{% trans "Issued" %}</option>
+                    <option value="paid" {% if request.GET.status == 'paid' %}selected{% endif %}>{% trans "Paid" %}</option>
+                    <option value="refunded" {% if request.GET.status == 'refunded' %}selected{% endif %}>{% trans "Refunded" %}</option>
+                    <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>{% trans "Cancelled" %}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
+        </form>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="content-section">
+        {% if invoices %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Invoice #" %}</th>
+                        <th>{% trans "Order" %}</th>
+                        <th>{% trans "Customer" %}</th>
+                        <th>{% trans "Amount" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Date" %}</th>
+                        <th>{% trans "ZATCA" %}</th>
+                        <th>{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>
+                            <strong>{{ invoice.invoice_number }}</strong>
+                        </td>
+                        <td>
+                            <a href="{% url 'admin:orders_order_change' invoice.order.id %}">
+                                #{{ invoice.order.id }}
+                            </a>
+                        </td>
+                        <td>{{ invoice.buyer_name }}</td>
+                        <td class="amount">
+                            {{ invoice.total_amount }} {{ invoice.currency }}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ invoice.status|lower }}">
+                                {{ invoice.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ invoice.issue_date|date:"SHORT_DATE_FORMAT" }}</td>
+                        <td>
+                            {% if invoice.zatca_signed %}
+                                <span class="compliance-badge" title="{% trans 'ZATCA Signed' %}">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 11.94l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor"/>
+                                    </svg>
+                                </span>
+                            {% elif invoice.zatca_hash %}
+                                <span class="compliance-badge warning" title="{% trans 'Issued but not signed' %}">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M8 1a7 7 0 110 14A7 7 0 018 1zm0 2a5 5 0 100 10A5 5 0 008 3z" fill="currentColor"/>
+                                    </svg>
+                                </span>
+                            {% else %}
+                                <span class="compliance-badge" style="color: #ccc;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-sm btn-outline" title="{% trans 'View' %}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </a>
+                                {% if invoice.pdf_file %}
+                                <a href="{% url 'invoice-pdf' invoice.id %}" class="btn btn-sm btn-outline" title="{% trans 'Download PDF' %}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">{% trans "First" %}</a>
+                <a href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
+            {% endif %}
+
+            <span class="pagination-info">
+                {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <p>{% trans "No invoices found." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        padding: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 32px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 8px 0;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .filters-section {
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid #ddd;
+        color: #666;
+        padding: 4px 8px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        margin-bottom: 24px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .data-table thead {
+        background: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .data-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .data-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+    }
+
+    .data-table tr:hover {
+        background: #fafafa;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-draft {
+        background: #e8e8e8;
+        color: #666;
+    }
+
+    .badge-issued {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .badge-paid {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .badge-refunded {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .badge-cancelled {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .compliance-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e8f5e9;
+        color: #388e3c;
+        cursor: help;
+    }
+
+    .compliance-badge.warning {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .amount {
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: #999;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        margin-top: 24px;
+    }
+
+    .pagination a {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .pagination-info {
+        padding: 0 12px;
+        font-size: 14px;
+        color: #666;
+    }
+</style>
+{% endblock %}

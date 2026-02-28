@@ -60,47 +60,133 @@ class Tenant(models.Model):
 
 
 class StoreDomain(models.Model):
-    STATUS_PENDING_VERIFICATION = "PENDING_VERIFICATION"
-    STATUS_VERIFIED = "VERIFIED"
-    STATUS_SSL_PENDING = "SSL_PENDING"
-    STATUS_SSL_ACTIVE = "SSL_ACTIVE"
-    STATUS_PENDING = "PENDING"
-    STATUS_VERIFYING = "VERIFYING"
-    STATUS_ACTIVE = "ACTIVE"
-    STATUS_FAILED = "FAILED"
-    STATUS_DISABLED = "DISABLED"
+    """
+    Production-grade custom domain with SSL certificate management.
+    
+    State Machine:
+      PENDING_VERIFICATION -> VERIFIED -> CERT_REQUESTED -> CERT_ISSUED -> ACTIVE
+      Any state can transition to FAILED if checks fail
+    """
+    
+    # Refined status choices - state machine
+    STATUS_PENDING_VERIFICATION = "pending_verification"
+    STATUS_VERIFIED = "verified"
+    STATUS_CERT_REQUESTED = "cert_requested"
+    STATUS_CERT_ISSUED = "cert_issued"
+    STATUS_ACTIVE = "active"
+    STATUS_DEGRADED = "degraded"
+    STATUS_FAILED = "failed"
 
     STATUS_CHOICES = [
         (STATUS_PENDING_VERIFICATION, "Pending Verification"),
         (STATUS_VERIFIED, "Verified"),
-        (STATUS_SSL_PENDING, "SSL Pending"),
-        (STATUS_SSL_ACTIVE, "SSL Active"),
-        (STATUS_PENDING, "Pending"),
-        (STATUS_VERIFYING, "Verifying"),
+        (STATUS_CERT_REQUESTED, "Certificate Requested"),
+        (STATUS_CERT_ISSUED, "Certificate Issued"),
         (STATUS_ACTIVE, "Active"),
+        (STATUS_DEGRADED, "Degraded"),
         (STATUS_FAILED, "Failed"),
-        (STATUS_DISABLED, "Disabled"),
     ]
 
+    # Verification methods
+    METHOD_DNS_TXT = "dns_txt"
+    METHOD_DNS_CNAME = "dns_cname"
+
+    VERIFICATION_METHOD_CHOICES = [
+        (METHOD_DNS_TXT, "DNS TXT Record"),
+        (METHOD_DNS_CNAME, "DNS CNAME Record"),
+    ]
+
+    # Certificate provider
+    PROVIDER_LETS_ENCRYPT = "lets_encrypt"
+
+    CERT_PROVIDER_CHOICES = [
+        (PROVIDER_LETS_ENCRYPT, "Let's Encrypt"),
+    ]
+
+    # Relationships
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="custom_domains")
-    domain = models.CharField(max_length=255, unique=True)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=STATUS_PENDING_VERIFICATION)
-    verification_token = models.CharField(max_length=128, blank=True, default="")
+    
+    # Domain info
+    domain = models.CharField(max_length=255, unique=True, db_index=True)
+    is_primary = models.BooleanField(default=False)
+
+    # Verification
+    status = models.CharField(max_length=25, choices=STATUS_CHOICES, default=STATUS_PENDING_VERIFICATION, db_index=True)
+    verification_method = models.CharField(max_length=20, choices=VERIFICATION_METHOD_CHOICES, default=METHOD_DNS_TXT)
+    verification_token = models.CharField(max_length=256, unique=True, blank=True, default="")
     verified_at = models.DateTimeField(null=True, blank=True)
+
+    # SSL Certificate
+    cert_provider = models.CharField(max_length=25, choices=CERT_PROVIDER_CHOICES, default=PROVIDER_LETS_ENCRYPT)
+    cert_issued_at = models.DateTimeField(null=True, blank=True)
+    cert_expires_at = models.DateTimeField(null=True, blank=True)
     ssl_cert_path = models.TextField(blank=True, default="")
     ssl_key_path = models.TextField(blank=True, default="")
+
+    # Health & Retry tracking
     last_check_at = models.DateTimeField(null=True, blank=True)
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    failure_reason = models.TextField(blank=True, default="")
+    retry_count = models.IntegerField(default=0)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+
+    # Audit
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["domain"], name="storedomain_domain_idx"),
             models.Index(fields=["tenant", "status"], name="storedomain_tenant_status_idx"),
-            models.Index(fields=["status", "last_check_at"], name="storedomain_status_check_idx"),
+            models.Index(fields=["status", "next_retry_at"], name="storedomain_status_retry_idx"),
+            models.Index(fields=["cert_expires_at"], name="storedomain_cert_expiry_idx"),
         ]
 
     def __str__(self) -> str:
-        return f"{self.domain} ({self.status})"
+        return f"{self.domain} ({self.get_status_display()})"
+
+    @classmethod
+    def normalize_domain(cls, domain: str) -> str:
+        """Normalize domain: lowercase, strip whitespace."""
+        return domain.lower().strip()
+
+    @classmethod
+    def generate_verification_token(cls) -> str:
+        """Generate cryptographically secure verification token."""
+        import secrets
+        return secrets.token_urlsafe(32)
+
+    def can_transition_to(self, new_status: str) -> bool:
+        """Validate state transitions."""
+        valid_transitions = {
+            self.STATUS_PENDING_VERIFICATION: [self.STATUS_VERIFIED, self.STATUS_FAILED],
+            self.STATUS_VERIFIED: [self.STATUS_CERT_REQUESTED, self.STATUS_FAILED],
+            self.STATUS_CERT_REQUESTED: [self.STATUS_CERT_ISSUED, self.STATUS_FAILED],
+            self.STATUS_CERT_ISSUED: [self.STATUS_ACTIVE, self.STATUS_FAILED],
+            self.STATUS_ACTIVE: [self.STATUS_DEGRADED, self.STATUS_FAILED],
+            self.STATUS_DEGRADED: [self.STATUS_ACTIVE, self.STATUS_FAILED],
+            self.STATUS_FAILED: [self.STATUS_PENDING_VERIFICATION],
+        }
+        return new_status in valid_transitions.get(self.status, [])
+
+    def should_retry(self) -> bool:
+        """Check if retry is due."""
+        if not self.next_retry_at:
+            return False
+        from django.utils import timezone
+        return timezone.now() >= self.next_retry_at
+
+    def calculate_next_retry(self):
+        """Exponential backoff: 5, 15, 45, 135, 405 min (capped at 24h)."""
+        from django.utils import timezone
+        from datetime import timedelta
+        backoff_minutes = min(5 * (3 ** self.retry_count), 24 * 60)
+        return timezone.now() + timedelta(minutes=backoff_minutes)
+
+    def increment_retry(self):
+        """Increment retry counter and set next retry time."""
+        self.retry_count += 1
+        self.next_retry_at = self.calculate_next_retry()
 
 
 class StoreProfile(models.Model):
@@ -285,3 +371,61 @@ class TenantAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tenant.slug}:{self.action}:{self.created_at}"
+
+class DomainAuditLog(models.Model):
+    """Audit trail for custom domain state changes."""
+    
+    ACTION_CREATED = "created"
+    ACTION_STATUS_CHANGED = "status_changed"
+    ACTION_VERIFIED = "verified"
+    ACTION_CERT_REQUESTED = "cert_requested"
+    ACTION_CERT_ISSUED = "cert_issued"
+    ACTION_ACTIVATED = "activated"
+    ACTION_FAILED = "failed"
+    ACTION_RECHECKED = "rechecked"
+    ACTION_DELETED = "deleted"
+
+    ACTION_CHOICES = [
+        (ACTION_CREATED, "Created"),
+        (ACTION_STATUS_CHANGED, "Status Changed"),
+        (ACTION_VERIFIED, "Verified"),
+        (ACTION_CERT_REQUESTED, "Certificate Requested"),
+        (ACTION_CERT_ISSUED, "Certificate Issued"),
+        (ACTION_ACTIVATED, "Activated"),
+        (ACTION_FAILED, "Failed"),
+        (ACTION_RECHECKED, "Rechecked"),
+        (ACTION_DELETED, "Deleted"),
+    ]
+
+    domain = models.ForeignKey(
+        StoreDomain,
+        on_delete=models.CASCADE,
+        related_name="audit_logs"
+    )
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    
+    previous_status = models.CharField(max_length=25, blank=True, default="")
+    new_status = models.CharField(max_length=25, blank=True, default="")
+    
+    details = models.JSONField(default=dict, blank=True)
+    failure_reason = models.TextField(blank=True, default="")
+    
+    performed_by = models.CharField(
+        max_length=100,
+        blank=True,
+        default="system",
+        help_text="User email or 'system' for automated tasks"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["domain", "created_at"]),
+            models.Index(fields=["action", "created_at"]),
+        ]
+        verbose_name = "Domain Audit Log"
+        verbose_name_plural = "Domain Audit Logs"
+
+    def __str__(self) -> str:
+        return f"{self.domain.domain} - {self.get_action_display()} at {self.created_at}"

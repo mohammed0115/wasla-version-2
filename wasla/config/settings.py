@@ -27,14 +27,6 @@ load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True") == "True"
-
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,w-sala.com,.w-sala.com").split(",") if h.strip()]
-
 def _env_bool(name: str, default: str = "0") -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "on")
 
@@ -49,16 +41,56 @@ def _env_list(name: str, default: list[str] | None = None) -> list[str]:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure--cop!lr6o*&sny4$%3&-=)l18w7-lf+7$a8itl+q%qz!4p1yll",
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    if ENVIRONMENT == "production":
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY is required in production")
+    SECRET_KEY = "dev-insecure-change-me"
+
+DEBUG = _env_bool("DJANGO_DEBUG", "0" if ENVIRONMENT == "production" else "1")
 TEST_OTP_CODE = os.getenv("TEST_OTP_CODE", "123456").strip() or "123456"
+SECURITY_CSP_ENABLED = _env_bool("SECURITY_CSP_ENABLED", "1")
+ADMIN_PORTAL_2FA_ENABLED = _env_bool("ADMIN_PORTAL_2FA_ENABLED", "1" if ENVIRONMENT == "production" else "0")
+ADMIN_PORTAL_2FA_TTL_SECONDS = int(os.getenv("ADMIN_PORTAL_2FA_TTL_SECONDS", "300") or "300")
+
+SECURITY_RATE_LIMITS = [
+    {
+        "key": "login_user",
+        "pattern": r"^/auth/$",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_LOGIN_LIMIT", "10") or "10"),
+        "window": int(os.getenv("RL_LOGIN_WINDOW", "300") or "300"),
+        "message_key": "login_rate_limited",
+    },
+    {
+        "key": "login_admin",
+        "pattern": r"^/admin-portal/login/$",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_ADMIN_LOGIN_LIMIT", "8") or "8"),
+        "window": int(os.getenv("RL_ADMIN_LOGIN_WINDOW", "300") or "300"),
+        "message_key": "admin_login_rate_limited",
+    },
+    {
+        "key": "otp_verify",
+        "pattern": r"^/auth/(verify|resend)/$",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_OTP_LIMIT", "10") or "10"),
+        "window": int(os.getenv("RL_OTP_WINDOW", "300") or "300"),
+        "message_key": "otp_rate_limited",
+    },
+    {
+        "key": "payments",
+        "pattern": r"^/api/payments/",
+        "methods": ["POST", "PUT", "PATCH", "DELETE"],
+        "limit": int(os.getenv("RL_PAYMENTS_LIMIT", "60") or "60"),
+        "window": int(os.getenv("RL_PAYMENTS_WINDOW", "60") or "60"),
+        "message_key": "payments_rate_limited",
+    },
+]
 
 WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "w-sala.com").strip().lower() or "w-sala.com"
 
@@ -196,9 +228,11 @@ if WASLA_ENABLE_AR:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.security.middleware.rate_limit.RateLimitMiddleware",
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "apps.tenants.middleware.TenantResolverMiddleware",
+    "apps.security.middleware.headers.SecurityHeadersMiddleware",
     "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
     "apps.tenants.middleware.TenantLocaleMiddleware",
@@ -207,6 +241,7 @@ MIDDLEWARE = [
     "apps.observability.middleware.timing.PerformanceMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.security.middleware.audit.SecurityAuditMiddleware",
     "apps.security.middleware.rbac.PermissionCacheMiddleware",
     "apps.accounts.middleware.OnboardingFlowMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -486,7 +521,7 @@ LOGOUT_REDIRECT_URL = "/"
 
 # Default language is Arabic (Saudi/Gulf first).
 # Users can switch to English via /i18n/setlang/.
-LANGUAGE_CODE = "ar"
+LANGUAGE_CODE = os.getenv("DJANGO_LANGUAGE_CODE", "ar").strip() or "ar"
 
 LANGUAGES = [
     ("ar", "العربية"),
@@ -517,7 +552,7 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "info@w-sala.com")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "YazYaz@2030")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
 
 # Default primary key field type
@@ -564,9 +599,12 @@ GOOGLE_SPEECH_API_KEY = os.environ.get("GOOGLE_SPEECH_API_KEY", "")
 
 # +# Reverse proxy / HTTPS (nginx)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
-SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
-CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", "1" if ENVIRONMENT == "production" else "0")
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "1" if ENVIRONMENT == "production" else "0")
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", "1" if ENVIRONMENT == "production" else "0")
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "31536000" if ENVIRONMENT == "production" else "0") or "0")
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", "1" if ENVIRONMENT == "production" else "0")
+SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", "1" if ENVIRONMENT == "production" else "0")
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
@@ -649,6 +687,8 @@ SETTLEMENT_PROCESSING_ENABLED = _env_bool("SETTLEMENT_PROCESSING_ENABLED", "1")
 # Performance observability
 PERFORMANCE_SLOW_THRESHOLD_MS = float(os.getenv("PERFORMANCE_SLOW_THRESHOLD_MS", "500") or "500")
 PERFORMANCE_LOG_PERSIST_ENABLED = _env_bool("PERFORMANCE_LOG_PERSIST_ENABLED", "1")
+PERFORMANCE_SLOW_QUERY_THRESHOLD_MS = float(os.getenv("PERFORMANCE_SLOW_QUERY_THRESHOLD_MS", "250") or "250")
+OBS_LOG_LEVEL = os.getenv("OBS_LOG_LEVEL", "INFO")
 
 
 LOGGING = {
@@ -668,12 +708,12 @@ LOGGING = {
     "loggers": {
         "wasla.request": {
             "handlers": ["console"],
-            "level": os.getenv("WASLA_REQUEST_LOG_LEVEL", "INFO"),
+            "level": os.getenv("WASLA_REQUEST_LOG_LEVEL", OBS_LOG_LEVEL),
             "propagate": False,
         },
         "wasla.performance": {
             "handlers": ["console"],
-            "level": os.getenv("WASLA_PERFORMANCE_LOG_LEVEL", "INFO"),
+            "level": os.getenv("WASLA_PERFORMANCE_LOG_LEVEL", OBS_LOG_LEVEL),
             "propagate": False,
         },
     },

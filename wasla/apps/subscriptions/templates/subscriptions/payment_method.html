@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Payment Method - Wasla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .payment-method-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .page-title {
+    margin-bottom: 2rem;
+  }
+  
+  .page-title h1 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .page-title p {
+    margin: 0;
+    color: #666;
+  }
+  
+  .card-section {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem;
+  }
+  
+  .card-header h3 {
+    margin: 0;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group:last-child {
+    margin-bottom: 0;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  }
+  
+  .form-help {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  
+  .btn-primary {
+    background-color: #0066cc;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0052a3;
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+  
+  .alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+  }
+  
+  .alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  .current-method {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .current-method-label {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  
+  .current-method-display {
+    font-size: 1.125rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .current-method-details {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+  
+  .security-info {
+    background: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    color: #004085;
+    font-size: 0.875rem;
+  }
+  
+  .security-info strong {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stripe-element {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+    background: white;
+  }
+  
+  .stripe-element:focus {
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  }
+  
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-method-page">
+  <a href="{% url 'subscriptions:dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+  <div class="page-title">
+    <h1>Payment Method</h1>
+    <p>Update your payment method to ensure uninterrupted service</p>
+  </div>
+
+  <!-- Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Current Payment Method -->
+  {% if payment_method %}
+    <div class="card-section">
+      <div class="card-header">
+        <h3>Current Payment Method</h3>
+      </div>
+      <div class="card-body">
+        <div class="current-method">
+          <div class="current-method-label">{{ payment_method.get_method_type_display }}</div>
+          <div class="current-method-display">{{ payment_method.display_name }}</div>
+          <div class="current-method-details">
+            Added: {{ payment_method.added_at|date:"F d, Y" }}<br>
+            Status: 
+            <span style="
+              color: {% if payment_method.status == 'active' %}#155724{% else %}#dc3545{% endif %};
+              font-weight: bold;
+            ">
+              {{ payment_method.get_status_display }}
+            </span>
+            {% if payment_method.expires_at %}
+              <br>Expires: {{ payment_method.expires_at|date:"M/Y" }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Security Info -->
+  <div class="security-info">
+    <strong>🔒 Your payment is secure</strong>
+    We use industry-standard encryption and never store your card details. Your payment information is processed securely through our trusted payment provider.
+  </div>
+
+  <!-- Payment Method Form -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>{% if payment_method %}Update{% else %}Add{% endif %} Payment Method</h3>
+    </div>
+    <div class="card-body">
+      <form method="post" id="paymentForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="id_method_type">Payment Method Type</label>
+          <select name="method_type" id="id_method_type" required>
+            <option value="">Select payment type</option>
+            <option value="card">Credit/Debit Card</option>
+            <option value="bank">Bank Account</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="cardSection" style="display: none;">
+          <label for="id_card_number">Card Number</label>
+          <input 
+            type="text" 
+            id="id_card_number" 
+            placeholder="1234 5678 9012 3456"
+            maxlength="19"
+            autocomplete="cc-number"
+          >
+        </div>
+
+        <div style="display: none;" id="cardDetailsSection">
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="id_cardholder">Cardholder Name</label>
+              <input 
+                type="text" 
+                id="id_cardholder"
+                placeholder="John Doe"
+                autocomplete="cc-name"
+              >
+            </div>
+            <div class="form-group">
+              <label for="id_expiry">Expiry Date</label>
+              <input 
+                type="text" 
+                id="id_expiry"
+                placeholder="MM/YY"
+                maxlength="5"
+                autocomplete="cc-exp"
+              >
+            </div>
+            <div class="form-group">
+              <label for="id_cvc">CVV</label>
+              <input 
+                type="text" 
+                id="id_cvc"
+                placeholder="123"
+                maxlength="4"
+                autocomplete="cc-csc"
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="bankSection" style="display: none;">
+          <label for="id_account_number">Account Number</label>
+          <input 
+            type="text" 
+            id="id_account_number" 
+            placeholder="1234567890"
+          >
+          <div class="form-help">Your bank account number (without hyphens or spaces)</div>
+        </div>
+
+        <div class="form-group" id="bankDetailsSection" style="display: none;">
+          <label for="id_bank_name">Bank Name</label>
+          <input 
+            type="text" 
+            id="id_bank_name" 
+            placeholder="Saudi National Bank"
+          >
+        </div>
+
+        <div class="form-group" style="margin-top: 2rem;">
+          <label>
+            <input type="checkbox" name="save_for_later" value="on" checked>
+            Save this payment method for future use
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="agree_terms" value="on" required>
+            I authorize Wasla to charge this payment method for my subscription
+          </label>
+        </div>
+
+        <div class="btn-group">
+          <button type="submit" class="btn btn-primary">
+            {% if payment_method %}Update{% else %}Add{% endif %} Payment Method
+          </button>
+          <a href="{% url 'subscriptions:dashboard' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Additional Info -->
+  <div class="card-section">
+    <div class="card-header">
+      <h3>Payment Information</h3>
+    </div>
+    <div class="card-body">
+      <p><strong>Why do we need this?</strong></p>
+      <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li>To process your monthly subscription charge</li>
+        <li>To retry failed payments (dunning process)</li>
+        <li>To provide uninterrupted service to your customers</li>
+      </ul>
+
+      <p><strong>What happens if my card is declined?</strong></p>
+      <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li>We'll attempt to charge again in 3 days</li>
+        <li>You'll receive email notifications of failed attempts</li>
+        <li>After 4 failed attempts, your store will be temporarily suspended</li>
+        <li>You can reactivate once you provide a valid payment method</li>
+      </ul>
+
+      <p><strong>Payment Schedule</strong></p>
+      <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li>Charges are processed on the {{ subscription.billing_cycle_anchor }}{{ subscription.billing_cycle_anchor|stringformat:"s"|slice:":-1"|add:"th" }} of each month</li>
+        <li>You'll receive an invoice 1 day before the charge</li>
+        <li>Billing happens in your specified currency ({{ subscription.currency }})</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('id_method_type').addEventListener('change', function() {
+  const cardSection = document.getElementById('cardSection');
+  const cardDetailsSection = document.getElementById('cardDetailsSection');
+  const bankSection = document.getElementById('bankSection');
+  const bankDetailsSection = document.getElementById('bankDetailsSection');
+  
+  if (this.value === 'card') {
+    cardSection.style.display = 'block';
+    cardDetailsSection.style.display = 'block';
+    bankSection.style.display = 'none';
+    bankDetailsSection.style.display = 'none';
+  } else if (this.value === 'bank') {
+    cardSection.style.display = 'none';
+    cardDetailsSection.style.display = 'none';
+    bankSection.style.display = 'block';
+    bankDetailsSection.style.display = 'block';
+  } else {
+    cardSection.style.display = 'none';
+    cardDetailsSection.style.display = 'none';
+    bankSection.style.display = 'none';
+    bankDetailsSection.style.display = 'none';
+  }
+});
+
+// Format card number
+const cardNumberInput = document.getElementById('id_card_number');
+if (cardNumberInput) {
+  cardNumberInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\s/g, '');
+    let formattedValue = value.replace(/(\d{4})/g, '$1 ').trim();
+    e.target.value = formattedValue;
+  });
+}
+
+// Format expiry date
+const expiryInput = document.getElementById('id_expiry');
+if (expiryInput) {
+  expiryInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2, 4);
+    }
+    e.target.value = value;
+  });
+}
+</script>
+{% endblock %}

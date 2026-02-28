@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Received - Wasla</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 20px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .payment-confirmation {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .payment-confirmation h2 {
+            margin: 0 0 10px 0;
+            color: #155724;
+        }
+        .payment-amount {
+            font-size: 36px;
+            font-weight: 700;
+            color: #28a745;
+            margin: 10px 0;
+        }
+        .payment-status {
+            color: #155724;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .detail-value {
+            font-weight: 600;
+            text-align: right;
+        }
+        .invoice-summary {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+        .summary-row.paid {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #28a745;
+        }
+        .next-billing-section {
+            background: #e7f5ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #004085;
+        }
+        .next-billing-section h3 {
+            margin: 0 0 10px 0;
+        }
+        .next-billing-section p {
+            margin: 0;
+            font-size: 14px;
+        }
+        .next-billing-amount {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0066cc;
+            margin-top: 10px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .payment-method-info {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .payment-method-info strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .action-links {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .action-links a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 0 15px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer-links {
+            margin: 10px 0;
+        }
+        .footer-links a {
+            color: #0066cc;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .badge {
+            display: inline-block;
+            background: #d4edda;
+            color: #155724;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>✓ Payment Received</h1>
+            <p>Your subscription payment has been processed</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                Hi {{ subscription.user.first_name|default:"Merchant" }},
+            </div>
+
+            <p>
+                Thank you! We have successfully received your payment for {{ subscription.plan.name }}.
+            </p>
+
+            <!-- Payment Confirmation -->
+            <div class="payment-confirmation">
+                <h2>Payment Confirmed</h2>
+                <div class="payment-amount">{{ invoice.currency }}{{ invoice.total_amount }}</div>
+                <div class="payment-status">
+                    Paid on {{ payment_event.processed_at|date:"F d, Y \a\t g:i A" }}
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            <div class="section-title">Payment Details</div>
+            <div class="payment-details">
+                <div class="detail-row">
+                    <span class="detail-label">Transaction ID</span>
+                    <span class="detail-value">{{ payment_event.transaction_id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Reference Number</span>
+                    <span class="detail-value">{{ payment_event.reference_number }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Invoice Number</span>
+                    <span class="detail-value">{{ invoice.invoice_number }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method</span>
+                    <span class="detail-value">
+                        <span class="badge">{{ payment_method.get_method_type_display }}</span>
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Provider</span>
+                    <span class="detail-value">{{ payment_event.get_provider_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Status</span>
+                    <span class="detail-value">
+                        <span style="color: #28a745; font-weight: bold;">{{ payment_event.get_status_display }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Invoice Summary -->
+            <div class="section-title">Invoice Summary</div>
+            <div class="invoice-summary">
+                <div class="summary-row">
+                    <span>Invoice Date</span>
+                    <span>{{ invoice.issued_date|date:"F d, Y" }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Billing Period</span>
+                    <span>{{ invoice.billing_cycle.period_start|date:"M d" }} - {{ invoice.billing_cycle.period_end|date:"M d, Y" }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>{{ invoice.currency }}{{ invoice.subtotal }}</span>
+                </div>
+                {% if invoice.tax_amount %}
+                    <div class="summary-row">
+                        <span>Tax</span>
+                        <span>{{ invoice.currency }}{{ invoice.tax_amount }}</span>
+                    </div>
+                {% endif %}
+                {% if invoice.proration_amount %}
+                    <div class="summary-row">
+                        <span>Proration</span>
+                        <span>{{ invoice.currency }}{{ invoice.proration_amount }}</span>
+                    </div>
+                {% endif %}
+                <div class="summary-row paid">
+                    <span>Amount Paid</span>
+                    <span>{{ invoice.currency }}{{ invoice.total_amount }}</span>
+                </div>
+            </div>
+
+            <!-- Payment Method Info -->
+            <div class="payment-method-info">
+                <strong>💳 Payment Method on File</strong>
+                {{ payment_method.display_name }}
+                {% if payment_method.expires_at %}
+                    <br>Expires: {{ payment_method.expires_at|date:"M/Y" }}
+                {% endif %}
+            </div>
+
+            <!-- Next Billing Info -->
+            <div class="next-billing-section">
+                <h3>📅 Your Next Billing</h3>
+                <p>Your next {{ subscription.plan.get_billing_period_display }} charge will occur on:</p>
+                <div class="next-billing-amount">{{ subscription.next_billing_date|date:"F d, Y" }}</div>
+                <p style="margin-top: 15px;">
+                    Amount: <strong>{{ invoice.currency }}{{ subscription.plan.price }}</strong>
+                </p>
+            </div>
+
+            <!-- Action Links -->
+            <div class="action-links">
+                <a href="{{ invoice_url }}">View Invoice</a>
+                <a href="{{ subscription_url }}">Manage Subscription</a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                If you have any questions about this payment, please contact our support team.
+            </p>
+            <div class="footer-links">
+                <a href="{{ support_url }}">Support</a>
+                <a href="{{ help_url }}">Help Center</a>
+                <a href="{{ faq_url }}">FAQ</a>
+            </div>
+            <p style="margin-top: 15px; font-size: 11px;">
+                This is an automated message, please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

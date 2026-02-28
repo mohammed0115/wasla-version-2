@@ -76,8 +76,8 @@ class Command(BaseCommand):
         # Seed subscription plans (only if missing).
         default_plans = [
             ("Basic", 0, "monthly", []),
-            ("Pro", 199, "monthly", ["custom_domain", "ai_tools", "ai_visual_search"]),
-            ("Business", 399, "monthly", ["custom_domain", "ai_tools", "ai_visual_search"]),
+            ("Pro", 199, "monthly", ["custom_domain", "ai_tools", "ai_visual_search", "tap", "stripe", "stc_pay"]),
+            ("Business", 399, "monthly", ["custom_domain", "ai_tools", "ai_visual_search", "tap", "stripe", "stc_pay"]),
         ]
         for name, price, cycle, features in default_plans:
             SubscriptionPlan.objects.get_or_create(

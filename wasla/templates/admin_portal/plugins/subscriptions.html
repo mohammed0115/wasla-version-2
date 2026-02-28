@@ -1,0 +1,108 @@
+{% extends "admin_portal/base_portal.html" %}
+
+{% block title %}Event Subscriptions - Wasla Admin Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-bell"></i> Event Subscriptions</h1>
+    <a href="{% url 'admin_portal:plugins_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="registration" class="form-label">Plugin</label>
+                <select class="form-select" id="registration" name="registration">
+                    <option value="">All Plugins</option>
+                    {% for reg in registrations %}
+                    <option value="{{ reg.id }}" {% if selected_registration|stringformat:"s" == reg.id|stringformat:"s" %}selected{% endif %}>
+                        {{ reg.plugin.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="tenant" class="form-label">Tenant</label>
+                <select class="form-select" id="tenant" name="tenant">
+                    <option value="">All Tenants</option>
+                    {% for tenant in tenants %}
+                    <option value="{{ tenant.id }}" {% if selected_tenant|stringformat:"s" == tenant.id|stringformat:"s" %}selected{% endif %}>
+                        {{ tenant.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if subscriptions %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Plugin</th>
+                <th>Tenant</th>
+                <th>Store</th>
+                <th>Event Keys</th>
+                <th>Active</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td>
+                    <strong>{{ sub.registration.plugin.name }}</strong>
+                </td>
+                <td>
+                    <small>{{ sub.tenant.name }}</small>
+                </td>
+                <td>
+                    {% if sub.store %}
+                        <small>{{ sub.store.name }}</small>
+                    {% else %}
+                        <em class="text-muted">Tenant-wide</em>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if sub.event_keys %}
+                        {% for key in sub.event_keys|slice:":3" %}
+                            <span class="badge bg-light text-dark">{{ key }}</span>
+                        {% endfor %}
+                        {% if sub.event_keys|length > 3 %}
+                            <span class="badge bg-light text-dark">+{{ sub.event_keys|length|add:"-3" }} more</span>
+                        {% endif %}
+                    {% else %}
+                        <em class="text-muted">-</em>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if sub.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small class="text-muted">{{ sub.created_at|date:"M d, Y" }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No event subscriptions found.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import random
+import time
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg, Count, Sum
@@ -29,6 +32,51 @@ from apps.tenants.services.provisioning import provision_store_after_payment
 
 from .decorators import admin_permission_required
 from .utils import log_admin_action
+from apps.security.audit import log_security_event
+from apps.security.models import SecurityAuditLog
+
+
+ADMIN_2FA_CODE_KEY = "admin_portal_otp_code"
+ADMIN_2FA_EXPIRES_AT_KEY = "admin_portal_otp_expires_at"
+ADMIN_2FA_PENDING_USER_ID_KEY = "admin_portal_pending_user_id"
+
+
+def _generate_otp_code() -> str:
+	return f"{random.randint(0, 999999):06d}"
+
+
+def _store_admin_otp(request, user) -> int:
+	ttl_seconds = int(getattr(settings, "ADMIN_PORTAL_2FA_TTL_SECONDS", 300) or 300)
+	code = _generate_otp_code()
+	expires_at = int(time.time()) + ttl_seconds
+	request.session[ADMIN_2FA_CODE_KEY] = code
+	request.session[ADMIN_2FA_EXPIRES_AT_KEY] = expires_at
+	request.session[ADMIN_2FA_PENDING_USER_ID_KEY] = user.id
+	request.session.modified = True
+
+	send_mail(
+		subject="Wasla Admin Portal verification code",
+		message=f"Your admin verification code is: {code}\n\nCode expires in {ttl_seconds // 60} minutes.",
+		from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "Wasla <info@w-sala.com>"),
+		recipient_list=[user.email],
+		fail_silently=False,
+	)
+	return expires_at
+
+
+def _clear_admin_otp(request) -> None:
+	for key in (ADMIN_2FA_CODE_KEY, ADMIN_2FA_EXPIRES_AT_KEY, ADMIN_2FA_PENDING_USER_ID_KEY):
+		if key in request.session:
+			del request.session[key]
+	request.session.modified = True
+
+
+def _verify_admin_otp(request, code: str) -> bool:
+	saved_code = (request.session.get(ADMIN_2FA_CODE_KEY) or "").strip()
+	expires_at = int(request.session.get(ADMIN_2FA_EXPIRES_AT_KEY, 0) or 0)
+	if not saved_code or int(time.time()) > expires_at:
+		return False
+	return saved_code == (code or "").strip()
 
 
 def _get_client_ip(request) -> str:
@@ -102,27 +150,112 @@ def login_view(request):
 		)
 
 	error = None
+	otp_required = bool(request.session.get(ADMIN_2FA_PENDING_USER_ID_KEY))
+	otp_remaining = max(0, int(request.session.get(ADMIN_2FA_EXPIRES_AT_KEY, 0) or 0) - int(time.time()))
 	if request.method == 'POST':
-		username = request.POST.get('username')
-		password = request.POST.get('password')
-		user = authenticate(request, username=username, password=password)
+		action = (request.POST.get('action') or 'password').strip().lower()
 
-		if user is not None and user.is_staff:
-			cache.delete(fail_key)
-			cache.delete(block_key)
-			login(request, user)
-			next_url = request.GET.get('next', '/admin-portal/')
-			return redirect(next_url)
+		if action in {'verify_otp', 'resend_otp'} and request.session.get(ADMIN_2FA_PENDING_USER_ID_KEY):
+			pending_user_id = request.session.get(ADMIN_2FA_PENDING_USER_ID_KEY)
+			user = authenticate(request, username=request.POST.get('username', ''), password=request.POST.get('password', ''))
+			try:
+				pending_user_id = int(pending_user_id)
+			except (TypeError, ValueError):
+				pending_user_id = None
 
-		failed_attempts = cache.get(fail_key, 0) + 1
-		cache.set(fail_key, failed_attempts, timeout=600)
-		if failed_attempts >= 5:
-			cache.set(block_key, True, timeout=600)
-			error = 'تم تجاوز عدد المحاولات المسموح به. تم الحظر لمدة 10 دقائق.'
+			pending_user = None
+			if pending_user_id:
+				from django.contrib.auth import get_user_model
+				pending_user = get_user_model().objects.filter(id=pending_user_id, is_staff=True).first()
+
+			if action == 'resend_otp' and pending_user is not None:
+				_store_admin_otp(request, pending_user)
+				otp_required = True
+				otp_remaining = max(0, int(request.session.get(ADMIN_2FA_EXPIRES_AT_KEY, 0) or 0) - int(time.time()))
+				log_security_event(
+					request=request,
+					event_type=SecurityAuditLog.EVENT_ADMIN_2FA,
+					outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+					metadata={'action': 'resend_otp'},
+					user=pending_user,
+				)
+			else:
+				code = (request.POST.get('otp_code') or '').strip()
+				if pending_user is not None and _verify_admin_otp(request, code):
+					cache.delete(fail_key)
+					cache.delete(block_key)
+					_clear_admin_otp(request)
+					login(request, pending_user)
+					log_security_event(
+						request=request,
+						event_type=SecurityAuditLog.EVENT_ADMIN_2FA,
+						outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+						metadata={'action': 'verify_otp'},
+						user=pending_user,
+					)
+					next_url = request.GET.get('next', '/admin-portal/')
+					return redirect(next_url)
+				error = 'رمز التحقق غير صحيح أو منتهي الصلاحية.'
+				otp_required = True
+				otp_remaining = max(0, int(request.session.get(ADMIN_2FA_EXPIRES_AT_KEY, 0) or 0) - int(time.time()))
+				log_security_event(
+					request=request,
+					event_type=SecurityAuditLog.EVENT_ADMIN_2FA,
+					outcome=SecurityAuditLog.OUTCOME_FAILURE,
+					metadata={'action': 'verify_otp'},
+					user=pending_user,
+				)
 		else:
-			error = 'بيانات الدخول غير صحيحة أو ليس لديك صلاحية الوصول.'
+			username = request.POST.get('username')
+			password = request.POST.get('password')
+			user = authenticate(request, username=username, password=password)
 
-	return render(request, 'admin_portal/login.html', {'error': error})
+			if user is not None and user.is_staff:
+				two_fa_enabled = bool(getattr(settings, 'ADMIN_PORTAL_2FA_ENABLED', False))
+				if two_fa_enabled and user.email:
+					_store_admin_otp(request, user)
+					otp_required = True
+					otp_remaining = max(0, int(request.session.get(ADMIN_2FA_EXPIRES_AT_KEY, 0) or 0) - int(time.time()))
+					log_security_event(
+						request=request,
+						event_type=SecurityAuditLog.EVENT_LOGIN,
+						outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+						metadata={'phase': 'password_ok_otp_required'},
+						user=user,
+					)
+				else:
+					cache.delete(fail_key)
+					cache.delete(block_key)
+					login(request, user)
+					log_security_event(
+						request=request,
+						event_type=SecurityAuditLog.EVENT_LOGIN,
+						outcome=SecurityAuditLog.OUTCOME_SUCCESS,
+						metadata={'phase': 'direct_login'},
+						user=user,
+					)
+					next_url = request.GET.get('next', '/admin-portal/')
+					return redirect(next_url)
+			else:
+				failed_attempts = cache.get(fail_key, 0) + 1
+				cache.set(fail_key, failed_attempts, timeout=600)
+				if failed_attempts >= 5:
+					cache.set(block_key, True, timeout=600)
+					error = 'تم تجاوز عدد المحاولات المسموح به. تم الحظر لمدة 10 دقائق.'
+				else:
+					error = 'بيانات الدخول غير صحيحة أو ليس لديك صلاحية الوصول.'
+				log_security_event(
+					request=request,
+					event_type=SecurityAuditLog.EVENT_LOGIN,
+					outcome=SecurityAuditLog.OUTCOME_FAILURE,
+					metadata={'phase': 'password'},
+				)
+
+	return render(request, 'admin_portal/login.html', {
+		'error': error,
+		'otp_required': otp_required,
+		'otp_remaining': otp_remaining,
+	})
 
 
 @login_required(login_url='/admin-portal/login/')

@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Refunds" %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header">
+        <div class="page-header__content">
+            <h1 class="page-title">{% trans "Refunds" %}</h1>
+            <p class="page-subtitle">{% trans "Track your refund requests and status" %}</p>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Total Refunds" %}</span>
+            <span class="stat-value">{{ total_refunds_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Total Amount" %}</span>
+            <span class="stat-value">{{ total_refunds_amount|floatformat:2 }} SAR</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Completed" %}</span>
+            <span class="stat-value">{{ completed_refunds_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">{% trans "Processing" %}</span>
+            <span class="stat-value">{{ processing_refunds_count }}</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="{% trans 'Search refund ID or order...' %}" 
+                       value="{{ request.GET.search }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <select name="status" class="form-control">
+                    <option value="">{% trans "All Status" %}</option>
+                    <option value="initiated" {% if request.GET.status == 'initiated' %}selected{% endif %}>{% trans "Initiated" %}</option>
+                    <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>{% trans "Processing" %}</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>{% trans "Completed" %}</option>
+                    <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>{% trans "Failed" %}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% trans "Filter" %}</button>
+        </form>
+    </div>
+
+    <!-- Refunds List -->
+    <div class="content-section">
+        {% if refunds %}
+        <div class="refunds-list">
+            {% for refund in refunds %}
+            <div class="refund-item">
+                <div class="refund-item__header">
+                    <div class="refund-info">
+                        <h3 class="refund-id">{{ refund.refund_id }}</h3>
+                        <p class="refund-meta">
+                            {% trans "Order" %} <a href="{% url 'admin:orders_order_change' refund.order.id %}">#{{ refund.order.id }}</a>
+                            {% if refund.rma %} • {% trans "RMA" %} {{ refund.rma.rma_number }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="refund-amount-status">
+                        <span class="amount">{{ refund.amount }} {{ refund.currency }}</span>
+                        <span class="badge badge-{{ refund.status }}">{{ refund.get_status_display }}</span>
+                    </div>
+                </div>
+
+                <div class="refund-item__content">
+                    <div class="refund-details">
+                        <div class="detail">
+                            <span class="label">{% trans "Reason" %}</span>
+                            <span class="value">{{ refund.refund_reason|default:"—" }}</span>
+                        </div>
+                        <div class="detail">
+                            <span class="label">{% trans "Created" %}</span>
+                            <span class="value">{{ refund.created_at|date:"LONG_DATE_FORMAT" }}</span>
+                        </div>
+                        {% if refund.completed_at %}
+                        <div class="detail">
+                            <span class="label">{% trans "Completed" %}</span>
+                            <span class="value">{{ refund.completed_at|date:"LONG_DATE_FORMAT" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Status Message -->
+                    {% if refund.status == 'completed' %}
+                    <div class="status-message success">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                        </svg>
+                        {% trans "Refund has been successfully processed and credited to your account." %}
+                    </div>
+                    {% elif refund.status == 'processing' %}
+                    <div class="status-message info">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-5-3V7z"/>
+                        </svg>
+                        {% trans "Your refund is being processed. This may take 3-5 business days." %}
+                    </div>
+                    {% elif refund.status == 'failed' %}
+                    <div class="status-message error">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                        </svg>
+                        {% trans "The refund request failed. Please contact support for assistance." %}
+                        {% if refund.gateway_response.error %}
+                        <p class="error-details">{{ refund.gateway_response.error }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="refund-item__footer">
+                    {% if refund.status == 'failed' %}
+                    <button class="btn btn-sm btn-secondary" onclick="retryRefund({{ refund.id }})">
+                        {% trans "Retry" %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">{% trans "First" %}</a>
+                <a href="?page={{ page_obj.previous_page_number }}">{% trans "Previous" %}</a>
+            {% endif %}
+
+            <span class="pagination-info">
+                {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">{% trans "Next" %}</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">{% trans "Last" %}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M13 16H3V7a2 2 0 012-2h10m0 0l2.293-2.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414l-.293.293M21 16h-6"/>
+            </svg>
+            <p>{% trans "No refunds found." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        padding: 24px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 32px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 8px 0;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .stat-card:nth-child(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-card:nth-child(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-card:nth-child(4) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .filters-section {
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .filters-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .refunds-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .refund-item {
+        background: white;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .refund-item:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: #ddd;
+    }
+
+    .refund-item__header {
+        padding: 16px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .refund-info h3 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .refund-meta {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .refund-meta a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .refund-meta a:hover {
+        text-decoration: underline;
+    }
+
+    .refund-amount-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    .amount {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-initiated {
+        background: #e8e8e8;
+        color: #666;
+    }
+
+    .badge-processing {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .badge-completed {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .badge-failed {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .refund-item__content {
+        padding: 16px;
+    }
+
+    .refund-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .detail {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+    }
+
+    .detail .label {
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .detail .value {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .status-message {
+        padding: 12px;
+        border-radius: 4px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+
+    .status-message svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .status-message.success {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .status-message.info {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-message.error {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .error-details {
+        margin: 8px 0 0 0;
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .refund-item__footer {
+        padding: 12px 16px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 8px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 64px 24px;
+        color: #999;
+    }
+
+    .empty-state svg {
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        margin-top: 32px;
+    }
+
+    .pagination a {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .pagination-info {
+        padding: 0 12px;
+        font-size: 14px;
+        color: #666;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .refund-item__header {
+            flex-direction: column;
+        }
+
+        .refund-amount-status {
+            align-items: flex-start;
+        }
+
+        .refund-details {
+            grid-template-columns: 1fr;
+        }
+
+        .filters-form {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
