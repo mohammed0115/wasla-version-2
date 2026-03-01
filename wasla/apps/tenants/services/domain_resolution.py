@@ -36,11 +36,15 @@ def invalidate_domain_cache(host: str) -> None:
 
 
 def _resolve_uncached(host: str) -> Tenant | None:
+    # Use defensive getattr for backward compatibility with older migrations
+    status_active = getattr(StoreDomain, "STATUS_ACTIVE", "active")
+    status_degraded = getattr(StoreDomain, "STATUS_DEGRADED", "degraded")
+    
     domain_match = (
         StoreDomain.objects.select_related("tenant")
         .filter(
             domain=host,
-            status__in=(StoreDomain.STATUS_ACTIVE, StoreDomain.STATUS_DEGRADED),
+            status__in=(status_active, status_degraded),
             tenant__is_active=True,
         )
         .first()

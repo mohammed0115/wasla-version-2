@@ -611,7 +611,8 @@ OPENAI_WHISPER_MODEL = os.environ.get("OPENAI_WHISPER_MODEL", "whisper-1")
 GOOGLE_SPEECH_API_KEY = os.environ.get("GOOGLE_SPEECH_API_KEY", "")
 
 
-# +# Reverse proxy / HTTPS (nginx)
+# Reverse proxy / HTTPS (nginx)
+USE_X_FORWARDED_HOST = _env_bool("DJANGO_USE_X_FORWARDED_HOST", "1" if ENVIRONMENT == "production" else "0")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", "1" if ENVIRONMENT == "production" else "0")
 SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "1" if ENVIRONMENT == "production" else "0")
