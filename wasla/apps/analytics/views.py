@@ -30,6 +30,7 @@ from apps.analytics.application.dashboard_services import (
     EventTrackingService,
     FunnelAnalysisService,
 )
+from apps.analytics.utils import resolve_store_id
 
 
 # ============================================================================
@@ -51,7 +52,7 @@ def merchant_kpi_view(request):
         ...
     }
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return JsonResponse({'error': 'No store associated'}, status=400)
 
@@ -83,7 +84,7 @@ def merchant_dashboard_view(request):
     """
     from django.shortcuts import render
 
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return HttpResponse('No store associated', status=400)
 
@@ -128,7 +129,7 @@ def revenue_chart_data_view(request):
         "avg_daily_revenue": "1239.36"
     }
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return JsonResponse({'error': 'No store associated'}, status=400)
 
@@ -229,7 +230,7 @@ def funnel_analysis_view(request):
     
     Returns JSON with conversion funnel stages.
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return JsonResponse({'error': 'No store associated'}, status=400)
 
@@ -261,7 +262,7 @@ def export_kpi_csv_view(request):
     Query params:
     - period: 'today', '7d', '30d' (default: '7d')
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return HttpResponse('No store associated', status=400)
 
@@ -295,7 +296,7 @@ def export_revenue_csv_view(request):
     Query params:
     - days: 7 or 30 (default: 7)
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return HttpResponse('No store associated', status=400)
 
@@ -334,7 +335,7 @@ def export_funnel_csv_view(request):
     Query params:
     - days: 7 or 30 (default: 7)
     """
-    store_id = request.user.store_id
+    store_id = resolve_store_id(request)
     if not store_id:
         return HttpResponse('No store associated', status=400)
 
