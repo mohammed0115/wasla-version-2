@@ -6,8 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orders', '0003_production_commerce_upgrade'),
         ('orders', '0005_orderitem_variant'),
+        ('orders', '0003_order_checkout_fields'),
     ]
 
     operations = [

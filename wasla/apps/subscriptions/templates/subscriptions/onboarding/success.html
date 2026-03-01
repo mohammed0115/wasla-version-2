@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Wasla{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="success-icon mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h1 class="h1 mb-2">{{ page_title }}</h1>
+                    {% if store %}
+                        <p class="lead text-muted mb-4">
+                            Welcome to Wasla! Your store <strong>{{ store.subdomain }}.w-sala.com</strong> is ready.
+                        </p>
+                        
+                        <div class="store-info card mb-4" style="text-align: left;">
+                            <div class="card-body">
+                                <div class="info-row mb-2">
+                                    <span class="label">Store Name:</span>
+                                    <span class="value">{{ store.name }}</span>
+                                </div>
+                                <div class="info-row mb-2">
+                                    <span class="label">Store URL:</span>
+                                    <span class="value">
+                                        <a href="https://{{ store.subdomain }}.w-sala.com" target="_blank">
+                                            {{ store.subdomain }}.w-sala.com
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="info-row mb-2">
+                                    <span class="label">Plan:</span>
+                                    <span class="value">{{ store.plan.name }}</span>
+                                </div>
+                                {% if store.status == 'pending_payment' %}
+                                    <div class="info-row">
+                                        <span class="label">Status:</span>
+                                        <span class="value">
+                                            <span class="badge bg-warning">Awaiting Payment Confirmation</span>
+                                        </span>
+                                    </div>
+                                {% else %}
+                                    <div class="info-row">
+                                        <span class="label">Status:</span>
+                                        <span class="value">
+                                            <span class="badge bg-success">Active &amp; Published</span>
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="action-buttons">
+                        {% if store %}
+                            {% if store.status != 'pending_payment' %}
+                                <a href="https://{{ store.subdomain }}.w-sala.com" target="_blank" class="btn btn-primary btn-lg me-2">
+                                    Visit Your Store
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'subscriptions_web:dashboard' %}" class="btn btn-outline-primary btn-lg">
+                                Go to Dashboard
+                            </a>
+                        {% else %}
+                            <a href="{% url 'subscriptions_web:onboarding_plan' %}" class="btn btn-primary btn-lg">
+                                Start Over
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if store.status == 'pending_payment' %}
+                        <div class="alert alert-info mt-4">
+                            <strong>Payment Status:</strong> We're waiting for payment confirmation. 
+                            Once verified, your store will be automatically activated and published.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .success-icon {
+        display: flex;
+        justify-content: center;
+    }
+    
+    .store-info {
+        border-color: #d4edda;
+        background-color: #f1f8f6;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .info-row .label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .info-row .value {
+        font-weight: 500;
+    }
+    
+    .info-row .value a {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+    
+    .info-row .value a:hover {
+        text-decoration: underline;
+    }
+    
+    .action-buttons {
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}

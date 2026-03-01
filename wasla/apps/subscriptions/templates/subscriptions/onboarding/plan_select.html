@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Wasla{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="progress-steps mb-5">
+                <div class="step active">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Plan</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Subdomain</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Payment</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Done</span>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="h2 mb-4">{{ page_title }}</h1>
+                    <p class="text-muted mb-4">Select the perfect plan for your store</p>
+                    
+                    <form method="post" class="form-onboarding">
+                        {% csrf_token %}
+                        
+                        <div class="plans-grid mb-4">
+                            {% for plan in form.plan_id %}
+                                <div class="plan-card">
+                                    <input type="radio" name="plan_id" value="{{ plan.data.value }}" 
+                                           id="plan_{{ plan.data.value }}" class="plan-radio">
+                                    <label for="plan_{{ plan.data.value }}" class="plan-label">
+                                        <div class="plan-name">{{ plan.data.label }}</div>
+                                        <div class="plan-price">
+                                            {% if plan.data.label|lower == "free" or "free" in plan.data.label|lower %}
+                                                Free
+                                            {% else %}
+                                                SAR {{ plan.data.label|dictsort:"price"|first }}
+                                            {% endif %}
+                                        </div>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger mb-4">
+                                {% for error in form.non_field_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if form.plan_id.errors %}
+                            <div class="alert alert-danger">
+                                {{ form.plan_id.errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            Continue to Next Step
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.5;
+    }
+    .step.active {
+        opacity: 1;
+        color: #0d6efd;
+    }
+    .step-number {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .step.active .step-number {
+        background: #0d6efd;
+        color: white;
+    }
+    
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    .plan-card {
+        position: relative;
+    }
+    .plan-radio {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .plan-label {
+        display: block;
+        padding: 1.5rem;
+        border: 2px solid #e9ecef;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .plan-radio:checked + .plan-label {
+        border-color: #0d6efd;
+        background:rgba(13, 110, 253, 0.05);
+    }
+    .plan-label:hover {
+        border-color: #0d6efd;
+    }
+    .plan-name {
+        font-weight: 500;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    .plan-price {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}

@@ -223,6 +223,48 @@ class TenantMiddleware:
         return None
 
 
+class StoreStatusGuardMiddleware(MiddlewareMixin):
+    """
+    Guard: Check store status before allowing request to proceed.
+    
+    Guards against:
+    - Accessing suspended or inactive stores
+    - Visiting unpublished storefronts
+    
+    Returns 503 (Service Unavailable) for inactive stores.
+    """
+    
+    def process_request(self, request):
+        """Check store status before allowing request to proceed."""
+        # Allow admin portal to bypass this check
+        if request.path.startswith("/admin-portal/"):
+            return None
+        
+        # Allow health checks to bypass
+        if request.path in ["/healthz", "/readyz", "/metrics"]:
+            return None
+        
+        store = getattr(request, "store", None)
+        if not store:
+            return None
+        
+        # Check if store is ACTIVE or published
+        status = getattr(store, "status", None)
+        if status in ["suspended", "inactive", "deleted"]:
+            context = {
+                "store": store,
+                "message": f"This store is currently {status}.",
+            }
+            return render(
+                request,
+                "stores/store_unavailable.html",
+                context,
+                status=503
+            )
+        
+        return None
+
+
 class TenantLocaleMiddleware:
     """
     Set a tenant default language if user hasn't selected one.
