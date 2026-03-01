@@ -238,21 +238,22 @@ MIDDLEWARE = [
     "apps.security.middleware.rate_limit.RateLimitMiddleware",
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    # ========== TENANT ISOLATION (runs early, before auth) ==========
-    "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
-    "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
-    "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements
-    "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access
+    "django.middleware.locale.LocaleMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    # ========== MUST run BEFORE tenant security middleware ==========
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     # ================================================================
     "apps.security.middleware.headers.SecurityHeadersMiddleware",
     "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
+    # ========== TENANT ISOLATION (after auth) ==========
+    "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
+    "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
+    "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements (safe: auth complete)
+    "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access (safe: auth complete)
     "apps.tenants.middleware.TenantLocaleMiddleware",
-    "django.middleware.locale.LocaleMiddleware",
-    "django.middleware.common.CommonMiddleware",
     "apps.observability.middleware.timing.PerformanceMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.security.middleware.audit.SecurityAuditMiddleware",
     "apps.security.middleware.rbac.PermissionCacheMiddleware",
     "apps.accounts.middleware.OnboardingFlowMiddleware",

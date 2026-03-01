@@ -92,11 +92,14 @@ class TenantSecurityMiddleware:
                 return self._handle_missing_tenant(request)
         
         # Additional security checks
-        if tenant and request.user and request.user.is_authenticated:
+        # SAFE: AuthenticationMiddleware guaranteed to have run before this middleware
+        user = getattr(request, 'user', None)
+        if tenant and user and user.is_authenticated:
             # Verify user has access to this tenant
-            if not self._user_has_tenant_access(request.user, tenant):
+            if not self._user_has_tenant_access(user, tenant):
+                user_id = getattr(user, 'id', 'UNKNOWN')
                 logger.warning(
-                    f"SECURITY: User {request.user.id} attempted to access tenant {tenant.id} "
+                    f"SECURITY: User {user_id} attempted to access tenant {tenant.id} "
                     f"without permission. Path: {request.path}"
                 )
                 return HttpResponse("Access Denied", status=403)
@@ -169,10 +172,15 @@ class TenantSecurityMiddleware:
         """
         path = request.path
         
+        # SAFE: Use getattr with fallback since request.user may not have id attribute
+        user = getattr(request, 'user', None)
+        user_id = getattr(user, 'id', None) if user else None
+        user_info = f"User: {user_id}" if user_id else "User: ANON"
+        
         if path.startswith('/api/'):
             logger.warning(
                 f"SECURITY: API request without tenant resolution. "
-                f"Path: {path}, User: {request.user.id if request.user else 'ANON'}"
+                f"Path: {path}, {user_info}"
             )
             return HttpResponse(
                 '{"error": "Tenant context required"}',
@@ -183,7 +191,7 @@ class TenantSecurityMiddleware:
         # For web requests, return 404 or redirect
         logger.warning(
             f"SECURITY: Web request without tenant resolution. "
-            f"Path: {path}, User: {request.user.id if request.user else 'ANON'}"
+            f"Path: {path}, {user_info}"
         )
         raise Http404("Store context required")
 
@@ -224,10 +232,15 @@ class TenantContextMiddleware:
         current_tenant = getattr(request, 'tenant', None)
         
         if original_tenant and current_tenant and original_tenant.id != current_tenant.id:
+            # SAFE: Use getattr with fallback for user.id
+            user = getattr(request, 'user', None)
+            user_id = getattr(user, 'id', None) if user else None
+            user_info = f"User: {user_id}" if user_id else "User: ANON"
+            
             logger.error(
                 f"SECURITY ALERT: Tenant context changed during request! "
                 f"Original: {original_tenant.id}, Current: {current_tenant.id}, "
-                f"Path: {request.path}, User: {request.user.id if request.user else 'ANON'}"
+                f"Path: {request.path}, {user_info}"
             )
         
         return response
@@ -265,9 +278,12 @@ class TenantAuditMiddleware:
         current_tenant = getattr(request, 'tenant', None)
         
         # Log sensitive API calls
-        if request.path.startswith('/api/') and request.user and request.user.is_authenticated:
+        # SAFE: AuthenticationMiddleware guaranteed to have run before this middleware
+        user = getattr(request, 'user', None)
+        if request.path.startswith('/api/') and user and user.is_authenticated:
             if current_tenant:
+                user_id = getattr(user, 'id', 'UNKNOWN')
                 logger.debug(
-                    f"Tenant API Access: user_id={request.user.id}, "
+                    f"Tenant API Access: user_id={user_id}, "
                     f"tenant_id={current_tenant.id}, path={request.path}, method={request.method}"
                 )
