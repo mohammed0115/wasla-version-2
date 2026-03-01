@@ -58,6 +58,7 @@ ADMIN_PORTAL_2FA_ENABLED = _env_bool("ADMIN_PORTAL_2FA_ENABLED", "1" if ENVIRONM
 ADMIN_PORTAL_2FA_TTL_SECONDS = int(os.getenv("ADMIN_PORTAL_2FA_TTL_SECONDS", "300") or "300")
 
 SECURITY_RATE_LIMITS = [
+    # Authentication endpoints - strict limits
     {
         "key": "login_user",
         "pattern": r"^/auth/$",
@@ -82,6 +83,7 @@ SECURITY_RATE_LIMITS = [
         "window": int(os.getenv("RL_OTP_WINDOW", "300") or "300"),
         "message_key": "otp_rate_limited",
     },
+    # Payment endpoints - moderate limits
     {
         "key": "payments",
         "pattern": r"^/api/payments/",
@@ -89,6 +91,24 @@ SECURITY_RATE_LIMITS = [
         "limit": int(os.getenv("RL_PAYMENTS_LIMIT", "60") or "60"),
         "window": int(os.getenv("RL_PAYMENTS_WINDOW", "60") or "60"),
         "message_key": "payments_rate_limited",
+    },
+    # Webhook endpoints - moderate but burst-friendly
+    {
+        "key": "webhooks",
+        "pattern": r"^/api/webhooks/|^/webhooks/",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_WEBHOOKS_LIMIT", "120") or "120"),
+        "window": int(os.getenv("RL_WEBHOOKS_WINDOW", "60") or "60"),
+        "message_key": "webhook_rate_limited",
+    },
+    # APIs in general - per-user limits
+    {
+        "key": "api_general",
+        "pattern": r"^/api/",
+        "methods": ["POST", "PUT", "PATCH", "DELETE"],
+        "limit": int(os.getenv("RL_API_LIMIT", "300") or "300"),
+        "window": int(os.getenv("RL_API_WINDOW", "60") or "60"),
+        "message_key": "api_rate_limited",
     },
 ]
 
@@ -252,6 +272,7 @@ MIDDLEWARE = [
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
     # ========== TENANT ISOLATION (after auth) ==========
     "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
+    "apps.tenants.middleware.StoreStatusGuardMiddleware",   # Guard: Check store status (ACTIVE, published)
     "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
     "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements (safe: auth complete)
     "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access (safe: auth complete)
