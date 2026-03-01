@@ -40,7 +40,7 @@ def _resolve_uncached(host: str) -> Tenant | None:
         StoreDomain.objects.select_related("tenant")
         .filter(
             domain=host,
-            status__in=(StoreDomain.STATUS_ACTIVE, StoreDomain.STATUS_SSL_ACTIVE),
+            status__in=(StoreDomain.STATUS_ACTIVE, StoreDomain.STATUS_DEGRADED),
             tenant__is_active=True,
         )
         .first()

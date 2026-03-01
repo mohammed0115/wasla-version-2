@@ -77,6 +77,12 @@ class StoreDomain(models.Model):
     STATUS_DEGRADED = "degraded"
     STATUS_FAILED = "failed"
 
+    # Backward compatibility aliases for SSL-prefixed constants
+    STATUS_SSL_PENDING = STATUS_PENDING_VERIFICATION
+    STATUS_SSL_ACTIVE = STATUS_ACTIVE
+    STATUS_SSL_DEGRADED = STATUS_DEGRADED
+    STATUS_SSL_FAILED = STATUS_FAILED
+
     STATUS_CHOICES = [
         (STATUS_PENDING_VERIFICATION, "Pending Verification"),
         (STATUS_VERIFIED, "Verified"),
