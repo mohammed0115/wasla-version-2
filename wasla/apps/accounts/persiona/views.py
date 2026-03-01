@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from apps.stores.models import Plan
 from apps.tenants.models import Tenant, TenantMembership, StoreProfile
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
+from apps.tenants.services.provisioning import provision_store_after_payment
 from apps.subscriptions.models import SubscriptionPlan, StoreSubscription
 from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
 
@@ -159,6 +160,9 @@ def persona_plans(request):
 
             # ensure tenant + membership
             tenant = ensure_tenant_for_user(request.user)
+            request.session["store_id"] = tenant.id
+            request.session.modified = True
+            request.tenant = tenant
 
             # subscription (MVP)
             is_free = float(getattr(chosen, "price", 0) or 0) <= 0
@@ -166,7 +170,7 @@ def persona_plans(request):
                 store_id=tenant.id,
                 defaults={
                     "plan": chosen,
-                    "status": "pending",
+                    "status": "active" if is_free else "pending",
                     "start_date": timezone.now().date(),
                     "end_date": (
                         timezone.now().date()
@@ -177,6 +181,10 @@ def persona_plans(request):
 
             request.session["persona_billing_cycle"] = chosen.billing_cycle
             request.session["persona_plan_id"] = chosen.id
+
+        if is_free:
+            provision_store_after_payment(merchant=request.user, plan=chosen)
+            return redirect("tenants:dashboard_home")
 
         # Option C flow: do not auto-activate subscriptions or stores.
         # Merchant must submit/complete manual payment then wait for admin approval.

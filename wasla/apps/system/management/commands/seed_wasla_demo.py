@@ -48,7 +48,7 @@ class Command(BaseCommand):
             admin_user.save(update_fields=["is_staff", "is_superuser"])
 
         role, _ = AdminRole.objects.get_or_create(
-            name="SuperAdmin",
+            name="SUPERADMIN",
             defaults={"description": "Full access"},
         )
         AdminUserRole.objects.get_or_create(user=admin_user, defaults={"role": role})

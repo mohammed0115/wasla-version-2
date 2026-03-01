@@ -1,15 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from apps.admin_portal.models import (
-    AdminAuditLog,
-    AdminPermission,
-    AdminRole,
-    AdminRolePermission,
-    AdminUserRole,
-)
+from apps.admin_portal.models import AdminAuditLog, AdminRole, AdminUserRole
 from apps.settlements.models import Invoice
 from apps.stores.models import Store
 from apps.tenants.models import Tenant
@@ -48,39 +43,7 @@ class AdminPortalPhaseE2Tests(TestCase):
         self._ensure_default_rbac()
 
     def _ensure_default_rbac(self):
-        roles = {
-            "SuperAdmin": "Full access",
-            "Finance": "Finance role",
-            "Support": "Support role",
-            "Ops": "Ops role",
-        }
-        for name, description in roles.items():
-            AdminRole.objects.get_or_create(name=name, defaults={"description": description})
-
-        permissions = {
-            "TENANTS_VIEW": "",
-            "TENANTS_EDIT": "",
-            "STORES_VIEW": "",
-            "STORES_EDIT": "",
-            "FINANCE_VIEW": "",
-            "FINANCE_MARK_INVOICE_PAID": "",
-            "WEBHOOKS_VIEW": "",
-        }
-        for code, description in permissions.items():
-            AdminPermission.objects.get_or_create(code=code, defaults={"description": description})
-
-        mapping = {
-            "SuperAdmin": list(permissions.keys()),
-            "Finance": ["FINANCE_VIEW", "FINANCE_MARK_INVOICE_PAID"],
-            "Support": ["TENANTS_VIEW", "STORES_VIEW", "FINANCE_VIEW"],
-            "Ops": ["STORES_VIEW", "WEBHOOKS_VIEW"],
-        }
-
-        for role_name, codes in mapping.items():
-            role = AdminRole.objects.get(name=role_name)
-            for code in codes:
-                perm = AdminPermission.objects.get(code=code)
-                AdminRolePermission.objects.get_or_create(role=role, permission=perm)
+        call_command("seed_admin_portal_rbac", verbosity=0)
 
     def _login_with_role(self, username: str, role_name: str):
         user = self.User.objects.create_user(
@@ -95,7 +58,7 @@ class AdminPortalPhaseE2Tests(TestCase):
         return user
 
     def test_rbac_finance_cannot_edit_tenant(self):
-        self._login_with_role("finance_user", "Finance")
+        self._login_with_role("finance_user", "FINANCE")
 
         response = self.client.post(
             reverse("admin_portal:tenant_set_active", args=[self.tenant.id]),
@@ -105,7 +68,7 @@ class AdminPortalPhaseE2Tests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_rbac_support_cannot_mark_invoice_paid(self):
-        self._login_with_role("support_user", "Support")
+        self._login_with_role("support_user", "SUPPORT")
 
         response = self.client.post(
             reverse("admin_portal:invoice_mark_paid", args=[self.invoice.id]),
@@ -114,7 +77,7 @@ class AdminPortalPhaseE2Tests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_audit_log_created_for_tenant_action(self):
-        actor = self._login_with_role("super_user", "SuperAdmin")
+        actor = self._login_with_role("super_user", "SUPERADMIN")
 
         response = self.client.post(
             reverse("admin_portal:tenant_set_active", args=[self.tenant.id]),
@@ -158,14 +121,14 @@ class AdminPortalPhaseE2Tests(TestCase):
         self.assertIn("تم", blocked.content.decode("utf-8"))
 
     def test_dashboard_loads_for_super_admin(self):
-        self._login_with_role("dash_admin", "SuperAdmin")
+        self._login_with_role("dash_admin", "SUPERADMIN")
 
         response = self.client.get(reverse("admin_portal:dashboard"))
 
         self.assertEqual(response.status_code, 200)
 
     def test_stores_page_loads_for_super_admin(self):
-        self._login_with_role("stores_admin", "SuperAdmin")
+        self._login_with_role("stores_admin", "SUPERADMIN")
 
         response = self.client.get(reverse("admin_portal:stores"))
 

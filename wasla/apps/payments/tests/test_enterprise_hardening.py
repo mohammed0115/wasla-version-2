@@ -365,7 +365,7 @@ class TestPaymentHardeningWeb(PaymentHardeningBase):
     def setUp(self):
         super().setUp()
         self.client = Client()
-        role, _ = AdminRole.objects.get_or_create(name="SuperAdmin")
+        role, _ = AdminRole.objects.get_or_create(name="SUPERADMIN")
         self.staff = get_user_model().objects.create_user(
             username="portal-admin",
             password="pass123",

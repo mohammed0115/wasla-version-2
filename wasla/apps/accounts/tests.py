@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
 from apps.subscriptions.models import StoreSubscription, SubscriptionPlan
+from apps.stores.models import Store
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
 
 
@@ -115,3 +116,40 @@ class ResolveOnboardingStateTests(TestCase):
 		request = self._request("/dashboard/", user)
 		target = resolve_onboarding_state(request)
 		self.assertEqual(target, "/dashboard/")
+
+
+class PersonaPlansFlowTests(TestCase):
+	def setUp(self) -> None:
+		super().setUp()
+		self.user_model = get_user_model()
+		self.user = self.user_model.objects.create_user(username="plan-user", password="pass12345")
+		self.client.login(username="plan-user", password="pass12345")
+
+	def test_free_plan_provisions_store(self):
+		plan = SubscriptionPlan.objects.create(name="Basic", price=0, billing_cycle="monthly", is_active=True)
+
+		response = self.client.post(reverse("accounts:persona_plans"), {"plan_id": plan.id})
+
+		self.assertEqual(response.status_code, 302)
+		self.assertEqual(response.url, reverse("tenants:dashboard_home"))
+
+		tenant = Tenant.objects.filter(memberships__user=self.user).first()
+		self.assertIsNotNone(tenant)
+		self.assertTrue(Store.objects.filter(owner=self.user, tenant=tenant, status=Store.STATUS_ACTIVE).exists())
+
+		subscription = StoreSubscription.objects.filter(store_id=tenant.id).first()
+		self.assertIsNotNone(subscription)
+		self.assertEqual(subscription.status, "active")
+
+	def test_paid_plan_sets_session_store_id(self):
+		plan = SubscriptionPlan.objects.create(name="Pro", price=99, billing_cycle="monthly", is_active=True)
+
+		response = self.client.post(reverse("accounts:persona_plans"), {"plan_id": plan.id})
+
+		self.assertEqual(response.status_code, 302)
+		self.assertEqual(response.url, reverse("tenants:billing_payment_required"))
+
+		tenant = Tenant.objects.filter(memberships__user=self.user).first()
+		self.assertIsNotNone(tenant)
+		session = self.client.session
+		self.assertEqual(session.get("store_id"), tenant.id)

@@ -135,7 +135,7 @@ def _finalize_setup_for_tenant(tenant: Tenant) -> bool:
 @never_cache
 @ensure_csrf_cookie
 def login_view(request):
-	if request.user.is_authenticated and request.user.is_staff:
+	if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
 		return redirect('/admin-portal/')
 
 	ip = _get_client_ip(request)
@@ -166,7 +166,9 @@ def login_view(request):
 			pending_user = None
 			if pending_user_id:
 				from django.contrib.auth import get_user_model
-				pending_user = get_user_model().objects.filter(id=pending_user_id, is_staff=True).first()
+				pending_user = get_user_model().objects.filter(id=pending_user_id).first()
+				if pending_user and not (pending_user.is_staff or pending_user.is_superuser):
+					pending_user = None
 
 			if action == 'resend_otp' and pending_user is not None:
 				_store_admin_otp(request, pending_user)
@@ -210,7 +212,7 @@ def login_view(request):
 			password = request.POST.get('password')
 			user = authenticate(request, username=username, password=password)
 
-			if user is not None and user.is_staff:
+			if user is not None and (user.is_staff or user.is_superuser):
 				two_fa_enabled = bool(getattr(settings, 'ADMIN_PORTAL_2FA_ENABLED', False))
 				if two_fa_enabled and user.email:
 					_store_admin_otp(request, user)
@@ -264,7 +266,7 @@ def logout_view(request):
 	return redirect('/admin-portal/login/')
 
 
-@admin_permission_required(["TENANTS_VIEW", "STORES_VIEW"], require_all=True)
+@admin_permission_required(["portal.tenants.view", "portal.stores.view"], require_all=True)
 def dashboard_view(request):
 	now = timezone.now()
 	last_30_days = now - timedelta(days=30)
@@ -306,7 +308,7 @@ def dashboard_view(request):
 	return render(request, 'admin_portal/dashboard.html', context)
 
 
-@admin_permission_required("TENANTS_VIEW")
+@admin_permission_required("portal.tenants.view")
 def tenants_view(request):
 	tenants = (
 		Tenant.objects
@@ -322,13 +324,13 @@ def tenants_view(request):
 	return render(request, 'admin_portal/tenants.html', {'tenants': tenants_page})
 
 
-@admin_permission_required("TENANTS_VIEW")
+@admin_permission_required("portal.tenants.view")
 def tenant_detail_view(request, tenant_id):
 	tenant = get_object_or_404(Tenant, id=tenant_id)
 	return render(request, 'admin_portal/tenant_detail.html', {'tenant': tenant})
 
 
-@admin_permission_required("TENANTS_EDIT")
+@admin_permission_required("portal.tenants.manage")
 def tenant_set_active_view(request, tenant_id):
 	if request.method != 'POST':
 		return HttpResponseNotAllowed(['POST'])
@@ -363,7 +365,7 @@ def tenant_set_active_view(request, tenant_id):
 	return redirect('admin_portal:tenants')
 
 
-@admin_permission_required("TENANTS_EDIT")
+@admin_permission_required("portal.tenants.manage")
 def tenant_publish_view(request, tenant_id):
 	if request.method != 'POST':
 		return HttpResponseNotAllowed(['POST'])
@@ -421,7 +423,7 @@ def tenant_publish_view(request, tenant_id):
 	return redirect('admin_portal:tenants')
 
 
-@admin_permission_required("STORES_VIEW")
+@admin_permission_required("portal.stores.view")
 def stores_view(request):
 	stores = (
 		Store.objects.select_related('tenant')
@@ -434,13 +436,13 @@ def stores_view(request):
 	return render(request, 'admin_portal/stores.html', {'stores': stores_page})
 
 
-@admin_permission_required("STORES_VIEW")
+@admin_permission_required("portal.stores.view")
 def store_detail_view(request, store_id):
 	store = get_object_or_404(Store.objects.select_related('tenant', 'owner'), id=store_id)
 	return render(request, 'admin_portal/store_detail.html', {'store': store})
 
 
-@admin_permission_required("STORES_EDIT")
+@admin_permission_required("portal.stores.manage")
 def store_set_active_view(request, store_id):
 	if request.method != 'POST':
 		return HttpResponseNotAllowed(['POST'])
@@ -461,7 +463,7 @@ def store_set_active_view(request, store_id):
 	return redirect('admin_portal:stores')
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.payments.view")
 def payments_view(request):
 	payments = (
 		PaymentAttempt.objects.select_related('store')
@@ -485,7 +487,7 @@ def payments_view(request):
 	})
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.settlements.view")
 def settlements_view(request):
 	settlements = (
 		SettlementRecord.objects.select_related('store')
@@ -507,7 +509,7 @@ def settlements_view(request):
 	})
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.settlements.view")
 def invoices_view(request):
 	invoices = (
 		Invoice.objects.select_related('tenant')
@@ -523,7 +525,7 @@ def invoices_view(request):
 	return render(request, 'admin_portal/invoices.html', {'invoices': invoices_page})
 
 
-@admin_permission_required("FINANCE_MARK_INVOICE_PAID")
+@admin_permission_required("portal.settlements.approve")
 def invoice_mark_paid_view(request, invoice_id):
 	if request.method != 'POST':
 		return HttpResponseNotAllowed(['POST'])
@@ -546,7 +548,7 @@ def invoice_mark_paid_view(request, invoice_id):
 	return redirect('admin_portal:invoices')
 
 
-@admin_permission_required("WEBHOOKS_VIEW")
+@admin_permission_required("portal.audit.view")
 def webhooks_view(request):
 	webhooks = (
 		WebhookEvent.objects
@@ -570,7 +572,7 @@ def webhooks_view(request):
 	})
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.payments.view")
 def payment_transactions_view(request):
 	transactions = (
 		PaymentTransaction.objects.select_related('tenant', 'plan')
@@ -595,7 +597,7 @@ def payment_transactions_view(request):
 	})
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.payments.manage")
 def payment_transaction_create_view(request):
 	form = ManualPaymentForm(request.POST or None)
 	if request.method == 'POST' and form.is_valid():
@@ -626,7 +628,7 @@ def payment_transaction_create_view(request):
 	return render(request, 'admin_portal/payment_transaction_create.html', {'form': form})
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.payments.manage")
 def payment_transaction_approve_create_store_view(request, transaction_id: int):
 	if request.method != 'POST':
 		return HttpResponseNotAllowed(['POST'])
@@ -660,7 +662,7 @@ def payment_transaction_approve_create_store_view(request, transaction_id: int):
 	return redirect('admin_portal:payment_transactions')
 
 
-@admin_permission_required("FINANCE_VIEW")
+@admin_permission_required("portal.subscriptions.view")
 def subscriptions_view(request):
 	subscriptions = StoreSubscription.objects.select_related('plan').order_by('-created_at')
 	plans = SubscriptionPlan.objects.only('id', 'name').order_by('name')
@@ -682,7 +684,7 @@ def subscriptions_view(request):
 	})
 
 
-@admin_permission_required("STORES_VIEW")
+@admin_permission_required("portal.audit.view")
 def performance_monitoring_view(request):
 	logs = RequestPerformanceLog.objects.all().order_by('-created_at')
 	stores = Store.objects.only('id', 'name').order_by('name')
