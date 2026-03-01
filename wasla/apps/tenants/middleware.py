@@ -23,7 +23,7 @@ from django.utils.deprecation import MiddlewareMixin
 
 from .models import Tenant
 from .infrastructure.subdomain_resolver import extract_subdomain
-from .services.domain_resolution import resolve_tenant_by_host
+from .services.domain_resolution import resolve_tenant_by_host, resolve_store_by_slug
 
 
 class TenantResolverMiddleware(MiddlewareMixin):
@@ -37,6 +37,14 @@ class TenantResolverMiddleware(MiddlewareMixin):
             return True
         return normalized_host.endswith(".nip.io") or normalized_host.endswith(".localhost")
 
+    @staticmethod
+    def _is_root_domain(host: str) -> bool:
+        """Check if host is the root domain (w-sala.com or www.w-sala.com)."""
+        normalized_host = (host or "").split(":", 1)[0].strip().lower()
+        base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "") or "").strip().lower()
+        www_domain = f"www.{base_domain}" if base_domain else ""
+        return normalized_host == base_domain or normalized_host == www_domain
+
     def process_request(self, request):
         if request.path.startswith("/admin-portal/"):
             request.store = None
@@ -46,6 +54,21 @@ class TenantResolverMiddleware(MiddlewareMixin):
         host = request.get_host().split(":", 1)[0]
         subdomain = extract_subdomain(request.get_host())
         from apps.stores.models import Store
+
+        # Root domain check: resolve to DEFAULT_STORE_SLUG
+        if self._is_root_domain(host) and not subdomain:
+            default_slug = getattr(settings, "DEFAULT_STORE_SLUG", "store1")
+            default_store = resolve_store_by_slug(default_slug)
+            if default_store and default_store.tenant and default_store.tenant.is_active:
+                request.store = default_store
+                request.tenant = default_store.tenant
+                return None
+            # Default store not configured - will be handled by security middleware
+            request.store = None
+            request.tenant = None
+            # Mark that this is a root domain request without default store
+            request._is_root_domain_no_default = True
+            return None
 
         if not subdomain:
             request.store = None

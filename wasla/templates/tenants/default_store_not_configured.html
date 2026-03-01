@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Unavailable - Wasla</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                         'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                         sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        
+        .status-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #222;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .details {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+            border-radius: 4px;
+        }
+        
+        .details h3 {
+            font-size: 14px;
+            color: #222;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .details p {
+            font-size: 13px;
+            color: #666;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        
+        .details code {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d63031;
+        }
+        
+        .support-info {
+            font-size: 14px;
+            color: #999;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+        
+        .support-info a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .support-info a:hover {
+            text-decoration: underline;
+        }
+        
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚙️</div>
+        <div class="status-code">503</div>
+        
+        <h1>Service Unavailable</h1>
+        <p class="message">
+            The platform default store is not configured yet.
+        </p>
+        
+        <div class="details">
+            <h3>What does this mean?</h3>
+            <p>
+                The Wasla e-commerce platform requires a default store to be configured 
+                for the root domain. This store acts as the landing page for visitors 
+                accessing the platform.
+            </p>
+        </div>
+        
+        <div class="details">
+            <h3>How to fix this?</h3>
+            <p>
+                An administrator needs to create a store with the slug: 
+                <code>{{ default_store_slug }}</code>
+            </p>
+            <p style="margin-top: 15px;">
+                You can create this store by:
+            </p>
+            <ol style="text-align: left; margin: 10px 0 0 20px; font-size: 13px;">
+                <li>Using the admin panel at <code>/admin/</code></li>
+                <li>Creating a "Store" record with <code>slug="{{ default_store_slug }}"</code></li>
+                <li>Ensuring the store is active and linked to a tenant</li>
+            </ol>
+        </div>
+        
+        <div class="support-info">
+            <p>
+                For technical support or to configure the default store, 
+                please <a href="mailto:admin@w-sala.com">contact your administrator</a>.
+            </p>
+            <p style="margin-top: 15px; font-size: 12px;">
+                Error ID: DEFAULT_STORE_NOT_CONFIGURED
+            </p>
+        </div>
+    </div>
+</body>
+</html>

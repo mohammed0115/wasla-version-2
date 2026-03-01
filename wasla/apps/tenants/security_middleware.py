@@ -19,6 +19,7 @@ from django.conf import settings
 from django.http import Http404, HttpResponse, HttpRequest
 from django.db.utils import OperationalError, ProgrammingError
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import render
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,8 @@ class TenantSecurityMiddleware:
         Handle missing tenant based on request type.
         
         - API requests: 403 Forbidden
-        - Page requests: Redirect to store selection or 404
+        - Root domain without default store: 503 Service Unavailable with friendly template
+        - Other web requests: 404 Not Found
         - Health checks: Allow through
         """
         path = request.path
@@ -176,6 +178,9 @@ class TenantSecurityMiddleware:
         user = getattr(request, 'user', None)
         user_id = getattr(user, 'id', None) if user else None
         user_info = f"User: {user_id}" if user_id else "User: ANON"
+        
+        # Check if this is a root domain request without default store
+        is_root_domain_no_default = getattr(request, '_is_root_domain_no_default', False)
         
         if path.startswith('/api/'):
             logger.warning(
@@ -188,7 +193,33 @@ class TenantSecurityMiddleware:
                 content_type='application/json'
             )
         
-        # For web requests, return 404 or redirect
+        # For root domain without default store, return friendly 503
+        if is_root_domain_no_default:
+            logger.warning(
+                f"SECURITY: Root domain request without default store configured. "
+                f"Path: {path}, {user_info}. "
+                f"Set WASLA_DEFAULT_STORE_SLUG env var."
+            )
+            try:
+                return render(
+                    request,
+                    'tenants/default_store_not_configured.html',
+                    {
+                        'default_store_slug': getattr(settings, 'DEFAULT_STORE_SLUG', 'store1'),
+                    },
+                    status=503,
+                )
+            except Exception:
+                # Fallback if template doesn't exist
+                return HttpResponse(
+                    f'<html><head><title>Service Unavailable</title></head>'
+                    f'<body><h1>503 Service Unavailable</h1>'
+                    f'<p>Default store not configured. Please contact the administrator.</p></body></html>',
+                    status=503,
+                    content_type='text/html'
+                )
+        
+        # For other web requests, return 404
         logger.warning(
             f"SECURITY: Web request without tenant resolution. "
             f"Path: {path}, {user_info}"

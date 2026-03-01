@@ -5,6 +5,7 @@ from django.core.cache import cache
 
 from apps.tenants.domain.policies import normalize_domain
 from apps.tenants.models import StoreDomain, Tenant
+from apps.stores.models import Store
 
 
 def _cache_key(host: str) -> str:
@@ -33,6 +34,22 @@ def invalidate_domain_cache(host: str) -> None:
     if not normalized:
         return
     cache.delete(_cache_key(normalized))
+
+
+def resolve_store_by_slug(slug: str) -> 'Store | None':
+    """Resolve a store by its slug."""
+    if not slug:
+        return None
+    
+    try:
+        store = (
+            Store.objects.select_related("tenant")
+            .filter(slug=slug, is_active=True)
+            .first()
+        )
+        return store
+    except Exception:
+        return None
 
 
 def _resolve_uncached(host: str) -> Tenant | None:
