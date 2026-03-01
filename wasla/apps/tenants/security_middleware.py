@@ -5,25 +5,29 @@ Prevents:
 - Requests without resolved tenant (when required)
 - Tenant resolution bypass attacks
 - Cross-tenant data access in sensitive operations
+
+Django 5+ Compatible: New-style middleware (WSGI)
+All classes implement __init__(get_response) and __call__(request) pattern.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Optional, Set
+from typing import Optional, Set, Callable, Any
 
 from django.conf import settings
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpRequest
 from django.db.utils import OperationalError, ProgrammingError
-from django.utils.deprecation import MiddlewareMixin
 from django.core.exceptions import PermissionDenied
 
 logger = logging.getLogger(__name__)
 
 
-class TenantSecurityMiddleware(MiddlewareMixin):
+class TenantSecurityMiddleware:
     """
     Enforce strict tenant validation at the request level.
+    
+    Django 5+ new-style middleware (WSGI).
     
     Config in settings.py:
     - TENANT_REQUIRED_PATHS: List of path prefixes requiring tenant resolution
@@ -46,11 +50,23 @@ class TenantSecurityMiddleware(MiddlewareMixin):
         '/api/redoc/',
     }
     
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable) -> None:
+        """Initialize middleware with WSGI app."""
         self.get_response = get_response
         self._compile_tenant_required_paths()
     
-    def _compile_tenant_required_paths(self):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Process request and call next middleware/view."""
+        # Guard: Ensure tenant is properly resolved before processing
+        response = self._check_tenant_security(request)
+        if response:
+            return response
+        
+        # Call the next middleware/view
+        response = self.get_response(request)
+        return response
+    
+    def _compile_tenant_required_paths(self) -> None:
         """Compile configurable tenant-required paths."""
         self.tenant_required_paths: Set[str] = set(
             getattr(settings, 'TENANT_REQUIRED_PATHS', {
@@ -62,9 +78,10 @@ class TenantSecurityMiddleware(MiddlewareMixin):
             })
         )
     
-    def process_request(self, request):
+    def _check_tenant_security(self, request: HttpRequest) -> Optional[HttpResponse]:
         """
-        Guard: Ensure tenant is properly resolved before processing.
+        Perform tenant security checks.
+        Returns error response if checks fail, None if checks pass.
         """
         # Attach tenant to request (already done by TenantMiddleware)
         tenant = getattr(request, 'tenant', None)
@@ -104,7 +121,7 @@ class TenantSecurityMiddleware(MiddlewareMixin):
         
         return False
     
-    def _user_has_tenant_access(self, user, tenant) -> bool:
+    def _user_has_tenant_access(self, user: Any, tenant: Any) -> bool:
         """
         Verify user has legitimate access to this tenant.
         
@@ -142,7 +159,7 @@ class TenantSecurityMiddleware(MiddlewareMixin):
         
         return False
     
-    def _handle_missing_tenant(self, request):
+    def _handle_missing_tenant(self, request: HttpRequest) -> HttpResponse:
         """
         Handle missing tenant based on request type.
         
@@ -171,19 +188,34 @@ class TenantSecurityMiddleware(MiddlewareMixin):
         raise Http404("Store context required")
 
 
-class TenantContextMiddleware(MiddlewareMixin):
+class TenantContextMiddleware:
     """
     Ensure tenant context persists throughout the request lifecycle.
+    
+    Django 5+ new-style middleware (WSGI).
     
     Validates that:
     - Tenant doesn't change mid-request
     - Tenant ID matches expectations for sensitive operations
     """
     
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable) -> None:
+        """Initialize middleware with WSGI app."""
         self.get_response = get_response
     
-    def process_response(self, request, response):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Process request and call next middleware/view."""
+        # Store original tenant for validation during response
+        original_tenant = getattr(request, 'tenant', None)
+        request._original_tenant = original_tenant
+        
+        # Call the next middleware/view
+        response = self.get_response(request)
+        
+        # Validate tenant context at response time
+        return self._validate_tenant_context(request, response)
+    
+    def _validate_tenant_context(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
         """
         Validate tenant context at response time.
         """
@@ -201,9 +233,11 @@ class TenantContextMiddleware(MiddlewareMixin):
         return response
 
 
-class TenantAuditMiddleware(MiddlewareMixin):
+class TenantAuditMiddleware:
     """
     Audit all tenant-related access and permission checks.
+    
+    Django 5+ new-style middleware (WSGI).
     
     Logs:
     - Cross-tenant query attempts
@@ -211,16 +245,24 @@ class TenantAuditMiddleware(MiddlewareMixin):
     - Permission denied events
     """
     
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable) -> None:
+        """Initialize middleware with WSGI app."""
         self.get_response = get_response
     
-    def process_request(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Process request with audit logging."""
+        # Log tenant resolution for audit trail
+        self._log_tenant_access(request)
+        
+        # Call the next middleware/view
+        response = self.get_response(request)
+        return response
+    
+    def _log_tenant_access(self, request: HttpRequest) -> None:
         """
         Log tenant resolution for audit trail.
         """
-        # Store original tenant for validation during response
         current_tenant = getattr(request, 'tenant', None)
-        request._original_tenant = current_tenant
         
         # Log sensitive API calls
         if request.path.startswith('/api/') and request.user and request.user.is_authenticated:
@@ -229,5 +271,3 @@ class TenantAuditMiddleware(MiddlewareMixin):
                     f"Tenant API Access: user_id={request.user.id}, "
                     f"tenant_id={current_tenant.id}, path={request.path}, method={request.method}"
                 )
-        
-        return None
