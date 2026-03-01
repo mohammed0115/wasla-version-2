@@ -8,7 +8,6 @@ class ProductSEOAdmin(admin.ModelAdmin):
     list_display = ("product", "slug", "meta_title", "updated_at")
     search_fields = ("product__name", "slug", "meta_title")
     list_filter = ("created_at", "updated_at")
-    prepopulated_fields = {"slug": ("product__name",)}
     readonly_fields = ("created_at", "updated_at")
 
 
@@ -17,7 +16,6 @@ class CategorySEOAdmin(admin.ModelAdmin):
     list_display = ("category", "slug", "meta_title", "updated_at")
     search_fields = ("category__name", "slug", "meta_title")
     list_filter = ("created_at", "updated_at")
-    prepopulated_fields = {"slug": ("category__name",)}
     readonly_fields = ("created_at", "updated_at")
 
 

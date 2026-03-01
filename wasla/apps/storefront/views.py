@@ -15,7 +15,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from apps.catalog.models import Product, Category, ProductVariant
 from apps.cart.application.use_cases.get_cart import GetCartUseCase
 from apps.cart.domain.errors import CartError
-from apps.customers.models import Customer, CustomerAddress
+from apps.customers.models import Customer, Address
 from apps.orders.models import Order
 from apps.stores.models import Store
 from apps.tenants.domain.tenant_context import TenantContext
@@ -378,9 +378,9 @@ def customer_addresses(request: HttpRequest) -> HttpResponse:
     ).first()
 
     if not customer:
-        addresses = CustomerAddress.objects.none()
+        addresses = Address.objects.none()
     else:
-        addresses = CustomerAddress.objects.filter(customer=customer)
+        addresses = Address.objects.filter(customer=customer)
 
     context = _get_storefront_context(request, tenant_ctx)
     context.update({

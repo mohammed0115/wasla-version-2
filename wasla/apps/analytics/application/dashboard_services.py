@@ -26,7 +26,6 @@ from apps.analytics.models import Event
 from apps.orders.models import Order, OrderItem
 from apps.catalog.models import Product, ProductVariant
 from apps.cart.models import Cart
-from apps.purchases.models import Purchase
 
 # ============================================================================
 # Data Models
