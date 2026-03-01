@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 import requests
 from django.conf import settings
+from core.infrastructure.circuit_breaker import CircuitBreaker
 from apps.bnpl.models import BnplProvider, BnplTransaction, BnplWebhookLog
 from apps.orders.models import Order
 
@@ -57,6 +58,11 @@ class TabbyAdapter(BnplProviderInterface):
         """Create Tabby checkout session."""
         url = f"{self.api_url}/api/v1/checkout"
 
+        shipping = order.shipping_address
+        buyer_name = shipping.full_name or order.customer_name or "Customer"
+        buyer_email = order.email
+        buyer_phone = shipping.phone or order.customer_phone or None
+
         # Prepare order data
         payload = {
             "payment": {
@@ -64,13 +70,9 @@ class TabbyAdapter(BnplProviderInterface):
                 "currency": "SAR",
                 "description": f"Order #{order.id}",
                 "buyer": {
-                    "email": order.email,
-                    "phone": order.shipping_address.phone
-                    if order.shipping_address
-                    else None,
-                    "name": order.shipping_address.full_name
-                    if order.shipping_address
-                    else "Customer",
+                    "email": buyer_email,
+                    "phone": buyer_phone,
+                    "name": buyer_name,
                 },
                 "order": {
                     "reference_id": str(order.id),
@@ -101,7 +103,8 @@ class TabbyAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tabby")
+            response = breaker.call(requests.post, url, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -126,7 +129,8 @@ class TabbyAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tabby")
+            response = breaker.call(requests.get, url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -176,7 +180,8 @@ class TabbyAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tabby")
+            response = breaker.call(requests.post, url, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
             return {"status": "success", "data": response.json()}
         except Exception as e:
@@ -189,6 +194,10 @@ class TamaraAdapter(BnplProviderInterface):
     def create_session(self, order: Order) -> dict:
         """Create Tamara checkout session."""
         url = f"{self.api_url}/api/v1/checkout"
+
+        shipping = order.shipping_address
+        buyer_name = shipping.full_name or order.customer_name or "Customer"
+        first_name = buyer_name.split()[0] if buyer_name else "Customer"
 
         payload = {
             "order_reference_id": str(order.id),
@@ -209,25 +218,15 @@ class TamaraAdapter(BnplProviderInterface):
                 for item in order.items.all()
             ],
             "customer": {
-                "first_name": order.shipping_address.full_name.split()[0]
-                if order.shipping_address
-                else "Customer",
+                "first_name": first_name,
                 "email": order.email,
-                "phone": order.shipping_address.phone
-                if order.shipping_address
-                else None,
+                "phone": shipping.phone or order.customer_phone or None,
             },
             "shipping_address": {
                 "country_code": "SA",
-                "region": order.shipping_address.city
-                if order.shipping_address
-                else "",
-                "address_line1": order.shipping_address.line1
-                if order.shipping_address
-                else "",
-                "address_line2": order.shipping_address.line2
-                if order.shipping_address
-                else "",
+                "region": shipping.city or "",
+                "address_line1": shipping.line1 or "",
+                "address_line2": shipping.line2 or "",
             },
             "payment_type": "PAY_BY_INSTALMENTS",
             "instalments": 3,
@@ -245,7 +244,8 @@ class TamaraAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tamara")
+            response = breaker.call(requests.post, url, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             checkout_id = data.get("checkout", {}).get("id")
@@ -271,7 +271,8 @@ class TamaraAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tamara")
+            response = breaker.call(requests.get, url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -324,7 +325,8 @@ class TamaraAdapter(BnplProviderInterface):
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            breaker = CircuitBreaker("bnpl.tamara")
+            response = breaker.call(requests.post, url, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
             return {"status": "success", "data": response.json()}
         except Exception as e:
@@ -483,7 +485,8 @@ class BnplPaymentOrchestrator:
             # Update order status if payment approved
             if new_status == BnplTransaction.STATUS_APPROVED:
                 transaction.order.status = "processing"
-                transaction.order.save()
+                transaction.order.payment_status = "confirmed"
+                transaction.order.save(update_fields=["status", "payment_status"])
 
         return {
             "status": "success",

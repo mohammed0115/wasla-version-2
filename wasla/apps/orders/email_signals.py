@@ -1,7 +1,9 @@
 """Order confirmation email signals."""
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.mail import send_mail
+from django.utils import timezone
 from apps.orders.models import Order
 from apps.orders.email_templates import (
     render_order_confirmation_email,
@@ -13,19 +15,49 @@ from apps.shipping.models import Shipment
 @receiver(post_save, sender=Order)
 def send_order_confirmation_email(sender, instance, created, **kwargs):
     """Send confirmation email after order is placed and paid."""
-    # Only send when order status changes to 'processing' (after payment)
-    if not created and instance.status in ['processing', 'confirmed']:
-        # Check if email already sent (use a flag to avoid duplicates)
-        if not getattr(instance, '_confirmation_email_sent', False):
-            send_order_confirmation(instance)
-            instance._confirmation_email_sent = True
+    if instance.status not in ['processing', 'confirmed', 'paid']:
+        return
+    if instance.payment_status != "paid":
+        return
+    if instance.confirmation_email_sent_at:
+        return
+    order_id = instance.id
+
+    def _send():
+        order = Order.objects.filter(
+            id=order_id,
+            confirmation_email_sent_at__isnull=True,
+            payment_status="paid",
+        ).first()
+        if not order:
+            return
+        send_order_confirmation(order)
+        Order.objects.filter(id=order_id, confirmation_email_sent_at__isnull=True).update(
+            confirmation_email_sent_at=timezone.now()
+        )
+
+    transaction.on_commit(_send)
 
 
 @receiver(post_save, sender=Shipment)
 def send_shipment_notification_email(sender, instance, created, **kwargs):
     """Send shipping notification when shipment is created."""
-    if created and instance.tracking_number:
-        send_shipment_email(instance)
+    if instance.tracking_number and not instance.notification_sent_at:
+        shipment_id = instance.id
+
+        def _send():
+            shipment = Shipment.objects.select_related("order").filter(
+                id=shipment_id,
+                notification_sent_at__isnull=True,
+            ).first()
+            if not shipment or not shipment.tracking_number:
+                return
+            send_shipment_email(shipment)
+            Shipment.objects.filter(id=shipment_id, notification_sent_at__isnull=True).update(
+                notification_sent_at=timezone.now()
+            )
+
+        transaction.on_commit(_send)
 
 
 def send_order_confirmation(order):

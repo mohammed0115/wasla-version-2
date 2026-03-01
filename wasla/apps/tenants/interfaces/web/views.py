@@ -71,6 +71,8 @@ from apps.tenants.tasks import enqueue_verify_domain
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.services.audit_service import TenantAuditService
 from apps.domains.models import DomainHealth
+from apps.subscriptions.services.entitlement_service import SubscriptionEntitlementService
+from apps.subscriptions.services.exceptions import SubscriptionLimitExceededError, NoActiveSubscriptionError
 
 from .forms import (
     CustomDomainForm,
@@ -880,6 +882,25 @@ def dashboard_users_roles(request: HttpRequest) -> HttpResponse:
         if hasattr(tenant, "store_profile") and tenant.store_profile.owner_id == user.id:
             messages.info(request, "Store owner is already assigned.")
             return redirect("tenants:dashboard_users_roles")
+
+        existing_membership = TenantMembership.objects.filter(tenant=tenant, user=user).first()
+        needs_capacity = not existing_membership or not existing_membership.is_active
+        if needs_capacity and role != TenantMembership.ROLE_OWNER:
+            try:
+                current_staff = (
+                    TenantMembership.objects.filter(tenant=tenant, is_active=True)
+                    .exclude(role=TenantMembership.ROLE_OWNER)
+                    .count()
+                )
+                SubscriptionEntitlementService.assert_within_limit(
+                    store_id=tenant.id,
+                    limit_field="max_staff_users",
+                    current_usage=current_staff,
+                    increment=1,
+                )
+            except (SubscriptionLimitExceededError, NoActiveSubscriptionError) as exc:
+                messages.error(request, str(exc))
+                return redirect("tenants:dashboard_users_roles")
 
         membership, created = TenantMembership.objects.get_or_create(
             tenant=tenant,

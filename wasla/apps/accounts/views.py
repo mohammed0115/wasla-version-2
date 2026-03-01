@@ -10,6 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from apps.accounts.application.usecases.resolve_onboarding_state import resolve_onboarding_state
 from apps.security.audit import log_security_event
 from apps.security.models import SecurityAuditLog
@@ -189,6 +191,68 @@ def resend_otp(request: HttpRequest) -> HttpResponse:
 def do_logout(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("accounts:auth")
+
+
+# ---------------------------
+# Merchant 2FA (TOTP)
+# ---------------------------
+
+@login_required
+@require_http_methods(["GET"])
+def totp_setup(request: HttpRequest) -> JsonResponse:
+    """
+    Generate TOTP secret + QR code for setup.
+    Stores secret temporarily in session until verified.
+    """
+    from .totp_models import TOTPService
+
+    secret, qr_code = TOTPService.generate_secret_and_qr(request.user)
+    request.session["totp_setup_secret"] = secret
+    return JsonResponse(
+        {
+            "secret": secret,
+            "qr_code": qr_code,
+        }
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def totp_enable(request: HttpRequest) -> JsonResponse:
+    """Verify TOTP code and enable 2FA for the user."""
+    from .totp_models import TOTPService
+    import pyotp
+
+    secret = (request.POST.get("secret") or request.session.get("totp_setup_secret") or "").strip()
+    token = (request.POST.get("token") or "").strip()
+
+    if not secret or not token:
+        return JsonResponse({"error": "secret and token are required"}, status=400)
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(token):
+        return JsonResponse({"error": "Invalid TOTP code"}, status=400)
+
+    backup_codes = TOTPService.generate_backup_codes()
+    TOTPService.enable_2fa(request.user, secret=secret, backup_codes=backup_codes)
+    request.session.pop("totp_setup_secret", None)
+
+    return JsonResponse(
+        {
+            "status": "enabled",
+            "backup_codes": backup_codes,
+        }
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def totp_disable(request: HttpRequest) -> JsonResponse:
+    """Disable 2FA for the user."""
+    from .totp_models import TOTPService
+
+    disabled = TOTPService.disable_2fa(request.user)
+    return JsonResponse({"status": "disabled" if disabled else "not_enabled"})
 
 
 # ---------------------------

@@ -477,11 +477,16 @@ class RefundTransactionViewSet(viewsets.ModelViewSet):
             order = Order.objects.get(id=serializer.validated_data['order_id'])
             refunds_service = RefundsService()
             
+            rma = None
+            rma_id = serializer.validated_data.get('rma_id')
+            if rma_id:
+                rma = RMA.objects.filter(id=rma_id, order=order).first()
+
             refund = refunds_service.request_refund(
                 order=order,
                 amount=serializer.validated_data['amount'],
                 reason=serializer.validated_data.get('refund_reason', ''),
-                rma_id=serializer.validated_data.get('rma_id'),
+                rma=rma,
             )
             
             # Process refund asynchronously
@@ -540,7 +545,7 @@ class StockReservationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockReservationSerializer
     permission_classes = [IsAuthenticated, TenantTokenAuth]
     filterset_fields = ['status', 'store_id', 'expires_at']
-    search_fields = ['inventory__product__name']
+    search_fields = ['product__name']
     ordering_fields = ['expires_at', 'created_at']
     ordering = ['expires_at']
     

@@ -14,3 +14,7 @@ class UpdateCartItemSerializer(serializers.Serializer):
 
 class RemoveCartItemSerializer(serializers.Serializer):
     item_id = serializers.IntegerField(min_value=1)
+
+
+class ApplyCouponSerializer(serializers.Serializer):
+    coupon_code = serializers.CharField(max_length=50)

@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.catalog.models import Inventory, ProductVariant, StockMovement
 from apps.subscriptions.services.entitlement_service import SubscriptionEntitlementService
 from apps.wallet.services.wallet_service import WalletService
+from apps.wallet.services.accounting_service import AccountingService
 
 from ..models import Order, OrderItem
 from .pricing_service import PricingService
@@ -176,9 +177,13 @@ class OrderService:
         else:
             order.save(update_fields=["status"])
 
+        accounting = AccountingService()
+        fee_policy = accounting.get_active_fee_policy(store_id=order.store_id)
+        net_amount = accounting.calculate_net(amount=order.total_amount, fee_policy=fee_policy)
+
         WalletService.on_order_paid(
             store_id=order.store_id,
             tenant_id=order.tenant_id,
-            net_amount=order.total_amount,
+            net_amount=net_amount,
             reference=f"order_paid:{order.id}",
         )

@@ -12,9 +12,9 @@ from django.utils import timezone
 from decimal import Decimal
 import logging
 
-from apps.orders.models_extended import RefundTransaction, RMA, ReturnItem
-from apps.orders.models import Order
-from apps.payments.infrastructure.orchestrator import PaymentOrchestrator
+from apps.orders.models import RefundTransaction, RMA, ReturnItem, Order
+from apps.orders.services.returns_service import RefundsService
+from apps.payments.gateway import PaymentGatewayClient
 
 logger = logging.getLogger("orders.refund")
 
@@ -45,23 +45,11 @@ class RefundService:
         Raises:
             ValueError: If refundable amount exceeded
         """
-        # Validate refund amount
-        refundable = order.total_amount - order.refunded_amount
-        if amount > refundable:
-            raise ValueError(
-                f"Refund amount {amount} exceeds refundable {refundable}"
-            )
-        
-        # Create refund transaction record
-        refund_tx = RefundTransaction.objects.create(
-            tenant_id=order.tenant_id,
-            store_id=order.store_id,
+        refund_tx = RefundsService.request_refund(
             order=order,
-            rma=rma,
             amount=amount,
-            currency=order.currency,
-            refund_reason=reason,
-            status=RefundTransaction.STATUS_INITIATED,
+            reason=reason,
+            rma=rma,
         )
         
         logger.info(
@@ -88,86 +76,22 @@ class RefundService:
         Returns:
             Updated RefundTransaction
         """
-        order = refund_tx.order
-        
-        # Get original payment attempt (simplified - use latest successful)
-        from apps.payments.models import PaymentAttempt
-        payment_attempt = PaymentAttempt.objects.filter(
-            order_id=order.id,
-            status__in=["confirmed", "completed"],
-        ).order_by("-created_at").first()
-        
-        if not payment_attempt:
-            logger.warning(
-                "No successful payment found for refund",
-                extra={"order_id": order.id, "refund_id": str(refund_tx.id)},
-            )
-            refund_tx.status = RefundTransaction.STATUS_FAILED
-            refund_tx.gateway_response = {"error": "No payment to refund"}
-            refund_tx.save(update_fields=["status", "gateway_response"])
-            return refund_tx
-        
         try:
-            refund_tx.status = RefundTransaction.STATUS_PROCESSING
-            refund_tx.save(update_fields=["status"])
-            
-            # Call payment orchestrator to process refund
-            orchestrator = PaymentOrchestrator()
-            result = orchestrator.refund_payment(
-                payment_attempt=payment_attempt,
-                amount=refund_tx.amount,
-                reason=refund_tx.refund_reason,
-            )
-            
-            if result.get("ok"):
-                refund_tx.status = RefundTransaction.STATUS_COMPLETED
-                refund_tx.refund_id = result.get("refund_id", "")
-                refund_tx.gateway_response = result
-                refund_tx.completed_at = timezone.now()
-                
-                # Update order refunded amount
-                order.refunded_amount += refund_tx.amount
-                order.save(update_fields=["refunded_amount"])
-                
-                logger.info(
-                    "Refund completed",
-                    extra={
-                        "order_id": order.id,
-                        "refund_id": str(refund_tx.id),
-                        "amount": str(refund_tx.amount),
-                        "provider": payment_attempt.provider,
-                    },
-                )
-            else:
-                refund_tx.status = RefundTransaction.STATUS_FAILED
-                refund_tx.gateway_response = result
-                
-                logger.error(
-                    "Refund failed",
-                    extra={
-                        "order_id": order.id,
-                        "refund_id": str(refund_tx.id),
-                        "error": result.get("error", "Unknown error"),
-                    },
-                )
-            
-            refund_tx.save(update_fields=["status", "refund_id", "gateway_response", "completed_at"])
-            
+            gateway = PaymentGatewayClient(tenant_id=refund_tx.tenant_id)
+            return RefundsService.process_refund(refund_tx, gateway)
         except Exception as e:
             refund_tx.status = RefundTransaction.STATUS_FAILED
             refund_tx.gateway_response = {"error": str(e)}
             refund_tx.save(update_fields=["status", "gateway_response"])
-            
             logger.exception(
                 "Refund processing error",
                 extra={
-                    "order_id": order.id,
+                    "order_id": refund_tx.order_id,
                     "refund_id": str(refund_tx.id),
                     "error": str(e),
                 },
             )
-        
-        return refund_tx
+            return refund_tx
     
     @staticmethod
     @transaction.atomic

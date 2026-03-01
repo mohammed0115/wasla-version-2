@@ -18,11 +18,12 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ["sku", "name", "price", "description_ar", "description_en", "is_active"]
+        fields = ["sku", "name", "price", "weight_kg", "description_ar", "description_en", "is_active"]
         widgets = {
             "sku": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. TEE-BASE"}),
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Product name"}),
             "price": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
+            "weight_kg": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.001"}),
             "description_ar": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "description_en": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),

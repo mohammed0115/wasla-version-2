@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import time
+from decimal import Decimal
 from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
+from django.conf import settings
 
 from apps.orders.models import Order
 from apps.payments.application.facade import PaymentGatewayFacade
@@ -49,6 +51,10 @@ class InitiatePaymentUseCase:
             raise ValueError("Order not found.")
         if order.payment_status == "paid":
             return PaymentRedirect(redirect_url=cmd.return_url, client_secret=None, provider_reference=None)
+
+        bnpl_min_amount = Decimal(str(getattr(settings, "BNPL_MIN_AMOUNT", "200")))
+        if cmd.provider_code in {"tabby", "tamara"} and order.total_amount < bnpl_min_amount:
+            raise ValueError(f"BNPL requires minimum order amount of {bnpl_min_amount} SAR.")
 
         existing_attempt = (
             PaymentAttempt.objects.select_for_update()

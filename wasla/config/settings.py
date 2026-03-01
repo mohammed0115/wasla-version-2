@@ -16,6 +16,7 @@ from pathlib import Path
 import importlib.util
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
+from decimal import Decimal
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -169,6 +170,8 @@ CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST = _env_bool("CUSTOM_DOMAIN_NGINX_RELOAD_IN
 DOMAIN_PROVISIONING_MODE = os.getenv("DOMAIN_PROVISIONING_MODE", "manual").strip().lower() or "manual"
 WASLA_ENABLE_AR = _env_bool("WASLA_ENABLE_AR", "0")
 
+SHIPPING_DEFAULT_WEIGHT_KG = Decimal(os.getenv("SHIPPING_DEFAULT_WEIGHT_KG", "1") or "1")
+
 NGINX_TEMPLATE_DIR = os.getenv("NGINX_TEMPLATE_DIR", "infrastructure/nginx").strip() or "infrastructure/nginx"
 NGINX_DOMAIN_TEMPLATE = os.getenv("NGINX_DOMAIN_TEMPLATE", "domain.conf.j2").strip() or "domain.conf.j2"
 
@@ -241,6 +244,7 @@ MIDDLEWARE = [
     # ========== TENANT ISOLATION (runs early, before auth) ==========
     "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
     "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
+    "config.security_middleware.JWTTenantValidationMiddleware",
     "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements
     "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access
     # ================================================================
@@ -253,6 +257,7 @@ MIDDLEWARE = [
     "apps.observability.middleware.timing.PerformanceMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "config.security_middleware.TOTPVerificationMiddleware",
     "apps.security.middleware.audit.SecurityAuditMiddleware",
     "apps.security.middleware.rbac.PermissionCacheMiddleware",
     "apps.accounts.middleware.OnboardingFlowMiddleware",
@@ -351,6 +356,12 @@ else:
 
 DATABASES = {"default": DEFAULT_DB}
 
+# Connection pooling / persistence
+DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60") or "60")
+DB_CONN_HEALTH_CHECKS = _env_bool("DB_CONN_HEALTH_CHECKS", "1")
+DATABASES["default"]["CONN_MAX_AGE"] = DB_CONN_MAX_AGE
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = DB_CONN_HEALTH_CHECKS
+
 # Optional: expose other DB connections only when explicitly requested.
 # Keeping them disabled by default avoids needing extra DB drivers (mysqlclient)
 # for local development and automated tests.
@@ -418,6 +429,7 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",

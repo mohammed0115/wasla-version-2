@@ -124,6 +124,14 @@ class TenantMiddleware:
 
     def __call__(self, request):
         request.tenant = self._resolve_tenant(request)
+        if request.tenant and not getattr(request, "store", None):
+            try:
+                from apps.stores.models import Store
+                store = Store.objects.filter(tenant=request.tenant).order_by("id").first()
+                if store:
+                    request.store = store
+            except Exception:
+                pass
         return self.get_response(request)
 
     def _resolve_tenant(self, request):

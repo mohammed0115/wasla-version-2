@@ -78,6 +78,18 @@ class Store(models.Model):
         default="SA",
         help_text="Store country code"
     )
+    tax_id = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="VAT ID for invoices (ZATCA)",
+    )
+    address = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Store address for invoices",
+    )
     
     # Domain configuration
     subdomain = models.CharField(

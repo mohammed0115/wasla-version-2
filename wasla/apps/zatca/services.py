@@ -7,6 +7,7 @@ import hashlib
 import requests
 from typing import Dict, Optional
 import base64
+from core.infrastructure.circuit_breaker import CircuitBreaker
 
 from django.conf import settings
 from django.utils import timezone
@@ -112,14 +113,14 @@ class ZatcaInvoiceGenerator:
         id_el = ET.SubElement(
             party, "{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}ID"
         )
-        id_el.text = order.store.tax_id or "1234567890"
+        id_el.text = (getattr(order.store, "tax_id", "") or "").strip()
         id_el.set("schemeID", "TN")
 
         # Seller name
         name_el = ET.SubElement(
             party, "{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}Name"
         )
-        name_el.text = order.store.name
+        name_el.text = getattr(order.store, "name", "") or "Store"
 
         # Address
         address = ET.SubElement(
@@ -128,7 +129,7 @@ class ZatcaInvoiceGenerator:
         street = ET.SubElement(
             address, "{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}StreetName"
         )
-        street.text = order.store.address or "Riyadh"
+        street.text = (getattr(order.store, "address", "") or "").strip()
         country = ET.SubElement(
             address, "{urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2}Country"
         )
@@ -152,10 +153,7 @@ class ZatcaInvoiceGenerator:
         name_el = ET.SubElement(
             party, "{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}Name"
         )
-        if order.shipping_address:
-            name_el.text = order.shipping_address.full_name
-        else:
-            name_el.text = order.email
+        name_el.text = order.shipping_address.full_name or order.email
 
         # Email
         email = ET.SubElement(
@@ -197,7 +195,10 @@ class ZatcaInvoiceGenerator:
         taxable_amount = ET.SubElement(
             tax_subtotal, "{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}TaxableAmount"
         )
-        taxable_amount.text = str(order.subtotal or order.total_amount - order.tax_amount)
+        taxable_base = (order.total_amount or Decimal("0")) - (order.tax_amount or Decimal("0"))
+        if taxable_base < 0:
+            taxable_base = Decimal("0")
+        taxable_amount.text = str(taxable_base)
         taxable_amount.set("currencyID", order.currency or "SAR")
 
     @staticmethod
@@ -331,22 +332,31 @@ class ZatcaQRCodeGenerator:
         """
         order = invoice.order
 
-        data = {
-            "01": order.store.name or "Store",  # Seller name
-            "02": order.store.tax_id or "1234567890",  # Seller VAT
-            "03": datetime.now().isoformat(),  # Timestamp
-            "04": str(order.total_amount),  # Total
-            "05": str(order.tax_amount or Decimal(0)),  # Tax
-            "06": invoice.xml_hash or "0" * 64,  # XML hash
-            "07": signature[:64],  # Signature (truncated for size)
-        }
+        def _encode_tlv(tag: int, value: str) -> bytes:
+            value_bytes = value.encode("utf-8")
+            return bytes([tag]) + bytes([len(value_bytes)]) + value_bytes
 
-        # Build TLV string
-        tlv = ""
-        for tag, value in data.items():
-            tlv += f"{tag.encode('utf-8').hex()}{len(value.encode()).to_bytes(1, 'big').hex()}{value.encode('utf-8').hex()}"
+        seller_name = (order.store.name or "Store").strip()
+        seller_vat = (getattr(order.store, "tax_id", "") or "").strip()
+        timestamp = timezone.now().isoformat()
+        total_amount = str(Decimal(order.total_amount or 0).quantize(Decimal("0.01")))
+        tax_amount = str(Decimal(order.tax_amount or 0).quantize(Decimal("0.01")))
+        xml_hash = invoice.xml_hash or ZatcaDigitalSignature.compute_xml_hash(invoice.xml_content or "")
+        signature_value = (signature or "").strip()
 
-        return tlv
+        tlv_bytes = b"".join(
+            [
+                _encode_tlv(1, seller_name),
+                _encode_tlv(2, seller_vat),
+                _encode_tlv(3, timestamp),
+                _encode_tlv(4, total_amount),
+                _encode_tlv(5, tax_amount),
+                _encode_tlv(6, xml_hash),
+                _encode_tlv(7, signature_value),
+            ]
+        )
+
+        return base64.b64encode(tlv_bytes).decode("ascii")
 
     @staticmethod
     def render_qr_image(qr_data: str) -> Image.Image:
@@ -389,6 +399,12 @@ class ZatcaInvoiceService:
         Returns:
             ZatcaInvoice instance
         """
+        store = getattr(order, "store", None)
+        tax_id = (getattr(store, "tax_id", "") or "").strip() if store else ""
+        address = (getattr(store, "address", "") or "").strip() if store else ""
+        if not tax_id or not address:
+            raise Exception("Store VAT ID and address are required for ZATCA invoices.")
+
         # Get or create invoice
         invoice, created = ZatcaInvoice.objects.get_or_create(
             order=order,
@@ -498,7 +514,9 @@ class ZatcaInvoiceService:
                 "Content-Type": "application/json",
             }
 
-            response = requests.post(
+            breaker = CircuitBreaker("zatca.submit")
+            response = breaker.call(
+                requests.post,
                 api_url,
                 json=payload,
                 headers=headers,
@@ -592,7 +610,9 @@ class ZatcaInvoiceService:
                 "Content-Type": "application/json",
             }
 
-            response = requests.post(
+            breaker = CircuitBreaker("zatca.clearance")
+            response = breaker.call(
+                requests.post,
                 api_url,
                 json=payload,
                 headers=headers,

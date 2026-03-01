@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from decimal import Decimal
+import uuid
+
 from django.http import HttpRequest, HttpResponse
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.conf import settings
 
 from apps.cart.application.use_cases.get_cart import GetCartUseCase
 from apps.checkout.application.use_cases.create_order_from_checkout import (
@@ -60,6 +64,30 @@ def _get_session_id(request: HttpRequest) -> int | None:
         return int(request.session.get("checkout_session_id") or 0) or None
     except (TypeError, ValueError):
         return None
+
+
+def _bnpl_min_amount() -> Decimal:
+    try:
+        return Decimal(str(getattr(settings, "BNPL_MIN_AMOUNT", "200")))
+    except Exception:
+        return Decimal("200")
+
+
+def _filter_payment_providers_for_total(providers: list[dict], total_amount: Decimal) -> list[dict]:
+    if total_amount is None:
+        return providers
+    if total_amount < _bnpl_min_amount():
+        return [p for p in providers if p.get("code") not in {"tabby", "tamara"}]
+    return providers
+
+
+def _get_idempotency_key(request: HttpRequest, order_id: int, provider_code: str) -> str:
+    key_name = f"payment_idem_{order_id}_{provider_code}"
+    key = request.session.get(key_name)
+    if not key:
+        key = uuid.uuid4().hex
+        request.session[key_name] = key
+    return key
 
 
 @require_http_methods(["GET", "POST"])
@@ -139,6 +167,7 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
         except CheckoutError:
             return redirect("checkout_web:checkout_address")
         try:
+            idempotency_key = _get_idempotency_key(request, order.id, provider_code)
             result = InitiatePaymentUseCase.execute(
                 InitiatePaymentCommand(
                     tenant_ctx=tenant_ctx,
@@ -147,17 +176,29 @@ def checkout_payment(request: HttpRequest) -> HttpResponse:
                     return_url=request.build_absolute_uri(
                         f"/order/confirmation/{order.order_number}?provider={provider_code}"
                     ),
+                    idempotency_key=idempotency_key,
+                    ip_address=request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip(),
+                    user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
             )
         except ValueError as exc:
             messages.error(request, str(exc))
             providers = PaymentGatewayFacade.available_providers(tenant_id=tenant_ctx.tenant_id)
+            total_amount = Decimal(str(getattr(order, "total_amount", "0") or "0"))
+            providers = _filter_payment_providers_for_total(providers, total_amount)
             return render(request, "store/checkout_payment.html", {"providers": providers})
         if result.redirect_url:
             return redirect(result.redirect_url)
         return redirect("checkout_web:order_confirmation", order_number=order.order_number)
 
     providers = PaymentGatewayFacade.available_providers(tenant_id=tenant_ctx.tenant_id)
+    total_amount = None
+    try:
+        checkout = GetCheckoutUseCase.execute(GetCheckoutCommand(tenant_ctx=tenant_ctx, session_id=session_id))
+        total_amount = Decimal(str((checkout.totals or {}).get("total") or "0"))
+    except Exception:
+        total_amount = None
+    providers = _filter_payment_providers_for_total(providers, total_amount)
     if not providers:
         messages.error(request, "No payment methods are available for this store.")
     return render(request, "store/checkout_payment.html", {"providers": providers})

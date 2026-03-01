@@ -37,3 +37,8 @@ AccountProfile = Profile
 def create_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
+
+
+# Register TOTPSecret model for Django app loading.
+# Import is intentionally placed at module level.
+from .totp_models import TOTPSecret  # noqa: E402,F401

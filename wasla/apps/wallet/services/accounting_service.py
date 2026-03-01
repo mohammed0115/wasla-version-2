@@ -1,4 +1,4 @@
-"""
+﻿"""
 Accounting Service - Single canonical place for fee calculations.
 
 Financial Integrity Level: CRITICAL
@@ -40,11 +40,11 @@ class FeePolicy:
         self.name = name
         self.transaction_fee_percent = Decimal(str(transaction_fee_percent))
         self.wasla_commission_percent = Decimal(str(wasla_commission_percent))
-    
+
     def total_fee_percent(self) -> Decimal:
         """Total fee percentage."""
         return self.transaction_fee_percent + self.wasla_commission_percent
-    
+
     def __repr__(self):
         return f"FeePolicy({self.name}, tx={self.transaction_fee_percent}%, wasla={self.wasla_commission_percent}%)"
 
@@ -52,7 +52,7 @@ class FeePolicy:
 class AccountingService:
     """
     Single implementation for all fee calculations and ledger entries.
-    
+
     Usage:
         accounting = AccountingService()
         fee_info = accounting.calculate_fee_breakdown(
@@ -68,21 +68,21 @@ class AccountingService:
         #     "net": 945,
         # }
     """
-    
+
     def __init__(self):
         self.default_transaction_fee_percent = Decimal("2.5")  # 2.5%
         self.default_wasla_commission_percent = Decimal("3.0")  # 3.0%
-    
+
     def get_active_fee_policy(self, store_id: int, provider: str = "tap") -> FeePolicy:
         """
         Get the active fee policy for a store and provider.
-        
+
         Falls back to default if no provider-specific policy exists.
-        
+
         Args:
             store_id: Store ID
             provider: Payment provider code (tap, stripe, paypal)
-        
+
         Returns:
             FeePolicy instance (never None)
         """
@@ -92,7 +92,7 @@ class AccountingService:
                 provider=provider,
                 is_enabled=True,
             ).first()
-            
+
             if settings:
                 return FeePolicy(
                     transaction_fee_percent=settings.transaction_fee_percent,
@@ -103,14 +103,14 @@ class AccountingService:
             logger.warning(
                 f"Error fetching fee policy for store {store_id}: {e}, using defaults"
             )
-        
+
         # Fallback to defaults
         return FeePolicy(
             transaction_fee_percent=self.default_transaction_fee_percent,
             wasla_commission_percent=self.default_wasla_commission_percent,
             name="default",
         )
-    
+
     def calculate_fee_breakdown(
         self,
         gross_amount: Decimal,
@@ -120,13 +120,13 @@ class AccountingService:
     ) -> Dict[str, Decimal]:
         """
         Calculate complete fee breakdown.
-        
+
         Args:
             gross_amount: Total payment amount (before fees)
             tenant_id: Tenant ID
             store_id: Store ID
             provider: Payment provider
-        
+
         Returns:
             {
                 "gross": Decimal,
@@ -135,7 +135,7 @@ class AccountingService:
                 "total_fee": Decimal,
                 "net": Decimal,  # What merchant receives
             }
-        
+
         Example:
             Input: gross=1000, fees=5.5%
             Output: {
@@ -149,21 +149,21 @@ class AccountingService:
         gross = Decimal(str(gross_amount)).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
-        
+
         policy = self.get_active_fee_policy(store_id, provider)
-        
+
         # Calculate fees separately for clarity
         transaction_fee = (
             gross * (policy.transaction_fee_percent / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
+
         wasla_commission = (
             gross * (policy.wasla_commission_percent / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
+
         total_fee = transaction_fee + wasla_commission
         net = gross - total_fee
-        
+
         # Ensure net is never negative (safety check)
         if net < Decimal("0"):
             logger.error(
@@ -176,7 +176,7 @@ class AccountingService:
                 }
             )
             net = Decimal("0")
-        
+
         return {
             "gross": gross,
             "transaction_fee": transaction_fee,
@@ -185,7 +185,7 @@ class AccountingService:
             "net": net,
             "policy_name": policy.name,
         }
-    
+
     def calculate_fee(
         self,
         amount: Decimal,
@@ -193,13 +193,13 @@ class AccountingService:
     ) -> Decimal:
         """
         Calculate total fee for an amount.
-        
+
         Simplified interface if you only need the fee amount.
-        
+
         Args:
             amount: Gross amount
             fee_policy: Optional FeePolicy; if None, returns fee using defaults
-        
+
         Returns:
             Total fee amount
         """
@@ -208,14 +208,14 @@ class AccountingService:
                 transaction_fee_percent=self.default_transaction_fee_percent,
                 wasla_commission_percent=self.default_wasla_commission_percent,
             )
-        
+
         amount_decimal = Decimal(str(amount))
         fee = (
             amount_decimal * (fee_policy.total_fee_percent() / Decimal("100"))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
+
         return fee
-    
+
     @transaction.atomic
     def record_payment_fee(
         self,
@@ -228,13 +228,13 @@ class AccountingService:
     ) -> Dict[str, Any]:
         """
         Record a payment and create ledger entries for fees.
-        
+
         This is called when a payment is confirmed. It:
         1. Calculates fees
         2. Creates credit entry for GROSS (pending)
         3. Creates debit entries for each fee type
         4. Returns breakdown for audit
-        
+
         Args:
             store_id: Store ID
             tenant_id: Tenant ID
@@ -242,7 +242,7 @@ class AccountingService:
             order_id: Order ID
             reference: Unique reference (order number, transaction ID, etc.)
             provider: Payment provider
-        
+
         Returns:
             {
                 "success": bool,
@@ -250,7 +250,7 @@ class AccountingService:
                 "ledger_entries": list of int (ledger_entry_ids),
                 "message": str,
             }
-        
+
         Atomic: Either all entries are created or none.
         """
         try:
@@ -261,7 +261,7 @@ class AccountingService:
                 store_id=store_id,
                 provider=provider,
             )
-            
+
             # Get or create ledger account
             ledger_account, _ = LedgerAccount.objects.get_or_create(
                 store_id=store_id,
@@ -272,14 +272,14 @@ class AccountingService:
                     "pending_balance": Decimal("0"),
                 },
             )
-            
+
             # Lock account for update
             ledger_account = LedgerAccount.objects.select_for_update().get(
                 pk=ledger_account.id
             )
-            
+
             ledger_entries = []
-            
+
             # 1. Credit GROSS amount to pending balance
             credit_entry = LedgerEntry.objects.create(
                 tenant_id=tenant_id,
@@ -291,9 +291,9 @@ class AccountingService:
                 description=f"Payment received: {reference}",
             )
             ledger_entries.append(credit_entry.id)
-            
+
             ledger_account.pending_balance += breakdown["gross"]
-            
+
             # 2. Debit transaction fee (to Wasla)
             if breakdown["transaction_fee"] > Decimal("0"):
                 fee_entry = LedgerEntry.objects.create(
@@ -307,7 +307,7 @@ class AccountingService:
                 )
                 ledger_entries.append(fee_entry.id)
                 ledger_account.pending_balance -= breakdown["transaction_fee"]
-            
+
             # 3. Debit wasla commission (to Wasla)
             if breakdown["wasla_commission"] > Decimal("0"):
                 commission_entry = LedgerEntry.objects.create(
@@ -321,11 +321,11 @@ class AccountingService:
                 )
                 ledger_entries.append(commission_entry.id)
                 ledger_account.pending_balance -= breakdown["wasla_commission"]
-            
+
             # Verify net equals pending balance after fees
             expected_net = breakdown["net"]
             actual_net = ledger_account.pending_balance
-            
+
             if expected_net != actual_net:
                 logger.error(
                     f"Fee reconciliation mismatch: expected {expected_net}, got {actual_net}",
@@ -338,9 +338,9 @@ class AccountingService:
                     }
                 )
                 # Still allow, but log the mismatch
-            
+
             ledger_account.save(update_fields=["pending_balance"])
-            
+
             logger.info(
                 "Payment fee recorded",
                 extra={
@@ -352,14 +352,14 @@ class AccountingService:
                     "ledger_entries": ledger_entries,
                 }
             )
-            
+
             return {
                 "success": True,
                 "fee_breakdown": breakdown,
                 "ledger_entries": ledger_entries,
                 "message": "Fee recorded and ledger entries created",
             }
-            
+
         except Exception as e:
             logger.exception(
                 f"Error recording payment fee: {e}",
@@ -375,7 +375,7 @@ class AccountingService:
                 "ledger_entries": [],
                 "message": f"Error recording fee: {str(e)}",
             }
-    
+
     @transaction.atomic
     def record_refund_fee_reversal(
         self,
@@ -388,12 +388,12 @@ class AccountingService:
     ) -> Dict[str, Any]:
         """
         Record fee reversal when a payment is refunded.
-        
+
         When a refund happens:
         1. Credit back the transaction fees (merchant gets them back)
         2. Credit back the wasla commission (platform returns it)
         3. Debit the net refund from merchant balance
-        
+
         Args:
             store_id: Store ID
             tenant_id: Tenant ID
@@ -401,7 +401,7 @@ class AccountingService:
             original_fee: Original fee that should be reversed
             order_id: Order ID
             reference: Refund reference
-        
+
         Returns:
             {
                 "success": bool,
@@ -415,9 +415,9 @@ class AccountingService:
                 store_id=store_id,
                 currency="SAR",
             )
-            
+
             ledger_entries = []
-            
+
             # Debit the refund amount
             refund_entry = LedgerEntry.objects.create(
                 tenant_id=tenant_id,
@@ -430,7 +430,7 @@ class AccountingService:
             )
             ledger_entries.append(refund_entry.id)
             ledger_account.pending_balance -= net_refund_amount
-            
+
             # Credit back the fees
             if original_fee > Decimal("0"):
                 fee_credit_entry = LedgerEntry.objects.create(
@@ -444,9 +444,9 @@ class AccountingService:
                 )
                 ledger_entries.append(fee_credit_entry.id)
                 ledger_account.pending_balance += original_fee
-            
+
             ledger_account.save(update_fields=["pending_balance"])
-            
+
             logger.info(
                 "Refund fee reversed",
                 extra={
@@ -457,14 +457,14 @@ class AccountingService:
                     "ledger_entries": ledger_entries,
                 }
             )
-            
+
             return {
                 "success": True,
                 "fee_reversed": original_fee,
                 "ledger_entries": ledger_entries,
                 "message": "Refund fee reversed and ledger updated",
             }
-            
+
         except LedgerAccount.DoesNotExist:
             logger.error(
                 f"Ledger account not found for refund fee reversal",

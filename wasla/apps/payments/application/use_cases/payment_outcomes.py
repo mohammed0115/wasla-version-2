@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from apps.analytics.application.telemetry import TelemetryService, actor_from_tenant_ctx
 from apps.analytics.domain.types import ObjectRef
 from apps.orders.models import Order
@@ -17,7 +19,10 @@ from apps.shipping.services.shipping_service import ShippingService
 from apps.sms.application.use_cases.send_sms import SendSmsCommand, SendSmsUseCase
 from apps.tenants.models import Tenant
 from apps.tenants.domain.tenant_context import TenantContext
+from apps.orders.services.invoice_service import InvoiceService
+from apps.orders.models import Invoice
 
+logger = logging.getLogger("wasla.payments")
 
 def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: TenantContext) -> None:
     if intent.status != "succeeded":
@@ -30,6 +35,18 @@ def apply_payment_success(*, intent: PaymentIntent, order: Order, tenant_ctx: Te
         if getattr(order, "payment_status", None) != "paid":
             order.payment_status = "paid"
             order.save(update_fields=["payment_status"])
+
+        try:
+            invoice = Invoice.objects.filter(order=order).first()
+            if not invoice:
+                invoice = InvoiceService.create_invoice_from_order(order)
+            if invoice and invoice.status == Invoice.STATUS_DRAFT:
+                InvoiceService.issue_invoice(invoice)
+        except Exception as exc:
+            logger.error(
+                "ZATCA invoice issuance failed after payment success",
+                extra={"order_id": order.id, "error": str(exc)},
+            )
 
     reference = intent.provider_reference or intent.idempotency_key
     exists = Payment.objects.filter(

@@ -38,13 +38,21 @@ class SelectShippingMethodUseCase:
         if not session.shipping_address_json:
             raise InvalidCheckoutStateError("Shipping address is required.")
 
-        available = list_shipping_methods(tenant_id=cmd.tenant_ctx.store_id)
+        cart_summary = GetCartUseCase.execute(cmd.tenant_ctx)
+        available = list_shipping_methods(
+            tenant_id=cmd.tenant_ctx.store_id,
+            address=session.shipping_address_json or {},
+            cart_summary=cart_summary,
+        )
         chosen = next((m for m in available if m.code == cmd.method_code), None)
         if not chosen:
             raise InvalidCheckoutStateError("Shipping method not available.")
 
-        cart_summary = GetCartUseCase.execute(cmd.tenant_ctx)
-        totals = compute_totals(subtotal=cart_summary.subtotal, shipping_fee=Decimal(chosen.fee))
+        totals = compute_totals(
+            subtotal=cart_summary.subtotal,
+            discount_amount=cart_summary.discount_amount,
+            shipping_fee=Decimal(chosen.fee),
+        )
         session.shipping_method_code = chosen.code
         session.totals_json = {k: str(v) for k, v in totals.items()}
         session.status = CheckoutSession.STATUS_PAYMENT

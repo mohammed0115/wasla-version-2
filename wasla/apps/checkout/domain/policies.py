@@ -16,10 +16,16 @@ def validate_address(address: dict) -> dict:
     return cleaned
 
 
-def compute_totals(*, subtotal: Decimal, shipping_fee: Decimal) -> dict:
+def compute_totals(*, subtotal: Decimal, shipping_fee: Decimal, discount_amount: Decimal = Decimal("0")) -> dict:
     subtotal = Decimal(subtotal or "0")
     shipping_fee = Decimal(shipping_fee or "0")
-    total = subtotal + shipping_fee
+    discount_amount = Decimal(discount_amount or "0")
+    total = subtotal - discount_amount + shipping_fee
     if total < 0:
         total = Decimal("0")
-    return {"subtotal": subtotal, "shipping_fee": shipping_fee, "total": total}
+    return {
+        "subtotal": subtotal,
+        "discount_amount": discount_amount,
+        "shipping_fee": shipping_fee,
+        "total": total,
+    }

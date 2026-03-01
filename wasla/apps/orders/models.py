@@ -14,8 +14,21 @@ from django.db import models
 from django.utils import timezone
 from decimal import Decimal
 import uuid
+from dataclasses import dataclass
 
 from apps.tenants.managers import TenantManager
+
+
+@dataclass(frozen=True)
+class ShippingAddress:
+    full_name: str = ""
+    email: str = ""
+    phone: str = ""
+    line1: str = ""
+    line2: str = ""
+    city: str = ""
+    country: str = ""
+    postal_code: str = ""
 
 
 class Order(models.Model):
@@ -56,6 +69,8 @@ class Order(models.Model):
     customer_phone = models.CharField(max_length=32, blank=True, default="")
     shipping_address_json = models.JSONField(default=dict, blank=True)
     shipping_method_code = models.CharField(max_length=64, blank=True, default="")
+    coupon_code = models.CharField(max_length=50, blank=True, default="")
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     # VAT fields (ZATCA compatible)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -64,6 +79,9 @@ class Order(models.Model):
     
     # Refund tracking
     refunded_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Notification tracking
+    confirmation_email_sent_at = models.DateTimeField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -77,6 +95,33 @@ class Order(models.Model):
             models.Index(fields=["store_id", "status"]),
             models.Index(fields=["tenant_id", "status"]),
         ]
+
+    @property
+    def store(self):
+        if hasattr(self, "_store_cache"):
+            return self._store_cache
+        from apps.stores.models import Store
+
+        self._store_cache = Store.objects.filter(id=self.store_id).first()
+        return self._store_cache
+
+    @property
+    def email(self) -> str:
+        return self.customer_email or getattr(self.customer, "email", "") or ""
+
+    @property
+    def shipping_address(self):
+        data = self.shipping_address_json or {}
+        return ShippingAddress(
+            full_name=data.get("full_name", ""),
+            email=data.get("email", ""),
+            phone=data.get("phone", ""),
+            line1=data.get("line1", ""),
+            line2=data.get("line2", ""),
+            city=data.get("city", ""),
+            country=data.get("country", ""),
+            postal_code=data.get("postal_code", ""),
+        )
 
 
 class OrderItem(models.Model):
@@ -92,6 +137,14 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.order} - {self.product} x{self.quantity}"
+
+    @property
+    def unit_price_snapshot(self):
+        return self.price
+
+    @property
+    def total_price(self):
+        return self.price * self.quantity
 
 
 class StockReservation(models.Model):
@@ -117,6 +170,7 @@ class StockReservation(models.Model):
     expires_at = models.DateTimeField()  # Timeout window
     confirmed_at = models.DateTimeField(null=True, blank=True)
     released_at = models.DateTimeField(null=True, blank=True)
+    release_reason = models.CharField(max_length=255, blank=True, default="")
     
     class Meta:
         indexes = [
@@ -127,6 +181,9 @@ class StockReservation(models.Model):
 
     def __str__(self) -> str:
         return f"StockReservation {self.id} - {self.product} x{self.quantity}"
+
+    def is_expired(self) -> bool:
+        return bool(self.expires_at and self.expires_at <= timezone.now())
 
 
 class ShipmentLineItem(models.Model):
@@ -155,6 +212,7 @@ class ReturnMerchandiseAuthorization(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
+    store_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="rmas")
     rma_number = models.CharField(max_length=32, unique=True)
     
@@ -167,18 +225,41 @@ class ReturnMerchandiseAuthorization(models.Model):
         ("other", "Other"),
     ]
     reason = models.CharField(max_length=50, choices=REASON_CHOICES)
-    reason_notes = models.TextField(blank=True, default="")
+    reason_description = models.TextField(blank=True, default="")
     
+    STATUS_REQUESTED = "requested"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_IN_TRANSIT = "in_transit"
+    STATUS_RECEIVED = "received"
+    STATUS_INSPECTED = "inspected"
+    STATUS_COMPLETED = "completed"
+    STATUS_CANCELLED = "cancelled"
+
     STATUS_CHOICES = [
-        ("requested", "Requested"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
-        ("received", "Received"),
-        ("processed", "Processed"),
+        (STATUS_REQUESTED, "Requested"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_IN_TRANSIT, "In Transit"),
+        (STATUS_RECEIVED, "Received"),
+        (STATUS_INSPECTED, "Inspected"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="requested")
     
+    is_exchange = models.BooleanField(default=False)
+    exchange_product = models.ForeignKey(
+        "catalog.Product", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    return_tracking_number = models.CharField(max_length=255, blank=True, default="")
+    return_carrier = models.CharField(max_length=64, blank=True, default="")
     customer_notes = models.TextField(blank=True, default="")
+
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -203,14 +284,30 @@ class ReturnItem(models.Model):
     order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
     quantity_returned = models.PositiveIntegerField()
     
+    CONDITION_AS_NEW = "as_new"
+    CONDITION_USED = "used"
+    CONDITION_DAMAGED = "damaged"
+    CONDITION_DEFECTIVE = "defective"
+
     CONDITION_CHOICES = [
-        ("new", "New"),
-        ("like_new", "Like New"),
-        ("good", "Good"),
-        ("fair", "Fair"),
-        ("defective", "Defective"),
+        (CONDITION_AS_NEW, "As New"),
+        (CONDITION_USED, "Used"),
+        (CONDITION_DAMAGED, "Damaged"),
+        (CONDITION_DEFECTIVE, "Defective"),
     ]
-    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default="good")
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default=CONDITION_USED)
+    refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_REFUNDED = "refunded"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_REFUNDED, "Refunded"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     
     class Meta:
         unique_together = ("rma", "order_item")
@@ -227,29 +324,40 @@ class Invoice(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
+    store_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="invoice")
     
     # Invoice numbering (per tenant)
     invoice_number = models.CharField(max_length=32, unique=True)
     series_prefix = models.CharField(max_length=10, default="INV")  # e.g., INV-2026-001
     
+    STATUS_DRAFT = "draft"
+    STATUS_ISSUED = "issued"
+    STATUS_PAID = "paid"
+    STATUS_PARTIALLY_PAID = "partially_paid"
+    STATUS_OVERDUE = "overdue"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CREDITED = "credited"
+
     STATUS_CHOICES = [
-        ("draft", "Draft"),
-        ("issued", "Issued"),
-        ("paid", "Paid"),
-        ("partially_paid", "Partially Paid"),
-        ("overdue", "Overdue"),
-        ("cancelled", "Cancelled"),
-        ("credited", "Credited Memo"),
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_ISSUED, "Issued"),
+        (STATUS_PAID, "Paid"),
+        (STATUS_PARTIALLY_PAID, "Partially Paid"),
+        (STATUS_OVERDUE, "Overdue"),
+        (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_CREDITED, "Credited Memo"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
     
     # Amounts
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("15"))
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    shipping_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    shipping_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=10, default="SAR")
     
     # Dates
     issue_date = models.DateField(auto_now_add=True)
@@ -259,11 +367,26 @@ class Invoice(models.Model):
     # PDF storage
     pdf_file = models.FileField(upload_to="invoices/%Y/%m/", null=True, blank=True)
     
-    # VAT Registration (for ZATCA compliance)
-    seller_vat_number = models.CharField(max_length=50, blank=True, default="")
-    buyer_vat_number = models.CharField(max_length=50, blank=True, default="")
+    # Customer details
+    buyer_name = models.CharField(max_length=255, blank=True, default="")
+    buyer_email = models.EmailField(blank=True, default="")
+    buyer_vat_id = models.CharField(max_length=50, blank=True, default="")
+
+    # Seller details
+    seller_name = models.CharField(max_length=255, blank=True, default="")
+    seller_vat_id = models.CharField(max_length=50, blank=True, default="")
+    seller_address = models.TextField(blank=True, default="")
+    seller_bank_details = models.JSONField(default=dict, blank=True)
+
+    # ZATCA fields
+    zatca_qr_code = models.TextField(blank=True, default="")
+    zatca_uuid = models.CharField(max_length=64, blank=True, default="")
+    zatca_hash = models.CharField(max_length=256, blank=True, default="")
+    zatca_signed = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
@@ -276,6 +399,49 @@ class Invoice(models.Model):
     def __str__(self) -> str:
         return self.invoice_number
 
+    def issue_invoice(self) -> None:
+        if self.status != self.STATUS_DRAFT:
+            raise ValueError(f"Cannot issue invoice in {self.status} status")
+        self.status = self.STATUS_ISSUED
+        self.issued_at = timezone.now()
+        self.save(update_fields=["status", "issued_at"])
+
+    def mark_as_paid(self) -> None:
+        if self.status not in {self.STATUS_DRAFT, self.STATUS_ISSUED, self.STATUS_PARTIALLY_PAID}:
+            raise ValueError(f"Cannot mark invoice paid in {self.status} status")
+        self.status = self.STATUS_PAID
+        self.paid_at = timezone.now()
+        self.save(update_fields=["status", "paid_at"])
+
+
+class InvoiceLineItem(models.Model):
+    """Line item for invoice (mirrors OrderItem with tax details)."""
+    objects = TenantManager()
+    TENANT_FIELD = "tenant_id"
+
+    tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
+    store_id = models.IntegerField(null=True, blank=True, db_index=True)
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="line_items")
+    order_item = models.OneToOneField(
+        "orders.OrderItem", on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    description = models.CharField(max_length=255)
+    sku = models.CharField(max_length=100, blank=True)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    line_subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    line_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    line_total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["invoice_id"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.invoice_id}:{self.description}"
+
 
 class RefundTransaction(models.Model):
     """
@@ -284,9 +450,11 @@ class RefundTransaction(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant_id = models.IntegerField(null=True, blank=True, db_index=True)
+    store_id = models.IntegerField(null=True, blank=True, db_index=True)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="refunds")
     rma = models.ForeignKey(ReturnMerchandiseAuthorization, on_delete=models.SET_NULL, null=True, blank=True, related_name="refunds")
     
+    refund_id = models.CharField(max_length=64, unique=True, blank=True, default="")
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="SAR")
     
@@ -294,15 +462,21 @@ class RefundTransaction(models.Model):
     provider = models.CharField(max_length=50, blank=True, default="")  # tap, stripe, etc.
     provider_refund_id = models.CharField(max_length=255, blank=True, default="")
     
+    STATUS_INITIATED = "pending"
+    STATUS_PROCESSING = "processing"
+    STATUS_COMPLETED = "completed"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELLED = "cancelled"
     STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("processing", "Processing"),
-        ("completed", "Completed"),
-        ("failed", "Failed"),
+        (STATUS_INITIATED, "Pending"),
+        (STATUS_PROCESSING, "Processing"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_INITIATED)
     
-    reason = models.TextField(blank=True, default="")
+    refund_reason = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     
@@ -315,3 +489,7 @@ class RefundTransaction(models.Model):
 
     def __str__(self) -> str:
         return f"Refund {self.id} - {self.amount} {self.currency}"
+
+
+# Backward-compatible aliases
+RMA = ReturnMerchandiseAuthorization

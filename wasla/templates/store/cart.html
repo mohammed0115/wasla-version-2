@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}السلة{% endblock %}
 {% block body %}
 <div class="container">
@@ -20,7 +20,23 @@
       </div>
       <div style="height:12px"></div>
       <div class="card" style="padding:12px 14px; margin-bottom:10px;">
+        <form method="post" action="{% url 'cart_web:cart_apply_coupon' %}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          {% csrf_token %}
+          <input type="text" name="coupon_code" placeholder="Coupon code" value="{{ cart.coupon_code|default:'' }}" style="flex:1; min-width:180px;">
+          <button class="btn" type="submit">Apply</button>
+        </form>
+        {% if cart.coupon_code %}
+          <form method="post" action="{% url 'cart_web:cart_remove_coupon' %}" style="margin-top:8px;">
+            {% csrf_token %}
+            <button class="btn" type="submit">Remove coupon</button>
+          </form>
+        {% endif %}
+      </div>
+      <div class="card" style="padding:12px 14px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between;"><span>المجموع الفرعي</span><strong>{{ cart.subtotal }} {{ cart.currency }}</strong></div>
+        {% if discount_amount and discount_amount > 0 %}
+          <div style="display:flex; justify-content:space-between;"><span>الخصم</span><strong>-{{ discount_amount }} {{ cart.currency }}</strong></div>
+        {% endif %}
         <div style="display:flex; justify-content:space-between;"><span>الشحن</span><strong>{{ shipping_fee }} {{ cart.currency }}</strong></div>
         <div style="display:flex; justify-content:space-between;"><span>الضريبة (15%)</span><strong>{{ vat_amount }} {{ cart.currency }}</strong></div>
         <hr>
@@ -33,3 +49,5 @@
   </div>
 </div>
 {% endblock %}
+
+

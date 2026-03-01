@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import F
 from apps.coupons.models import Coupon, CouponUsageLog
 
 
@@ -72,17 +73,37 @@ class CouponValidationService:
             CouponUsageLog instance
         """
         with transaction.atomic():
+            locked_coupon = (
+                Coupon.objects.select_for_update()
+                .filter(id=coupon.id)
+                .first()
+            )
+            if not locked_coupon:
+                raise CouponValidationError("Coupon not found.")
+
+            if locked_coupon.usage_limit and locked_coupon.times_used >= locked_coupon.usage_limit:
+                raise CouponValidationError("This coupon has reached its usage limit.")
+
+            if order.customer and locked_coupon.usage_limit_per_customer:
+                customer_usage = CouponUsageLog.objects.filter(
+                    coupon=locked_coupon,
+                    customer=order.customer,
+                ).count()
+                if customer_usage >= locked_coupon.usage_limit_per_customer:
+                    raise CouponValidationError(
+                        f"You have already used this coupon {locked_coupon.usage_limit_per_customer} time(s)."
+                    )
+
             # Create usage log
             usage_log = CouponUsageLog.objects.create(
-                coupon=coupon,
+                coupon=locked_coupon,
                 customer=order.customer,
                 order=order,
                 discount_applied=discount_amount,
             )
 
-            # Increment coupon usage count
-            coupon.times_used += 1
-            coupon.save(update_fields=["times_used"])
+            # Increment coupon usage count atomically
+            Coupon.objects.filter(id=locked_coupon.id).update(times_used=F("times_used") + 1)
 
         return usage_log
 
@@ -98,8 +119,7 @@ class CouponValidationService:
         with transaction.atomic():
             for log in usage_logs:
                 coupon = log.coupon
-                coupon.times_used = max(0, coupon.times_used - 1)
-                coupon.save(update_fields=["times_used"])
+                Coupon.objects.filter(id=coupon.id, times_used__gt=0).update(times_used=F("times_used") - 1)
                 log.delete()
 
 

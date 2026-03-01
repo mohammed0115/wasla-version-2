@@ -15,8 +15,7 @@ import hashlib
 import json
 from datetime import datetime
 
-from ..models import Order
-from ..models_extended import Invoice, InvoiceLineItem
+from ..models import Order, Invoice, InvoiceLineItem
 
 
 class InvoiceService:
@@ -77,7 +76,9 @@ class InvoiceService:
         tax_rate = Decimal("15")
         tax_amount = (subtotal * tax_rate / Decimal("100")).quantize(Decimal("0.01"))
         
-        total = subtotal + tax_amount + Decimal(order.shipping_charge or 0)
+        total = subtotal + tax_amount + Decimal(order.shipping_charge or 0) - Decimal(order.discount_amount or 0)
+        if total < 0:
+            total = Decimal("0.00")
         
         # Create invoice
         invoice = Invoice.objects.create(
@@ -88,20 +89,22 @@ class InvoiceService:
             subtotal=subtotal,
             tax_amount=tax_amount,
             tax_rate=tax_rate,
+            discount_amount=Decimal(order.discount_amount or 0),
             shipping_cost=Decimal(order.shipping_charge or 0),
             total_amount=total,
             currency=order.currency,
             
             # Customer details
-            buyer_name=order.customer_name or order.customer.full_name,
-            buyer_email=order.customer_email or order.customer.email,
+            buyer_name=order.customer_name or getattr(order.customer, "full_name", ""),
+            buyer_email=order.customer_email or getattr(order.customer, "email", ""),
             
             # Seller (store) details
-            seller_name=order.store.name if hasattr(order, 'store') else "Store",
-            seller_vat_id="",  # To be populated from store profile
-            seller_address="",  # To be populated from store profile
+            seller_name=order.store.name if getattr(order, "store", None) else "Store",
+            seller_vat_id=(getattr(order.store, "tax_id", "") or "").strip() if getattr(order, "store", None) else "",
+            seller_address=(getattr(order.store, "address", "") or "").strip() if getattr(order, "store", None) else "",
             
             status=Invoice.STATUS_DRAFT,
+            due_date=timezone.now().date(),
         )
         
         # Create line items
@@ -138,16 +141,25 @@ class InvoiceService:
         Returns:
             Updated Invoice instance
         """
+        original_status = invoice.status
+        original_issued_at = invoice.issued_at
         invoice.issue_invoice()
-        
-        # Compute ZATCA hash for invoice chain
-        invoice.zatca_hash = invoice.compute_zatca_hash(previous_hash)
-        
-        # Generate UUID for ZATCA
-        import uuid
-        invoice.zatca_uuid = str(uuid.uuid4())
-        
-        invoice.save(update_fields=["zatca_hash", "zatca_uuid"])
+
+        # ZATCA Phase 2 integration (generate XML + signature + QR)
+        from apps.zatca.services import ZatcaInvoiceService
+        try:
+            zatca_invoice = ZatcaInvoiceService.generate_invoice(invoice.order)
+            invoice.zatca_hash = zatca_invoice.xml_hash
+            invoice.zatca_qr_code = zatca_invoice.qr_code_content
+            invoice.zatca_uuid = zatca_invoice.submission_uuid or zatca_invoice.invoice_number
+            invoice.zatca_signed = True
+        except Exception as exc:
+            invoice.status = original_status
+            invoice.issued_at = original_issued_at
+            invoice.save(update_fields=["status", "issued_at"])
+            raise ValueError(f"ZATCA Phase 2 signing failed: {exc}") from exc
+
+        invoice.save(update_fields=["zatca_hash", "zatca_qr_code", "zatca_uuid", "zatca_signed"])
         invoice.refresh_from_db()
         
         return invoice

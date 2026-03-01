@@ -6,8 +6,15 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.http import Http404
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.contrib import messages
 
 from apps.cart.application.use_cases.add_to_cart import AddToCartCommand, AddToCartUseCase
+from apps.cart.application.use_cases.apply_coupon import (
+    ApplyCouponCommand,
+    ApplyCouponUseCase,
+    RemoveCouponCommand,
+    RemoveCouponUseCase,
+)
 from apps.cart.application.use_cases.get_cart import GetCartUseCase
 from apps.cart.application.use_cases.get_product import GetProductCommand, GetProductUseCase
 from apps.cart.application.use_cases.remove_cart_item import RemoveCartItemCommand, RemoveCartItemUseCase
@@ -72,15 +79,21 @@ def cart_view(request: HttpRequest) -> HttpResponse:
             return redirect("tenants:dashboard_home")
         return redirect("home")
     cart = GetCartUseCase.execute(tenant_ctx)
+    discount_amount = cart.discount_amount or Decimal("0")
     vat_rate = Decimal("0.15")
-    vat_amount = (cart.subtotal * vat_rate).quantize(Decimal("0.01"))
     shipping_fee = Decimal("0.00")
-    grand_total = (cart.subtotal + vat_amount + shipping_fee).quantize(Decimal("0.01"))
+    taxable_base = (cart.subtotal - discount_amount)
+    if taxable_base < 0:
+        taxable_base = Decimal("0.00")
+    taxable_base += shipping_fee
+    vat_amount = (taxable_base * vat_rate).quantize(Decimal("0.01"))
+    grand_total = (taxable_base + vat_amount).quantize(Decimal("0.01"))
     return render(
         request,
         "store/cart.html",
         {
             "cart": cart,
+            "discount_amount": discount_amount,
             "vat_amount": vat_amount,
             "shipping_fee": shipping_fee,
             "grand_total": grand_total,
@@ -143,4 +156,35 @@ def cart_remove(request: HttpRequest) -> HttpResponse:
     except (TypeError, ValueError):
         item_id = 0
     RemoveCartItemUseCase.execute(RemoveCartItemCommand(tenant_ctx=tenant_ctx, item_id=item_id))
+    return redirect("cart_web:cart_view")
+
+
+@require_POST
+def cart_apply_coupon(request: HttpRequest) -> HttpResponse:
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
+    coupon_code = (request.POST.get("coupon_code") or "").strip()
+    try:
+        ApplyCouponUseCase.execute(ApplyCouponCommand(tenant_ctx=tenant_ctx, coupon_code=coupon_code))
+    except CartError as exc:
+        messages.error(request, str(exc))
+    return redirect("cart_web:cart_view")
+
+
+@require_POST
+def cart_remove_coupon(request: HttpRequest) -> HttpResponse:
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return redirect("tenants:dashboard_home")
+        return redirect("home")
+    try:
+        RemoveCouponUseCase.execute(RemoveCouponCommand(tenant_ctx=tenant_ctx))
+    except CartError as exc:
+        messages.error(request, str(exc))
     return redirect("cart_web:cart_view")

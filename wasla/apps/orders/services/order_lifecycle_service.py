@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.db import transaction
 
 from apps.wallet.services.wallet_service import WalletService
+from apps.wallet.services.accounting_service import AccountingService
 
 from ..models import Order
 
@@ -76,19 +77,25 @@ class OrderLifecycleService:
         # Handle state-specific logic
         if resolved_new_status == "delivered":
             order.shipments.exclude(status__in=["delivered", "cancelled"]).update(status="delivered")
+            accounting = AccountingService()
+            fee_policy = accounting.get_active_fee_policy(store_id=order.store_id)
+            net_amount = accounting.calculate_net(amount=order.total_amount, fee_policy=fee_policy)
             WalletService.on_order_delivered(
                 store_id=order.store_id,
                 tenant_id=order.tenant_id,
-                net_amount=order.total_amount,
+                net_amount=net_amount,
                 reference=f"order_delivered:{order.id}",
             )
 
         elif resolved_new_status == "completed":
             try:
+                accounting = AccountingService()
+                fee_policy = accounting.get_active_fee_policy(store_id=order.store_id)
+                net_amount = accounting.calculate_net(amount=order.total_amount, fee_policy=fee_policy)
                 WalletService.on_order_delivered(
                     store_id=order.store_id,
                     tenant_id=order.tenant_id,
-                    net_amount=order.total_amount,
+                    net_amount=net_amount,
                     reference=f"order_completed:{order.id}",
                 )
             except ValueError:

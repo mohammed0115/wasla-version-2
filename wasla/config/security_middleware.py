@@ -14,7 +14,7 @@ from typing import Optional
 from django.http import JsonResponse
 from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
-from tenants.models import Tenant
+from apps.tenants.models import Tenant
 
 logger = logging.getLogger("wasla.security")
 
@@ -229,17 +229,14 @@ class TOTPVerificationMiddleware(MiddlewareMixin):
     """
     
     SENSITIVE_PATHS = {
-        # Merchant operations
-        "/api/v1/merchant/settings",
-        "/api/v1/merchant/payouts",
-        "/api/v1/merchant/store",
-        "/api/v1/settlement/approve",
-        "/api/v1/refund",
-        
-        # Admin operations
-        "/api/v1/admin/user/create",
-        "/api/v1/admin/user/update",
-        "/api/v1/admin/settlement/approve",
+        # Merchant/admin operations
+        "/api/settlements/",
+        "/api/payments/",
+        "/api/admin/",
+        "/api/orders/refunds",
+        "/api/orders/rmas",
+        "/api/orders/invoices",
+        "/api/orders/stock-reservations",
     }
     
     def process_request(self, request):
@@ -249,7 +246,14 @@ class TOTPVerificationMiddleware(MiddlewareMixin):
         if request.method not in ("POST", "PUT", "DELETE"):
             return None
         
-        if not any(request.path.startswith(p) for p in self.SENSITIVE_PATHS):
+        configured_paths = getattr(settings, "TOTP_SENSITIVE_PATHS", None)
+        sensitive_paths = configured_paths or self.SENSITIVE_PATHS
+        path = request.path
+        is_sensitive = any(path.startswith(p) for p in sensitive_paths)
+        if not is_sensitive:
+            if path.startswith("/api/stores/") and "/wallet/" in path:
+                is_sensitive = True
+        if not is_sensitive:
             return None
         
         user = getattr(request, "user", None)
@@ -258,7 +262,7 @@ class TOTPVerificationMiddleware(MiddlewareMixin):
         
         # Check if user has 2FA enabled
         try:
-            from accounts.models import TOTPSecret
+            from apps.accounts.totp_models import TOTPSecret
             totp_secret = TOTPSecret.objects.filter(user=user, is_active=True).first()
         except Exception:
             return None
@@ -268,7 +272,9 @@ class TOTPVerificationMiddleware(MiddlewareMixin):
             return None
         
         # 2FA enabled: require X-TOTP-Code header
-        totp_code = request.META.get("HTTP_X_TOTP_CODE", "")
+        totp_code = request.headers.get("X-TOTP-Code", "") or request.META.get("HTTP_X_TOTP_CODE", "")
+        if not totp_code:
+            totp_code = request.POST.get("totp_code", "")
         
         if not totp_code:
             logger.warning(

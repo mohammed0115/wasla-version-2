@@ -43,6 +43,7 @@ class DjangoOrderRepository(OrderRepositoryPort):
         return (
             Order.objects.for_tenant(store_id)
             .filter(created_at__gte=start_today, created_at__lt=end_today)
+            .filter(payment_status="paid")
             .exclude(status__in=["canceled", "cancelled"])
             .aggregate(total=Sum("total_amount"))
             .get("total")
@@ -54,6 +55,7 @@ class DjangoOrderRepository(OrderRepositoryPort):
         return (
             Order.objects.for_tenant(store_id)
             .filter(created_at__gte=start_today, created_at__lt=end_today)
+            .filter(payment_status="paid")
             .exclude(status__in=["canceled", "cancelled"])
             .count()
         )
@@ -63,6 +65,7 @@ class DjangoOrderRepository(OrderRepositoryPort):
         return (
             Order.objects.for_tenant(store_id)
             .filter(created_at__gte=start_7d, created_at__lt=end_7d)
+            .filter(payment_status="paid")
             .exclude(status__in=["canceled", "cancelled"])
             .aggregate(total=Sum("total_amount"))
             .get("total")
@@ -75,6 +78,7 @@ class DjangoOrderRepository(OrderRepositoryPort):
         grouped_rows = (
             Order.objects.for_tenant(store_id)
             .filter(created_at__gte=start_7d, created_at__lt=end_7d)
+            .filter(payment_status="paid")
             .exclude(status__in=["canceled", "cancelled"])
             .annotate(local_date=TruncDate("created_at", tzinfo=tzinfo))
             .values("local_date")

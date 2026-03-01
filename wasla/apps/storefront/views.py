@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Q, Prefetch, F, DecimalField
+from django.db.models import Q, Prefetch, F, DecimalField, Case, When, IntegerField, Min, Max
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -20,6 +20,7 @@ from apps.orders.models import Order
 from apps.stores.models import Store
 from apps.tenants.domain.tenant_context import TenantContext
 from apps.tenants.interfaces.web.decorators import resolve_tenant_for_request
+from core.infrastructure.store_cache import StoreCacheService
 from .models import ProductSEO, CategorySEO, StorefrontSettings, ProductSearch
 
 
@@ -108,6 +109,136 @@ def storefront_home(request: HttpRequest) -> HttpResponse:
     return render(request, "storefront/home.html", context)
 
 
+def _filtered_product_queryset(*, tenant_ctx: TenantContext, query: str | None = None, category_id: int | None = None):
+    qs = Product.objects.filter(
+        store_id=tenant_ctx.store_id,
+        is_active=True,
+        visibility=Product.VISIBILITY_ENABLED,
+    )
+    if query:
+        qs = qs.filter(
+            Q(name__icontains=query) |
+            Q(sku__icontains=query) |
+            Q(description_en__icontains=query) |
+            Q(description_ar__icontains=query)
+        )
+    if category_id:
+        qs = qs.filter(categories__id=category_id)
+    return qs
+
+
+def _apply_price_filters(qs, min_price: str | None, max_price: str | None):
+    if min_price:
+        try:
+            qs = qs.filter(price__gte=Decimal(min_price))
+        except (ValueError, TypeError):
+            pass
+    if max_price:
+        try:
+            qs = qs.filter(price__lte=Decimal(max_price))
+        except (ValueError, TypeError):
+            pass
+    return qs
+
+
+@require_GET
+def product_list(request: HttpRequest) -> HttpResponse:
+    """Display full product listing with pagination, search, and filters."""
+    try:
+        tenant_ctx = _build_tenant_context(request)
+    except CartError:
+        return redirect("home")
+
+    context = _get_storefront_context(request, tenant_ctx)
+    query = request.GET.get("q", "").strip()
+    category_id = request.GET.get("category")
+    min_price = request.GET.get("min_price")
+    max_price = request.GET.get("max_price")
+
+    try:
+        category_id_int = int(category_id) if category_id else None
+    except (TypeError, ValueError):
+        category_id_int = None
+
+    sort_by = request.GET.get("sort", "-id")
+    if sort_by not in ["-id", "id", "price", "-price", "name", "-name"]:
+        sort_by = "-id"
+
+    page = request.GET.get("page", 1)
+    per_page = int(request.GET.get("per_page", context["settings"].product_per_page))
+
+    def _load_product_ids():
+        qs = _filtered_product_queryset(
+            tenant_ctx=tenant_ctx,
+            query=query or None,
+            category_id=category_id_int,
+        )
+        qs = _apply_price_filters(qs, min_price, max_price)
+        qs = qs.order_by(sort_by).values_list("id", flat=True)
+        return list(qs)
+
+    ids, _ = StoreCacheService.get_or_set(
+        store_id=tenant_ctx.store_id,
+        namespace="storefront_products",
+        key_parts=[
+            "list",
+            getattr(request, "LANGUAGE_CODE", "ar"),
+            f"q:{query or 'all'}",
+            f"c:{category_id_int or 'all'}",
+            f"min:{min_price or 'any'}",
+            f"max:{max_price or 'any'}",
+            f"sort:{sort_by}",
+        ],
+        producer=_load_product_ids,
+        timeout=180,
+    )
+
+    paginator = Paginator(ids, per_page)
+    try:
+        products_page = paginator.page(page)
+    except PageNotAnInteger:
+        products_page = paginator.page(1)
+    except EmptyPage:
+        products_page = paginator.page(paginator.num_pages)
+
+    page_ids = list(products_page.object_list or [])
+    products = []
+    if page_ids:
+        preserved = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(page_ids)], output_field=IntegerField())
+        products = list(
+            Product.objects.filter(id__in=page_ids)
+            .prefetch_related("images", "categories", "variants")
+            .order_by(preserved)
+        )
+
+    products_page.object_list = products
+
+    categories = Category.objects.filter(store_id=tenant_ctx.store_id)
+    category_ids = list(categories.values_list("id", flat=True))
+    price_stats = Product.objects.filter(
+        store_id=tenant_ctx.store_id,
+        is_active=True,
+        visibility=Product.VISIBILITY_ENABLED,
+    ).aggregate(
+        min_price=Coalesce(Min("price"), Decimal("0"), output_field=DecimalField()),
+        max_price=Coalesce(Max("price"), Decimal("0"), output_field=DecimalField()),
+    )
+
+    context.update({
+        "page_title": f"Search: {query}" if query else "All Products",
+        "products": products_page,
+        "categories": categories,
+        "current_sort": sort_by,
+        "current_min_price": min_price,
+        "current_max_price": max_price,
+        "min_product_price": price_stats.get("min_price", Decimal("0")),
+        "max_product_price": price_stats.get("max_price", Decimal("999999")),
+        "query": query,
+    })
+
+    return render(request, "storefront/product_list.html", context)
+
+
 @require_GET
 def category_products(request: HttpRequest, slug: str) -> HttpResponse:
     """Display products in a category."""
@@ -124,12 +255,10 @@ def category_products(request: HttpRequest, slug: str) -> HttpResponse:
 
     context = _get_storefront_context(request, tenant_ctx)
 
-    # Get products in category
-    products = Product.objects.filter(
-        store_id=tenant_ctx.store_id,
-        is_active=True,
-        visibility=Product.VISIBILITY_ENABLED,
-        categories=category,
+    products = _filtered_product_queryset(
+        tenant_ctx=tenant_ctx,
+        query=None,
+        category_id=category.id,
     ).prefetch_related(
         "images",
         "categories",
@@ -140,17 +269,7 @@ def category_products(request: HttpRequest, slug: str) -> HttpResponse:
     min_price = request.GET.get("min_price")
     max_price = request.GET.get("max_price")
 
-    if min_price:
-        try:
-            products = products.filter(price__gte=Decimal(min_price))
-        except (ValueError, TypeError):
-            pass
-
-    if max_price:
-        try:
-            products = products.filter(price__lte=Decimal(max_price))
-        except (ValueError, TypeError):
-            pass
+    products = _apply_price_filters(products, min_price, max_price)
 
     # Apply sorting
     sort_by = request.GET.get("sort", "-id")
@@ -202,83 +321,8 @@ def category_products(request: HttpRequest, slug: str) -> HttpResponse:
 
 @require_GET
 def product_search(request: HttpRequest) -> HttpResponse:
-    """Full-text search for products."""
-    try:
-        tenant_ctx = _build_tenant_context(request)
-    except CartError:
-        return redirect("home")
-
-    context = _get_storefront_context(request, tenant_ctx)
-    query = request.GET.get("q", "").strip()
-
-    if query:
-        # Try full-text search first
-        products = Product.objects.filter(
-            store_id=tenant_ctx.store_id,
-            is_active=True,
-            visibility=Product.VISIBILITY_ENABLED,
-        ).filter(
-            Q(name__icontains=query) |
-            Q(sku__icontains=query) |
-            Q(description_en__icontains=query) |
-            Q(description_ar__icontains=query)
-        ).prefetch_related(
-            "images",
-            "categories",
-            "variants"
-        )
-    else:
-        products = Product.objects.none()
-
-    # Apply filters
-    category_id = request.GET.get("category")
-    if category_id:
-        try:
-            products = products.filter(categories__id=int(category_id))
-        except (ValueError, TypeError):
-            pass
-
-    min_price = request.GET.get("min_price")
-    max_price = request.GET.get("max_price")
-
-    if min_price:
-        try:
-            products = products.filter(price__gte=Decimal(min_price))
-        except (ValueError, TypeError):
-            pass
-
-    if max_price:
-        try:
-            products = products.filter(price__lte=Decimal(max_price))
-        except (ValueError, TypeError):
-            pass
-
-    # Apply sorting
-    sort_by = request.GET.get("sort", "-id")
-    if sort_by in ["-id", "id", "price", "-price", "name", "-name"]:
-        products = products.order_by(sort_by)
-
-    # Pagination
-    page = request.GET.get("page", 1)
-    per_page = int(request.GET.get("per_page", context["settings"].product_per_page))
-    paginator = Paginator(products, per_page)
-
-    try:
-        products_page = paginator.page(page)
-    except PageNotAnInteger:
-        products_page = paginator.page(1)
-    except EmptyPage:
-        products_page = paginator.page(paginator.num_pages)
-
-    context.update({
-        "page_title": f"Search: {query}",
-        "query": query,
-        "products": products_page,
-        "categories": Category.objects.filter(store_id=tenant_ctx.store_id),
-        "current_sort": sort_by,
-    })
-
-    return render(request, "storefront/search.html", context)
+    """Search products (delegates to product listing)."""
+    return product_list(request)
 
 
 @require_GET

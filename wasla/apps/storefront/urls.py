@@ -7,6 +7,7 @@ app_name = "storefront"
 urlpatterns = [
     # Storefront pages
     path("store/", views.storefront_home, name="home"),
+    path("store/products/", views.product_list, name="product_list"),
     path("store/category/<slug:slug>/", views.category_products, name="category"),
     path("store/search/", views.product_search, name="search"),
     path("store/product/<slug:slug>/", views.product_detail_sf, name="product_detail"),

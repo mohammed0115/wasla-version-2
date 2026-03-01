@@ -8,6 +8,9 @@ urlpatterns = [
     path("auth/", views.auth_page, name="auth"),
     path("auth/verify/", views.verify_otp, name="verify_otp"),
     path("auth/resend/", views.resend_otp, name="resend_otp"),
+    path("auth/2fa/setup/", views.totp_setup, name="totp_setup"),
+    path("auth/2fa/enable/", views.totp_enable, name="totp_enable"),
+    path("auth/2fa/disable/", views.totp_disable, name="totp_disable"),
     path("logout/", views.do_logout, name="logout"),
 
     path("onboarding/welcome/", views.persona_welcome, name="persona_welcome"),

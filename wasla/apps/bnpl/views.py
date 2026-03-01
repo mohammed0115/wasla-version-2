@@ -31,7 +31,10 @@ def initiate_bnpl_payment(request, order_id):
     provider = request.GET.get("provider", "tabby")
 
     # Get order
-    order = get_object_or_404(Order, id=order_id, customer=request.user)
+    order = get_object_or_404(Order, id=order_id)
+    if not request.user.is_staff:
+        if not order.customer_email or order.customer_email.lower() != (request.user.email or "").lower():
+            return JsonResponse({"error": "Access denied"}, status=403)
 
     # Validate provider
     if provider not in ["tabby", "tamara"]:
@@ -51,6 +54,9 @@ def initiate_bnpl_payment(request, order_id):
     checkout_url = result.get("checkout_url")
     session_id = result.get("session_id")
 
+    installment_count = 3
+    installment_amount = (order.total_amount / Decimal(installment_count)).quantize(Decimal("0.01"))
+
     transaction = BnplTransaction.objects.create(
         order=order,
         provider=provider,
@@ -58,10 +64,10 @@ def initiate_bnpl_payment(request, order_id):
         amount=order.total_amount,
         currency="SAR",
         status=BnplTransaction.STATUS_PENDING,
-        customer_email=order.email,
-        customer_phone=order.shipping_address.phone
-        if order.shipping_address
-        else "",
+        installment_count=installment_count,
+        installment_amount=installment_amount,
+        customer_email=order.customer_email or order.email,
+        customer_phone=order.shipping_address.phone or order.customer_phone or "",
         payment_url=checkout_url,
         checkout_id=session_id,
         response_data=result,

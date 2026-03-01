@@ -12,8 +12,9 @@ from django.utils import timezone
 from decimal import Decimal
 import uuid
 
-from ..models import Order, OrderItem
-from ..models_extended import RMA, ReturnItem, RefundTransaction
+from django.db.models import Sum
+
+from ..models import Order, OrderItem, RMA, ReturnItem, RefundTransaction
 
 
 class ReturnsService:
@@ -37,7 +38,7 @@ class ReturnsService:
         """
         last_rma = RMA.objects.filter(
             tenant_id=tenant_id,
-            store_id=store_id
+            order__store_id=store_id,
         ).order_by('-id').first()
         
         sequence = 1
@@ -354,12 +355,41 @@ class RefundsService:
         Returns:
             Created RefundTransaction instance
         """
+        if amount <= 0:
+            raise ValueError("Refund amount must be positive")
+
+        # Lock order for accurate refund calculations
+        locked_order = Order.objects.select_for_update().get(id=order.id)
+
+        # Idempotency: if refund exists for same RMA and still active, return it
+        if rma:
+            existing = RefundTransaction.objects.filter(
+                order=locked_order,
+                rma=rma,
+            ).exclude(status__in=[RefundTransaction.STATUS_FAILED, RefundTransaction.STATUS_CANCELLED]).first()
+            if existing:
+                return existing
+
+        total_requested = (
+            RefundTransaction.objects.filter(
+                order=locked_order,
+            )
+            .exclude(status__in=[RefundTransaction.STATUS_FAILED, RefundTransaction.STATUS_CANCELLED])
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+
+        remaining = locked_order.total_amount - total_requested
+        if amount > remaining:
+            raise ValueError("Refund amount exceeds remaining refundable balance")
+
         refund_id = RefundsService.get_next_refund_id(order.tenant_id)
-        
+
         refund = RefundTransaction.objects.create(
             tenant_id=order.tenant_id,
             store_id=order.store_id,
-            order=order,
+            order=locked_order,
             rma=rma,
             refund_id=refund_id,
             amount=amount,
@@ -367,7 +397,7 @@ class RefundsService:
             refund_reason=reason,
             status=RefundTransaction.STATUS_INITIATED,
         )
-        
+
         return refund
     
     @staticmethod
@@ -391,20 +421,25 @@ class RefundsService:
             try:
                 # Call payment orchestrator
                 response = gateway_client.request_refund(
-                    payment_id=refund.order.order_number,
+                    order_id=refund.order_id,
                     amount=refund.amount,
                     reason=refund.refund_reason,
                     metadata={"refund_id": refund.refund_id, "rma": refund.rma_id},
                 )
-                
-                refund.gateway_response = response.get('data', {})
-                refund.status = RefundTransaction.STATUS_PROCESSING
+                refund.gateway_response = response.get('data', response)
+                if response.get("status") == "success":
+                    if response.get("completed"):
+                        refund = RefundsService.complete_refund(refund)
+                    else:
+                        refund.status = RefundTransaction.STATUS_PROCESSING
+                else:
+                    refund.status = RefundTransaction.STATUS_FAILED
             except Exception as e:
                 refund.gateway_response = {"error": str(e)}
                 refund.status = RefundTransaction.STATUS_FAILED
         else:
             # Assume processing without gateway
-            refund.status = RefundTransaction.STATUS_PROCESSING
+            refund = RefundsService.complete_refund(refund)
         
         refund.save(update_fields=["status", "gateway_response"])
         return refund
@@ -424,10 +459,31 @@ class RefundsService:
         if refund.status == RefundTransaction.STATUS_COMPLETED:
             return refund
         
+        from apps.wallet.services.wallet_service import WalletService
+        from django.db.models import F
+
         refund.status = RefundTransaction.STATUS_COMPLETED
         refund.completed_at = timezone.now()
         refund.save(update_fields=["status", "completed_at"])
-        
+
+        # Atomically update order refunded_amount and wallet
+        order = Order.objects.select_for_update().get(id=refund.order_id)
+        Order.objects.filter(id=order.id).update(
+            refunded_amount=F("refunded_amount") + refund.amount
+        )
+        order.refresh_from_db(fields=["refunded_amount"])
+        if order.refunded_amount >= order.total_amount:
+            order.status = "refunded"
+        elif order.refunded_amount > 0:
+            order.status = "partially_refunded"
+        order.save(update_fields=["status"])
+        WalletService.on_refund(
+            store_id=order.store_id,
+            tenant_id=order.tenant_id,
+            amount=refund.amount,
+            reference=f"refund:{refund.id}",
+        )
+
         return refund
     
     @staticmethod

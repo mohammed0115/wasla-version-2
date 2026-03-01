@@ -13,8 +13,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from apps.catalog.models import Inventory
-from ..models_extended import StockReservation
-from ..models import OrderItem
+from ..models import StockReservation, OrderItem
 
 
 class StockReservationService:
@@ -48,29 +47,24 @@ class StockReservationService:
         """
         inventory = Inventory.objects.select_for_update().get(product=order_item.product)
         
-        # Check available stock (available = on_hand - reserved)
-        available = inventory.quantity_on_hand - (inventory.reserved_quantity or 0)
+        # Check available stock (simplified: quantity must cover reservation)
+        available = inventory.quantity
         if available < quantity:
             raise ValueError(
                 f"Insufficient stock. Available: {available}, Requested: {quantity}"
             )
-        
-        # Increment reserved quantity
-        inventory.reserved_quantity = (inventory.reserved_quantity or 0) + quantity
-        inventory.save(update_fields=["reserved_quantity"])
-        
+
         # Create reservation with TTL
-        expires_at = timezone.now() + timedelta(
-            seconds=StockReservation.RESERVATION_TTL_SECONDS
-        )
+        expires_at = timezone.now() + timedelta(minutes=15)
         
         reservation = StockReservation.objects.create(
             tenant_id=tenant_id,
             store_id=store_id,
             order_item=order_item,
-            inventory=inventory,
-            reserved_quantity=quantity,
-            status=StockReservation.STATUS_RESERVED,
+            product=order_item.product,
+            variant=order_item.variant,
+            quantity=quantity,
+            status="reserved",
             expires_at=expires_at,
         )
         
@@ -88,8 +82,12 @@ class StockReservationService:
         Returns:
             Updated StockReservation instance
         """
-        reservation.confirm_reservation()
-        reservation.refresh_from_db()
+        if reservation.status != "reserved":
+            raise ValueError(f"Cannot confirm reservation in {reservation.status} status")
+        reservation.status = "confirmed"
+        reservation.confirmed_at = timezone.now()
+        reservation.expires_at = timezone.now() + timedelta(minutes=30)
+        reservation.save(update_fields=["status", "confirmed_at", "expires_at"])
         return reservation
     
     @staticmethod
@@ -102,7 +100,12 @@ class StockReservationService:
             reservation: The StockReservation to release
             reason: Reason for release (cancelled, expired, shipped, etc)
         """
-        reservation.release_reservation(reason=reason)
+        if reservation.status in {"released"}:
+            return
+        reservation.status = "released"
+        reservation.released_at = timezone.now()
+        reservation.release_reason = reason
+        reservation.save(update_fields=["status", "released_at", "release_reason"])
     
     @staticmethod
     @transaction.atomic
@@ -128,7 +131,7 @@ class StockReservationService:
     
     @staticmethod
     @transaction.atomic
-    def auto_release_expired() -> int:
+    def auto_release_expired() -> dict:
         """
         Auto-release expired reservations. Call periodically via celery task.
         
@@ -137,20 +140,23 @@ class StockReservationService:
         """
         now = timezone.now()
         expired = StockReservation.objects.filter(
-            status=StockReservation.STATUS_RESERVED,
-            expires_at__lte=now
+            status__in=["reserved", "confirmed"],
+            expires_at__lte=now,
         )
         
         count = 0
         for reservation in expired:
-            try:
-                reservation.release_reservation(reason="TTL expired")
-                count += 1
-            except Exception:
-                # Log but continue with next reservation
-                pass
+            reservation.status = "released"
+            reservation.released_at = now
+            reservation.release_reason = "TTL expired"
+            reservation.save(update_fields=["status", "released_at", "release_reason"])
+            count += 1
         
-        return count
+        return {
+            "released_count": count,
+            "failed_count": 0,
+            "timestamp": str(now),
+        }
     
     @staticmethod
     def get_reservation_status(order_item: OrderItem) -> dict:
@@ -160,9 +166,9 @@ class StockReservationService:
             return {
                 "has_reservation": True,
                 "status": reservation.status,
-                "quantity": reservation.reserved_quantity,
+                "quantity": reservation.quantity,
                 "expires_at": reservation.expires_at,
-                "is_expired": reservation.is_expired,
+                "is_expired": reservation.expires_at <= timezone.now() if reservation.expires_at else False,
             }
         except StockReservation.DoesNotExist:
             return {"has_reservation": False}

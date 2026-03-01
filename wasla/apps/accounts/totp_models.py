@@ -19,6 +19,7 @@ from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from apps.emails.application.services.crypto import CredentialCrypto
 import logging
 
 logger = logging.getLogger("wasla.auth")
@@ -50,9 +51,8 @@ class TOTPSecret(models.Model):
         related_name="totp_secret"
     )
     
-    secret = models.CharField(
-        max_length=32,
-        help_text="Base32-encoded TOTP secret"
+    secret = models.TextField(
+        help_text="Base32-encoded TOTP secret (encrypted)"
     )
     
     is_active = models.BooleanField(
@@ -125,7 +125,10 @@ class TOTPSecret(models.Model):
                 self.failed_attempts = 0
         
         # Try as TOTP token first
-        totp = pyotp.TOTP(self.secret)
+        secret_value = self._get_secret_value()
+        if not secret_value:
+            return False
+        totp = pyotp.TOTP(secret_value)
         if totp.verify(token):
             self.failed_attempts = 0
             self.save(update_fields=["failed_attempts"])
@@ -157,14 +160,20 @@ class TOTPSecret(models.Model):
         """
         import json
         
-        try:
-            codes = json.loads(self.backup_codes) or []
-        except (json.JSONDecodeError, TypeError):
+        codes = self._get_backup_codes_list()
+        if codes is None:
             return False
         
         if code in codes:
             codes.remove(code)
-            self.backup_codes = json.dumps(codes)
+            try:
+                self.backup_codes = CredentialCrypto.encrypt_text(json.dumps(codes))
+            except Exception:
+                logger.error(
+                    "Failed to encrypt updated backup codes",
+                    extra={"user_id": self.user.id},
+                )
+                return False
             
             logger.info(
                 f"Backup code consumed for user {self.user.id}",
@@ -174,14 +183,45 @@ class TOTPSecret(models.Model):
             return True
         
         return False
+
+    def _get_secret_value(self) -> str:
+        raw = (self.secret or "").strip()
+        if not raw:
+            return ""
+        if raw.startswith("fernet:"):
+            try:
+                return CredentialCrypto.decrypt_text(raw)
+            except Exception:
+                logger.error(
+                    "Failed to decrypt TOTP secret",
+                    extra={"user_id": self.user.id},
+                )
+                return ""
+        return raw
+
+    def _get_backup_codes_list(self):
+        import json
+        raw = (self.backup_codes or "").strip()
+        if not raw:
+            return []
+        if raw.startswith("fernet:"):
+            try:
+                raw = CredentialCrypto.decrypt_text(raw)
+            except Exception:
+                logger.error(
+                    "Failed to decrypt backup codes",
+                    extra={"user_id": self.user.id},
+                )
+                return None
+        try:
+            return json.loads(raw) or []
+        except (json.JSONDecodeError, TypeError):
+            return None
     
     def get_backup_codes_display(self) -> List[str]:
         """Get list of remaining backup codes (for display during setup)."""
-        import json
-        try:
-            return json.loads(self.backup_codes) or []
-        except (json.JSONDecodeError, TypeError):
-            return []
+        codes = self._get_backup_codes_list()
+        return codes or []
 
 
 class TOTPService:
@@ -292,8 +332,8 @@ class TOTPService:
         
         totp_secret, created = TOTPSecret.objects.get_or_create(user=user)
         
-        totp_secret.secret = secret
-        totp_secret.backup_codes = json.dumps(backup_codes)
+        totp_secret.secret = CredentialCrypto.encrypt_text(secret)
+        totp_secret.backup_codes = CredentialCrypto.encrypt_text(json.dumps(backup_codes))
         totp_secret.is_active = True
         totp_secret.verified_at = timezone.now()
         totp_secret.failed_attempts = 0

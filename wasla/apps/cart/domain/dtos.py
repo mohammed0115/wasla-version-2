@@ -23,4 +23,6 @@ class CartSummary:
     currency: str
     items: Sequence[CartItemDTO]
     subtotal: Decimal
+    discount_amount: Decimal
+    coupon_code: str | None
     total: Decimal

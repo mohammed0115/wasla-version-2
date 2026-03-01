@@ -11,6 +11,8 @@ from apps.checkout.models import CheckoutSession
 from apps.customers.models import Customer
 from apps.orders.models import Order
 from apps.orders.services.order_service import OrderService
+from apps.coupons.models import Coupon
+from apps.coupons.services import CouponValidationService, CouponValidationError
 from apps.catalog.models import Product
 from apps.catalog.services.variant_service import ProductVariantService
 from apps.tenants.domain.tenant_context import TenantContext
@@ -111,7 +113,21 @@ class CreateOrderFromCheckoutUseCase:
         )
 
         totals = session.totals_json or {}
-        total_amount = Decimal(str(totals.get("total") or order.total_amount))
+        subtotal = Decimal(str(totals.get("subtotal") or cart_summary.subtotal))
+        discount_amount = Decimal(str(totals.get("discount_amount") or cart_summary.discount_amount or "0"))
+        shipping_fee = Decimal(str(totals.get("shipping_fee") or "0"))
+
+        tax_rate = order.tax_rate or Decimal("0.15")
+        taxable_base = subtotal - discount_amount + shipping_fee
+        if taxable_base < 0:
+            taxable_base = Decimal("0")
+        tax_amount = (taxable_base * Decimal(str(tax_rate))).quantize(Decimal("0.01"))
+        total_amount = (taxable_base + tax_amount).quantize(Decimal("0.01"))
+
+        order.subtotal = subtotal
+        order.discount_amount = discount_amount
+        order.shipping_charge = shipping_fee
+        order.tax_amount = tax_amount
         order.total_amount = total_amount
         order.currency = cmd.tenant_ctx.currency
         order.payment_status = "pending"
@@ -122,6 +138,10 @@ class CreateOrderFromCheckoutUseCase:
         order.shipping_method_code = session.shipping_method_code
         order.save(
             update_fields=[
+                "subtotal",
+                "discount_amount",
+                "shipping_charge",
+                "tax_amount",
                 "total_amount",
                 "currency",
                 "payment_status",
@@ -132,6 +152,43 @@ class CreateOrderFromCheckoutUseCase:
                 "shipping_method_code",
             ]
         )
+
+        # Apply coupon usage log (if applicable)
+        coupon_code = cart_summary.coupon_code
+        if coupon_code:
+            coupon = Coupon.objects.filter(
+                store_id=cmd.tenant_ctx.store_id,
+                code__iexact=coupon_code,
+                is_active=True,
+            ).first()
+            if coupon:
+                is_valid, _ = CouponValidationService().validate_coupon(
+                    coupon,
+                    customer=customer,
+                    subtotal=subtotal,
+                )
+                if is_valid and discount_amount > 0:
+                    try:
+                        CouponValidationService().apply_coupon(
+                            coupon=coupon,
+                            order=order,
+                            discount_amount=discount_amount,
+                        )
+                        order.coupon_code = coupon.code
+                        order.save(update_fields=["coupon_code"])
+                    except CouponValidationError:
+                        # Coupon usage not available anymore; remove discount to keep totals correct
+                        order.discount_amount = Decimal("0")
+                        taxable_base = order.subtotal + order.shipping_charge
+                        if taxable_base < 0:
+                            taxable_base = Decimal("0")
+                        order.tax_amount = (taxable_base * Decimal(str(tax_rate))).quantize(Decimal("0.01"))
+                        order.total_amount = (taxable_base + order.tax_amount).quantize(Decimal("0.01"))
+                        order.coupon_code = ""
+                        order.save(update_fields=["discount_amount", "tax_amount", "total_amount", "coupon_code"])
+                    except Exception:
+                        # Fail-safe: do not block order creation on coupon logging errors
+                        pass
 
         session.order = order
         session.status = CheckoutSession.STATUS_CONFIRMED

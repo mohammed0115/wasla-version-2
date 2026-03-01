@@ -108,6 +108,7 @@ class Product(models.Model):
     sku = models.CharField(max_length=64)
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=12, decimal_places=2)
+    weight_kg = models.DecimalField(max_digits=8, decimal_places=3, default=1)
     description_ar = models.TextField(blank=True, default="")
     description_en = models.TextField(blank=True, default="")
     image = models.ImageField(upload_to=product_image_upload_to, blank=True, null=True)
@@ -116,6 +117,11 @@ class Product(models.Model):
     categories = models.ManyToManyField(Category, related_name="products", blank=True)
 
     class Meta:
+        indexes = [
+            models.Index(fields=["store_id", "is_active", "visibility"]),
+            models.Index(fields=["store_id", "price"]),
+            models.Index(fields=["store_id", "name"]),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["store_id", "sku"], name="uq_product_store_sku"),
         ]

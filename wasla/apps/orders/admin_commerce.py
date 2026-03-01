@@ -397,23 +397,26 @@ class StockReservationAdmin(admin.ModelAdmin):
     
     list_display = [
         'order_item',
-        'reserved_quantity',
+        'product',
+        'variant',
+        'quantity',
         'status_badge',
         'expires_at',
         'is_expired_indicator',
     ]
     list_filter = ['status', 'expires_at', 'created_at', 'store_id']
-    search_fields = ['order_item__product__name', 'inventory__product__sku']
+    search_fields = ['order_item__product__name', 'product__sku']
     readonly_fields = [
         'order_item',
-        'inventory',
+        'product',
+        'variant',
         'created_at',
         'released_at',
         'expiry_info',
     ]
     fieldsets = (
         ('Reservation Info', {
-            'fields': ('order_item', 'inventory', 'reserved_quantity'),
+            'fields': ('order_item', 'product', 'variant', 'quantity'),
         }),
         ('Status', {
             'fields': ('status', 'expiry_info'),

@@ -9,6 +9,7 @@ Includes:
 """
 
 from rest_framework import serializers
+from django.utils import timezone
 from wasla.apps.orders.models import (
     Invoice,
     InvoiceLineItem,
@@ -333,8 +334,9 @@ class StockReservationSerializer(serializers.ModelSerializer):
     """Serializer for stock reservations"""
     
     order_item_id = serializers.IntegerField(source='order_item.id', read_only=True)
-    product_name = serializers.CharField(source='inventory.product.name', read_only=True)
-    inventory_id = serializers.IntegerField(source='inventory.id', read_only=True)
+    product_id = serializers.IntegerField(source='product.id', read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    variant_id = serializers.IntegerField(source='variant.id', read_only=True, allow_null=True)
     is_expired = serializers.SerializerMethodField()
     
     class Meta:
@@ -342,9 +344,10 @@ class StockReservationSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'order_item_id',
-            'inventory_id',
+            'product_id',
             'product_name',
-            'reserved_quantity',
+            'variant_id',
+            'quantity',
             'status',
             'created_at',
             'expires_at',
@@ -355,8 +358,9 @@ class StockReservationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'order_item_id',
-            'inventory_id',
+            'product_id',
             'product_name',
+            'variant_id',
             'created_at',
             'expires_at',
             'released_at',
@@ -364,7 +368,7 @@ class StockReservationSerializer(serializers.ModelSerializer):
     
     def get_is_expired(self, obj):
         """Check if reservation is expired"""
-        return obj.is_expired()
+        return obj.expires_at is not None and obj.expires_at <= timezone.now()
 
 
 class StockReservationCreateSerializer(serializers.Serializer):

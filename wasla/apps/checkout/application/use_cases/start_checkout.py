@@ -36,7 +36,11 @@ class StartCheckoutUseCase:
         if session and session.status != CheckoutSession.STATUS_CONFIRMED:
             return session
 
-        totals = compute_totals(subtotal=cart_summary.subtotal, shipping_fee=Decimal("0"))
+        totals = compute_totals(
+            subtotal=cart_summary.subtotal,
+            discount_amount=cart_summary.discount_amount,
+            shipping_fee=Decimal("0"),
+        )
         created = CheckoutSession.objects.create(
             store_id=cmd.tenant_ctx.store_id,
             cart_id=cart_summary.cart_id,

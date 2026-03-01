@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 
 from apps.cart.application.use_cases.add_to_cart import AddToCartCommand, AddToCartUseCase
+from apps.cart.application.use_cases.apply_coupon import ApplyCouponCommand, ApplyCouponUseCase, RemoveCouponCommand, RemoveCouponUseCase
 from apps.cart.application.use_cases.get_cart import GetCartUseCase
 from apps.cart.application.use_cases.remove_cart_item import RemoveCartItemCommand, RemoveCartItemUseCase
 from apps.cart.application.use_cases.update_cart_item import UpdateCartItemCommand, UpdateCartItemUseCase
@@ -11,6 +12,7 @@ from apps.cart.domain.errors import CartError
 from apps.cart.interfaces.api.responses import api_response
 from apps.cart.interfaces.api.serializers import (
     AddToCartSerializer,
+    ApplyCouponSerializer,
     RemoveCartItemSerializer,
     UpdateCartItemSerializer,
 )
@@ -45,6 +47,8 @@ class CartDetailAPI(APIView):
             "cart_id": cart.cart_id,
             "currency": cart.currency,
             "subtotal": str(cart.subtotal),
+            "discount_amount": str(cart.discount_amount),
+            "coupon_code": cart.coupon_code,
             "total": str(cart.total),
             "items": [
                 {
@@ -115,3 +119,46 @@ class CartRemoveAPI(APIView):
         except CartError as exc:
             return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
         return api_response(success=True, data={"cart_id": cart.cart_id})
+
+
+class CartApplyCouponAPI(APIView):
+    def post(self, request):
+        serializer = ApplyCouponSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tenant_ctx = _build_tenant_context(request)
+        try:
+            cart = ApplyCouponUseCase.execute(
+                ApplyCouponCommand(
+                    tenant_ctx=tenant_ctx,
+                    coupon_code=serializer.validated_data["coupon_code"],
+                )
+            )
+        except CartError as exc:
+            return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
+        return api_response(
+            success=True,
+            data={
+                "cart_id": cart.cart_id,
+                "discount_amount": str(cart.discount_amount),
+                "coupon_code": cart.coupon_code,
+                "total": str(cart.total),
+            },
+        )
+
+
+class CartRemoveCouponAPI(APIView):
+    def post(self, request):
+        tenant_ctx = _build_tenant_context(request)
+        try:
+            cart = RemoveCouponUseCase.execute(RemoveCouponCommand(tenant_ctx=tenant_ctx))
+        except CartError as exc:
+            return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
+        return api_response(
+            success=True,
+            data={
+                "cart_id": cart.cart_id,
+                "discount_amount": str(cart.discount_amount),
+                "coupon_code": cart.coupon_code,
+                "total": str(cart.total),
+            },
+        )

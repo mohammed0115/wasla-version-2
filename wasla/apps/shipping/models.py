@@ -31,6 +31,7 @@ class Shipment(models.Model):
     carrier = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ready")
     tracking_number = models.CharField(max_length=100, blank=True, default="")
+    notification_sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
@@ -200,7 +201,7 @@ class ShippingRate(models.Model):
 
         # Check weight range
         if weight < self.min_weight:
-            return Decimal("0.00")
+            return None  # Rate doesn't apply
         if self.max_weight and weight > self.max_weight:
             return None  # Rate doesn't apply
 

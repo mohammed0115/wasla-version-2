@@ -15,6 +15,8 @@ from apps.catalog.services.variant_service import ProductConfigurationService
 from apps.security.rbac import require_permission
 from apps.stores.models import Store
 from apps.tenants.guards import require_store
+from apps.subscriptions.services.entitlement_service import SubscriptionEntitlementService
+from apps.subscriptions.services.exceptions import SubscriptionLimitExceededError, NoActiveSubscriptionError
 
 
 @login_required
@@ -38,6 +40,21 @@ def product_create(request):
     if request.method == "POST":
         form = ProductForm(request.POST, request.FILES, store_id=store.id)
         if form.is_valid():
+            try:
+                current_products = Product.objects.filter(store_id=store.id).count()
+                SubscriptionEntitlementService.assert_within_limit(
+                    store_id=store.id,
+                    limit_field="max_products",
+                    current_usage=current_products,
+                    increment=1,
+                )
+            except (SubscriptionLimitExceededError, NoActiveSubscriptionError) as exc:
+                form.add_error(None, str(exc))
+                return render(
+                    request,
+                    "dashboard/catalog/product_form.html",
+                    {"form": form, "product": None, "store": store, "action": "Create"},
+                )
             product = form.save(commit=False)
             product.store_id = store.id
             product.save()
