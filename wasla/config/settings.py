@@ -16,7 +16,6 @@ from pathlib import Path
 import importlib.util
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
-from decimal import Decimal
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -59,6 +58,7 @@ ADMIN_PORTAL_2FA_ENABLED = _env_bool("ADMIN_PORTAL_2FA_ENABLED", "1" if ENVIRONM
 ADMIN_PORTAL_2FA_TTL_SECONDS = int(os.getenv("ADMIN_PORTAL_2FA_TTL_SECONDS", "300") or "300")
 
 SECURITY_RATE_LIMITS = [
+    # Authentication endpoints - strict limits
     {
         "key": "login_user",
         "pattern": r"^/auth/$",
@@ -83,6 +83,7 @@ SECURITY_RATE_LIMITS = [
         "window": int(os.getenv("RL_OTP_WINDOW", "300") or "300"),
         "message_key": "otp_rate_limited",
     },
+    # Payment endpoints - moderate limits
     {
         "key": "payments",
         "pattern": r"^/api/payments/",
@@ -90,6 +91,24 @@ SECURITY_RATE_LIMITS = [
         "limit": int(os.getenv("RL_PAYMENTS_LIMIT", "60") or "60"),
         "window": int(os.getenv("RL_PAYMENTS_WINDOW", "60") or "60"),
         "message_key": "payments_rate_limited",
+    },
+    # Webhook endpoints - moderate but burst-friendly
+    {
+        "key": "webhooks",
+        "pattern": r"^/api/webhooks/|^/webhooks/",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_WEBHOOKS_LIMIT", "120") or "120"),
+        "window": int(os.getenv("RL_WEBHOOKS_WINDOW", "60") or "60"),
+        "message_key": "webhook_rate_limited",
+    },
+    # APIs in general - per-user limits
+    {
+        "key": "api_general",
+        "pattern": r"^/api/",
+        "methods": ["POST", "PUT", "PATCH", "DELETE"],
+        "limit": int(os.getenv("RL_API_LIMIT", "300") or "300"),
+        "window": int(os.getenv("RL_API_WINDOW", "60") or "60"),
+        "message_key": "api_rate_limited",
     },
 ]
 
@@ -140,6 +159,9 @@ CUSTOM_DOMAIN_VERIFY_MIN_INTERVAL_SECONDS = int(
 CUSTOM_DOMAIN_DNS_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_DNS_CACHE_SECONDS", "300") or "300")
 CUSTOM_DOMAIN_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_CACHE_SECONDS", "300") or "300")
 
+# Root domain default store
+DEFAULT_STORE_SLUG = os.getenv("WASLA_DEFAULT_STORE_SLUG", "store1").strip() or "store1"
+
 # SSL/Certbot
 CUSTOM_DOMAIN_SSL_ENABLED = _env_bool("CUSTOM_DOMAIN_SSL_ENABLED", "0")
 CUSTOM_DOMAIN_CERTBOT_CMD = os.getenv("CUSTOM_DOMAIN_CERTBOT_CMD", "certbot").strip() or "certbot"
@@ -169,8 +191,6 @@ CUSTOM_DOMAIN_FORCE_HTTPS = _env_bool("CUSTOM_DOMAIN_FORCE_HTTPS", "0")
 CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST = _env_bool("CUSTOM_DOMAIN_NGINX_RELOAD_IN_REQUEST", "0")
 DOMAIN_PROVISIONING_MODE = os.getenv("DOMAIN_PROVISIONING_MODE", "manual").strip().lower() or "manual"
 WASLA_ENABLE_AR = _env_bool("WASLA_ENABLE_AR", "0")
-
-SHIPPING_DEFAULT_WEIGHT_KG = Decimal(os.getenv("SHIPPING_DEFAULT_WEIGHT_KG", "1") or "1")
 
 NGINX_TEMPLATE_DIR = os.getenv("NGINX_TEMPLATE_DIR", "infrastructure/nginx").strip() or "infrastructure/nginx"
 NGINX_DOMAIN_TEMPLATE = os.getenv("NGINX_DOMAIN_TEMPLATE", "domain.conf.j2").strip() or "domain.conf.j2"
@@ -241,23 +261,23 @@ MIDDLEWARE = [
     "apps.security.middleware.rate_limit.RateLimitMiddleware",
     "apps.system.middleware.FriendlyErrorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    # ========== TENANT ISOLATION (runs early, before auth) ==========
-    "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
-    "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
-    "config.security_middleware.JWTTenantValidationMiddleware",
-    "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements
-    "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access
+    "django.middleware.locale.LocaleMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    # ========== MUST run BEFORE tenant security middleware ==========
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     # ================================================================
     "apps.security.middleware.headers.SecurityHeadersMiddleware",
     "apps.observability.middleware.request_id.RequestIdMiddleware",
     "apps.admin_portal.middleware.AdminPortalSecurityHeadersMiddleware",
+    # ========== TENANT ISOLATION (after auth) ==========
+    "apps.tenants.middleware.TenantResolverMiddleware",     # Resolve tenant from subdomain/session/headers
+    "apps.tenants.middleware.StoreStatusGuardMiddleware",   # Guard: Check store status (ACTIVE, published)
+    "apps.tenants.middleware.TenantMiddleware",              # Fallback tenant resolution
+    "apps.tenants.security_middleware.TenantSecurityMiddleware",  # Enforce tenant requirements (safe: auth complete)
+    "apps.tenants.security_middleware.TenantAuditMiddleware",     # Audit tenant access (safe: auth complete)
     "apps.tenants.middleware.TenantLocaleMiddleware",
-    "django.middleware.locale.LocaleMiddleware",
-    "django.middleware.common.CommonMiddleware",
     "apps.observability.middleware.timing.PerformanceMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "config.security_middleware.TOTPVerificationMiddleware",
     "apps.security.middleware.audit.SecurityAuditMiddleware",
     "apps.security.middleware.rbac.PermissionCacheMiddleware",
     "apps.accounts.middleware.OnboardingFlowMiddleware",
@@ -356,12 +376,6 @@ else:
 
 DATABASES = {"default": DEFAULT_DB}
 
-# Connection pooling / persistence
-DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "60") or "60")
-DB_CONN_HEALTH_CHECKS = _env_bool("DB_CONN_HEALTH_CHECKS", "1")
-DATABASES["default"]["CONN_MAX_AGE"] = DB_CONN_MAX_AGE
-DATABASES["default"]["CONN_HEALTH_CHECKS"] = DB_CONN_HEALTH_CHECKS
-
 # Optional: expose other DB connections only when explicitly requested.
 # Keeping them disabled by default avoids needing extra DB drivers (mysqlclient)
 # for local development and automated tests.
@@ -429,7 +443,6 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -623,7 +636,8 @@ OPENAI_WHISPER_MODEL = os.environ.get("OPENAI_WHISPER_MODEL", "whisper-1")
 GOOGLE_SPEECH_API_KEY = os.environ.get("GOOGLE_SPEECH_API_KEY", "")
 
 
-# +# Reverse proxy / HTTPS (nginx)
+# Reverse proxy / HTTPS (nginx)
+USE_X_FORWARDED_HOST = _env_bool("DJANGO_USE_X_FORWARDED_HOST", "1" if ENVIRONMENT == "production" else "0")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", "1" if ENVIRONMENT == "production" else "0")
 SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", "1" if ENVIRONMENT == "production" else "0")

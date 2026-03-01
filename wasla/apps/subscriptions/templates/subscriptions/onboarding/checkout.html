@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Wasla{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="progress-steps mb-5">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Plan</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Subdomain</span>
+                </div>
+                <div class="step active">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Payment</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Done</span>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="h2 mb-4">{{ page_title }}</h1>
+                    
+                    <div class="order-summary mb-4">
+                        <div class="summary-row">
+                            <div class="summary-label">Store Subdomain:</div>
+                            <div class="summary-value">{{ subdomain }}.w-sala.com</div>
+                        </div>
+                        <div class="summary-row">
+                            <div class="summary-label">Plan:</div>
+                            <div class="summary-value">{{ plan.name }}</div>
+                        </div>
+                        {% if not is_free %}
+                            <div class="summary-row">
+                                <div class="summary-label">Amount:</div>
+                                <div class="summary-value"><strong>SAR {{ plan.price }}</strong></div>
+                            </div>
+                        {% endif %}
+                        {% if payment_method %}
+                            <div class="summary-row">
+                                <div class="summary-label">Payment Method:</div>
+                                <div class="summary-value">{{ payment_method|capfirst }}</div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if is_free %}
+                        <div class="alert alert-success mb-4">
+                            <i class="bi bi-check-circle"></i> This plan is free! Your store will be created and activated immediately.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle"></i> You will be redirected to complete payment securely.
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            {% if is_free %}
+                                Create My Store
+                            {% else %}
+                                Proceed to Payment
+                            {% endif %}
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.5;
+    }
+    .step.active {
+        opacity: 1;
+        color: #0d6efd;
+    }
+    .step-number {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .step.active .step-number {
+        background: #0d6efd;
+        color: white;
+    }
+    
+    .order-summary {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+    .summary-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .summary-value {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

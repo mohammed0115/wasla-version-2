@@ -5,6 +5,7 @@ from django.core.cache import cache
 
 from apps.tenants.domain.policies import normalize_domain
 from apps.tenants.models import StoreDomain, Tenant
+from apps.stores.models import Store
 
 
 def _cache_key(host: str) -> str:
@@ -35,12 +36,32 @@ def invalidate_domain_cache(host: str) -> None:
     cache.delete(_cache_key(normalized))
 
 
+def resolve_store_by_slug(slug: str) -> 'Store | None':
+    """Resolve a store by its slug."""
+    if not slug:
+        return None
+    
+    try:
+        store = (
+            Store.objects.select_related("tenant")
+            .filter(slug=slug, is_active=True)
+            .first()
+        )
+        return store
+    except Exception:
+        return None
+
+
 def _resolve_uncached(host: str) -> Tenant | None:
+    # Use defensive getattr for backward compatibility with older migrations
+    status_active = getattr(StoreDomain, "STATUS_ACTIVE", "active")
+    status_degraded = getattr(StoreDomain, "STATUS_DEGRADED", "degraded")
+    
     domain_match = (
         StoreDomain.objects.select_related("tenant")
         .filter(
             domain=host,
-            status__in=(StoreDomain.STATUS_ACTIVE, StoreDomain.STATUS_DEGRADED),
+            status__in=(status_active, status_degraded),
             tenant__is_active=True,
         )
         .first()

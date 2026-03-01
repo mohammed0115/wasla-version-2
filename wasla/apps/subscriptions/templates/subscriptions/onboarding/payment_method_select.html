@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Wasla{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="progress-steps mb-5">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Plan</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Subdomain</span>
+                </div>
+                <div class="step active">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Payment</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Done</span>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="h2 mb-4">{{ page_title }}</h1>
+                    
+                    <div class="alert alert-info mb-4">
+                        <strong>Store:</strong> {{ subdomain }}.w-sala.com<br>
+                        <strong>Plan:</strong> {{ plan.name }} 
+                        {% if plan.price %}
+                            (SAR {{ plan.price }}/month)
+                        {% else %}
+                            (Free)
+                        {% endif %}
+                    </div>
+                    
+                    <form method="post" class="form-onboarding">
+                        {% csrf_token %}
+                        
+                        <div class="payment-methods mb-4">
+                            {% for method, label in form.payment_method.field.choices %}
+                                <div class="payment-option">
+                                    <input type="radio" name="payment_method" value="{{ method }}" 
+                                           id="method_{{ method }}" class="payment-radio">
+                                    <label for="method_{{ method }}" class="payment-label">
+                                        <div class="payment-name">{{ label }}</div>
+                                        <small class="text-muted">{{ method|capfirst }} payment option</small>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger mb-4">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <a href="{% url 'subscriptions_web:onboarding_subdomain' %}" class="btn btn-outline-secondary w-100">
+                                    Back
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.5;
+    }
+    .step.active {
+        opacity: 1;
+        color: #0d6efd;
+    }
+    .step-number {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .step.active .step-number {
+        background: #0d6efd;
+        color: white;
+    }
+    
+    .payment-methods {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .payment-option {
+        position: relative;
+    }
+    .payment-radio {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .payment-label {
+        display: block;
+        padding: 1.5rem;
+        border: 2px solid #e9ecef;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .payment-radio:checked + .payment-label {
+        border-color: #0d6efd;
+        background: rgba(13, 110, 253, 0.05);
+    }
+    .payment-label:hover {
+        border-color: #0d6efd;
+    }
+    .payment-name {
+        font-weight: 500;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock %}

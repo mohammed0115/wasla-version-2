@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("orders", "0002_order_store_id_alter_order_status_and_more"),
+        ("orders", "0003_production_commerce_upgrade"),
     ]
 
     operations = [

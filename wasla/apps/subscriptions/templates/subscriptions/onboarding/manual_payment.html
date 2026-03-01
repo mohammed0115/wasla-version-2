@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Wasla{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="h2 mb-4">{{ page_title }}</h1>
+                    
+                    <div class="alert alert-info mb-4">
+                        <strong>Store:</strong> {{ subdomain }}.w-sala.com<br>
+                        <strong>Plan:</strong> {{ plan.name }}<br>
+                        <strong>Amount Due:</strong> SAR {{ plan.price }}
+                    </div>
+                    
+                    <h3 class="mb-3">Bank Transfer Details</h3>
+                    <div class="bank-details card mb-4">
+                        <div class="card-body">
+                            <div class="detail-row mb-2">
+                                <span class="label">Account Name:</span>
+                                <span class="value">{{ bank_details.account_name }}</span>
+                            </div>
+                            <div class="detail-row mb-2">
+                                <span class="label">Bank Name:</span>
+                                <span class="value">{{ bank_details.bank_name }}</span>
+                            </div>
+                            <div class="detail-row mb-2">
+                                <span class="label">IBAN:</span>
+                                <span class="value font-monospace">{{ bank_details.iban }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Amount:</span>
+                                <span class="value"><strong>SAR {{ plan.price }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="mb-3">Confirm Your Payment</h3>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.reference.id_for_label }}" class="form-label">
+                                {{ form.reference.label }}
+                            </label>
+                            {{ form.reference }}
+                            {% if form.reference.errors %}
+                                <div class="alert alert-danger mt-2">{{ form.reference.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.receipt_file.id_for_label }}" class="form-label">
+                                {{ form.receipt_file.label }}
+                            </label>
+                            {{ form.receipt_file }}
+                            {% if form.receipt_file.errors %}
+                                <div class="alert alert-danger mt-2">{{ form.receipt_file.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Upload a screenshot or PDF of your transfer receipt</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="alert alert-danger mt-2">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            Submit Payment Proof
+                        </button>
+                    </form>
+                    
+                    <div class="alert alert-warning mt-4">
+                        <small>
+                            <strong>Note:</strong> Our team will review your payment submission within 24 hours. 
+                            Your store will be activated once the payment is confirmed.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bank-details {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .detail-row .label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .detail-row .value {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
