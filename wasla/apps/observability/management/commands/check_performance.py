@@ -66,7 +66,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--store-slug",
-            default="store1",
+            default="platform",
             help="Optional store slug used for store-specific endpoints in critical profile.",
         )
         parser.add_argument(

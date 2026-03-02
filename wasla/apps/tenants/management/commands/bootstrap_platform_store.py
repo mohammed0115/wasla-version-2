@@ -20,7 +20,7 @@ class Command(BaseCommand):
             "--slug",
             type=str,
             default=None,
-            help="Store slug (default: settings.DEFAULT_STORE_SLUG or 'store1')",
+            help="Store slug (default: settings.WASSLA_PLATFORM_STORE_SLUG or 'platform')",
         )
         parser.add_argument(
             "--store-name",
@@ -65,7 +65,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        slug = (options["slug"] or getattr(settings, "DEFAULT_STORE_SLUG", "store1") or "store1").strip()
+        slug = (
+            options["slug"]
+            or getattr(settings, "WASSLA_PLATFORM_STORE_SLUG", "")
+            or "platform"
+        ).strip()
         tenant_slug = (options["tenant_slug"] or "platform").strip()
         tenant_name = (options["tenant_name"] or "Platform").strip()
         store_name = (options["store_name"] or "Platform Store").strip()
@@ -135,6 +139,14 @@ class Command(BaseCommand):
                     return
                 self.stdout.write(self.style.WARNING(f"Store '{slug}' already exists; leaving as-is."))
                 store = existing_store
+                try:
+                    Store._meta.get_field("is_platform_default")
+                    if not store.is_platform_default:
+                        store.is_platform_default = True
+                        store.save(update_fields=["is_platform_default"])
+                        self.stdout.write(self.style.SUCCESS("OK Marked store as platform default."))
+                except FieldDoesNotExist:
+                    pass
             else:
                 store_kwargs = {
                     "slug": slug,
@@ -160,6 +172,11 @@ class Command(BaseCommand):
                         store_kwargs["is_active"] = True
                     except FieldDoesNotExist:
                         pass
+                try:
+                    Store._meta.get_field("is_platform_default")
+                    store_kwargs["is_platform_default"] = True
+                except FieldDoesNotExist:
+                    pass
 
                 store = Store.objects.create(**store_kwargs)
                 self.stdout.write(self.style.SUCCESS(f"OK Created store {store.slug} (id={store.id})"))

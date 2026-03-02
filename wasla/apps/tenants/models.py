@@ -111,10 +111,18 @@ class StoreDomain(models.Model):
 
     # Relationships
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="custom_domains")
+    store = models.ForeignKey(
+        "stores.Store",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="domains",
+        help_text="Resolved store for this host mapping.",
+    )
     
     # Domain info
     domain = models.CharField(max_length=255, unique=True, db_index=True)
-    is_primary = models.BooleanField(default=False)
+    is_primary = models.BooleanField(default=True)
 
     # Verification
     status = models.CharField(max_length=25, choices=STATUS_CHOICES, default=STATUS_PENDING_VERIFICATION, db_index=True)

@@ -132,7 +132,7 @@ ALLOWED_HOSTS = _env_list(
         f".{WASSLA_BASE_DOMAIN}",
         f"www.{WASSLA_BASE_DOMAIN}",
         "76.13.143.149",
-        "store1.127.0.0.1.nip.io",
+        "platform.127.0.0.1.nip.io",
         ".nip.io",
         ".127.0.0.1.nip.io",
         "w-sala.com",
@@ -167,8 +167,9 @@ CUSTOM_DOMAIN_VERIFY_MIN_INTERVAL_SECONDS = int(
 CUSTOM_DOMAIN_DNS_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_DNS_CACHE_SECONDS", "300") or "300")
 CUSTOM_DOMAIN_CACHE_SECONDS = int(os.getenv("CUSTOM_DOMAIN_CACHE_SECONDS", "300") or "300")
 
-# Root domain default store
-DEFAULT_STORE_SLUG = os.getenv("WASLA_DEFAULT_STORE_SLUG", "store1").strip() or "store1"
+# Platform root domain defaults (optional for management commands)
+WASSLA_PLATFORM_STORE_SLUG = os.getenv("WASSLA_PLATFORM_STORE_SLUG", "").strip().lower()
+WASSLA_PLATFORM_TENANT_SLUG = os.getenv("WASSLA_PLATFORM_TENANT_SLUG", "platform").strip().lower()
 
 # SSL/Certbot
 CUSTOM_DOMAIN_SSL_ENABLED = _env_bool("CUSTOM_DOMAIN_SSL_ENABLED", "0")

@@ -563,7 +563,7 @@ class TenantIsolationTests(TestCase):
         """Set up multiple tenants."""
         self.tenant1 = Tenant.objects.create(
             name='Store 1',
-            domain='store1.example.com'
+            domain='platform.example.com'
         )
         
         self.tenant2 = Tenant.objects.create(

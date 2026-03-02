@@ -85,7 +85,7 @@ class TenantIsolationSmokeTests(APITestCase):
         self.store1 = Store.objects.create(
             name="Store 1",
             tenant=self.tenant1,
-            slug="store1",
+            slug="platform",
             status="active"
         )
         self.store2 = Store.objects.create(

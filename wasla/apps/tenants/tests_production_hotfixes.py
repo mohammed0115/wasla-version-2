@@ -191,7 +191,7 @@ class TestHostHeaderNormalizationWithProxy(TestCase):
         # Request with X-Forwarded-Host header
         response = client.get(
             '/healthz',
-            HTTP_X_FORWARDED_HOST='store1.w-sala.com',
+            HTTP_X_FORWARDED_HOST='platform.w-sala.com',
             HTTP_X_FORWARDED_PROTO='https'
         )
         

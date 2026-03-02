@@ -26,7 +26,7 @@ class Command(BaseCommand):
             '--slug',
             type=str,
             default=None,
-            help='Store slug (default: from WASLA_DEFAULT_STORE_SLUG setting)',
+            help='Store slug (default: from WASSLA_PLATFORM_STORE_SLUG setting)',
         )
         parser.add_argument(
             '--name',
@@ -60,7 +60,11 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         """Execute the command."""
-        slug = options['slug'] or getattr(settings, 'DEFAULT_STORE_SLUG', 'store1')
+        slug = (
+            options['slug']
+            or getattr(settings, 'WASSLA_PLATFORM_STORE_SLUG', '')
+            or 'platform'
+        )
         name = options['name']
         subdomain = (options.get('subdomain') or slug).strip() or slug
         owner_username = (options.get('owner_username') or '').strip()
@@ -70,6 +74,14 @@ class Command(BaseCommand):
         # Check if store already exists
         existing = Store.objects.filter(slug=slug).first()
         if existing:
+            try:
+                Store._meta.get_field("is_platform_default")
+                if not existing.is_platform_default:
+                    existing.is_platform_default = True
+                    existing.save(update_fields=["is_platform_default"])
+                    self.stdout.write(self.style.SUCCESS("Marked existing store as platform default."))
+            except FieldDoesNotExist:
+                pass
             self.stdout.write(
                 self.style.WARNING(
                     f'Store with slug "{slug}" already exists: {existing.name}'
@@ -146,6 +158,11 @@ class Command(BaseCommand):
                     store_kwargs["is_active"] = True
                 except FieldDoesNotExist:
                     pass
+            try:
+                Store._meta.get_field("is_platform_default")
+                store_kwargs["is_platform_default"] = True
+            except FieldDoesNotExist:
+                pass
 
             store = Store.objects.create(**store_kwargs)
             self.stdout.write(

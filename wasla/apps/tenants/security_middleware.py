@@ -84,6 +84,11 @@ class TenantSecurityMiddleware:
         Perform tenant security checks.
         Returns error response if checks fail, None if checks pass.
         """
+        if getattr(request, "_is_root_domain_no_default", False):
+            if request.path in ["/healthz", "/readyz", "/metrics"]:
+                return None
+            return self._handle_missing_tenant(request)
+
         # Attach tenant to request (already done by TenantMiddleware)
         tenant = getattr(request, 'tenant', None)
         
@@ -168,7 +173,7 @@ class TenantSecurityMiddleware:
         Handle missing tenant based on request type.
         
         - API requests: 403 Forbidden
-        - Root domain without default store: 404 Not Found with friendly template
+        - Root domain without default store: 503 Service Unavailable with friendly template
         - Other web requests: 404 Not Found
         - Health checks: Allow through
         """
@@ -193,29 +198,29 @@ class TenantSecurityMiddleware:
                 content_type='application/json'
             )
         
-        # For root domain without default store, return friendly 404
+        # For root domain without default store, return friendly 503
         if is_root_domain_no_default:
-            logger.warning(
-                f"SECURITY: Root domain request without default store configured. "
+            logger.error(
+                f"SECURITY: Root domain request without platform default store configured. "
                 f"Path: {path}, {user_info}. "
-                f"Set WASLA_DEFAULT_STORE_SLUG env var."
+                f"Run `python manage.py ensure_platform_store` or mark a store as platform default."
             )
             try:
                 return render(
                     request,
                     'tenants/default_store_not_configured.html',
                     {
-                        'default_store_slug': getattr(settings, 'DEFAULT_STORE_SLUG', 'store1'),
+                        'default_store_slug': getattr(settings, 'WASSLA_PLATFORM_STORE_SLUG', '') or 'platform',
                     },
-                    status=404,
+                    status=503,
                 )
             except Exception:
                 # Fallback if template doesn't exist
                 return HttpResponse(
-                    f'<html><head><title>Not Found</title></head>'
-                    f'<body><h1>404 Not Found</h1>'
-                    f'<p>Default store not configured. Please contact the administrator.</p></body></html>',
-                    status=404,
+                    f'<html><head><title>Service Unavailable</title></head>'
+                    f'<body><h1>503 Service Unavailable</h1>'
+                    f'<p>Platform default store not configured. Please contact the administrator.</p></body></html>',
+                    status=503,
                     content_type='text/html'
                 )
         

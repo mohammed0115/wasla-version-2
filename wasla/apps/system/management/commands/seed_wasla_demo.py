@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("--merchant-password", default="merchant12345")
         parser.add_argument("--merchant-email", default="merchant@wasla.local")
         parser.add_argument("--store-name", default="Wasla Demo Store")
-        parser.add_argument("--store-slug", default="store1")
+        parser.add_argument("--store-slug", default="demo-store")
 
     @transaction.atomic
     def handle(self, *args, **options):

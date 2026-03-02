@@ -129,16 +129,16 @@
         <div class="details">
             <h3>How to fix this?</h3>
             <p>
-                An administrator needs to create a store with the slug: 
-                <code>{{ default_store_slug }}</code>
+                An administrator needs to create a platform default store
+                (or mark an existing store as the platform default).
             </p>
             <p style="margin-top: 15px;">
                 You can create this store by:
             </p>
             <ol style="text-align: left; margin: 10px 0 0 20px; font-size: 13px;">
-                <li>Using the admin panel at <code>/admin/</code></li>
-                <li>Creating a "Store" record with <code>slug="{{ default_store_slug }}"</code></li>
-                <li>Ensuring the store is active and linked to a tenant</li>
+                <li>Running: <code>python manage.py ensure_platform_store</code></li>
+                <li>Using the admin panel at <code>/admin/</code> to set <code>is_platform_default</code></li>
+                <li>Optionally setting <code>WASSLA_PLATFORM_STORE_SLUG</code> (current: <code>{{ default_store_slug }}</code>)</li>
             </ol>
         </div>
         

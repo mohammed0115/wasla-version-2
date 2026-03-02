@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 
@@ -31,12 +32,14 @@ class Store(models.Model):
     STATUS_ACTIVE = "active"
     STATUS_INACTIVE = "inactive"
     STATUS_SUSPENDED = "suspended"
+    STATUS_PENDING_PAYMENT = "pending_payment"
 
     STATUS_CHOICES = [
         (STATUS_DRAFT, _("Draft")),
         (STATUS_ACTIVE, _("Active")),
         (STATUS_INACTIVE, _("Inactive")),
         (STATUS_SUSPENDED, _("Suspended")),
+        (STATUS_PENDING_PAYMENT, _("Pending Payment")),
     ]
 
     owner = models.ForeignKey(
@@ -138,6 +141,10 @@ class Store(models.Model):
         default=STATUS_DRAFT,
         help_text="Current store status"
     )
+    is_platform_default = models.BooleanField(
+        default=False,
+        help_text="Marks the platform landing store for the root domain.",
+    )
     is_featured = models.BooleanField(default=False, help_text="Featured in discover")
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -154,6 +161,13 @@ class Store(models.Model):
         ]
         unique_together = [
             ("owner", "slug"),  # Each user's stores must have unique slugs
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_platform_default"],
+                condition=Q(is_platform_default=True),
+                name="stores_single_platform_default",
+            )
         ]
 
     def __str__(self):

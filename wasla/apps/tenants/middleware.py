@@ -23,7 +23,12 @@ from django.utils.deprecation import MiddlewareMixin
 
 from .models import Tenant
 from .infrastructure.subdomain_resolver import extract_subdomain
-from .services.domain_resolution import resolve_tenant_by_host, resolve_store_by_slug
+from .services.domain_resolution import (
+    normalize_host,
+    resolve_store_by_host,
+    resolve_tenant_by_host,
+    resolve_platform_store,
+)
 
 
 class TenantResolverMiddleware(MiddlewareMixin):
@@ -51,14 +56,13 @@ class TenantResolverMiddleware(MiddlewareMixin):
             request.tenant = None
             return None
 
-        host = request.get_host().split(":", 1)[0]
+        host = normalize_host(request.get_host())
         subdomain = extract_subdomain(request.get_host())
         from apps.stores.models import Store
 
-        # Root domain check: resolve to DEFAULT_STORE_SLUG
+        # Root domain check: resolve to platform default store
         if self._is_root_domain(host) and not subdomain:
-            default_slug = getattr(settings, "DEFAULT_STORE_SLUG", "store1")
-            default_store = resolve_store_by_slug(default_slug)
+            default_store = resolve_platform_store()
             if default_store and default_store.tenant and default_store.tenant.is_active:
                 request.store = default_store
                 request.tenant = default_store.tenant
@@ -68,6 +72,12 @@ class TenantResolverMiddleware(MiddlewareMixin):
             request.tenant = None
             # Mark that this is a root domain request without default store
             request._is_root_domain_no_default = True
+            return None
+
+        store = resolve_store_by_host(host)
+        if store:
+            request.store = store
+            request.tenant = store.tenant
             return None
 
         if not subdomain:
@@ -109,23 +119,17 @@ class TenantResolverMiddleware(MiddlewareMixin):
 
             return None
 
-        store = resolve_store_by_slug(subdomain)
-        if not store:
-            if self._is_platform_subdomain_host(host) and not request.path.startswith("/api/"):
-                return render(
-                    request,
-                    "storefront/store_not_found.html",
-                    {
-                        "requested_subdomain": subdomain,
-                        "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com"),
-                    },
-                    status=404,
-                )
-            raise Http404("Store not found")
-
-        request.store = store
-        request.tenant = store.tenant
-        return None
+        if self._is_platform_subdomain_host(host) and not request.path.startswith("/api/"):
+            return render(
+                request,
+                "storefront/store_not_found.html",
+                {
+                    "requested_subdomain": subdomain,
+                    "base_domain": getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com"),
+                },
+                status=404,
+            )
+        raise Http404("Store not found")
 
 
 class TenantMiddleware:

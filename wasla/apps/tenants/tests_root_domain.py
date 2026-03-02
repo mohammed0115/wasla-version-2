@@ -27,8 +27,15 @@ class TestRootDomainDefaultStoreResolution(TestCase):
     
     def setUp(self):
         """Set up test data."""
+        from django.core.cache import cache
+        cache.clear()
         self.client = Client()
         self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username="owner",
+            email="owner@example.com",
+            password="pass1234",
+        )
         
         # Create a default tenant
         self.default_tenant = Tenant.objects.create(
@@ -38,12 +45,15 @@ class TestRootDomainDefaultStoreResolution(TestCase):
             is_published=True,
         )
         
-        # Create default store with store1 slug
+        # Create default store for platform root domain
         self.default_store = Store.objects.create(
             name="Default Store",
-            slug="store1",
+            slug="platform",
+            subdomain="platform",
             tenant=self.default_tenant,
-            is_active=True,
+            owner=self.user,
+            status=Store.STATUS_ACTIVE,
+            is_platform_default=True,
         )
         
         # Create a non-default store for subdomain testing
@@ -56,12 +66,14 @@ class TestRootDomainDefaultStoreResolution(TestCase):
         self.other_store = Store.objects.create(
             name="Other Store",
             slug="other-store",
+            subdomain="other-store",
             tenant=self.other_tenant,
-            is_active=True,
+            owner=self.user,
+            status=Store.STATUS_ACTIVE,
         )
     
     def test_root_domain_resolves_to_default_store(self):
-        """Test that w-sala.com resolves to default store (store1)."""
+        """Test that w-sala.com resolves to platform default store."""
         response = self.client.get(
             '/',
             HTTP_HOST='w-sala.com'
@@ -81,14 +93,13 @@ class TestRootDomainDefaultStoreResolution(TestCase):
         self.assertNotEqual(response.status_code, 503)
     
     def test_storefront_home_with_default_store(self):
-        """Test /store/ works with default store context."""
-        response = self.client.get(
-            '/store/',
-            HTTP_HOST='w-sala.com'
-        )
-        # Should render storefront (200, not 404 "Store context required")
-        if response.status_code == 404:
-            self.assertNotIn("Store context required", str(response.content))
+        """Test storefront path gets default store context on root domain."""
+        request = self.factory.get('/store/', HTTP_HOST='w-sala.com')
+        from apps.tenants.middleware import TenantResolverMiddleware
+        middleware = TenantResolverMiddleware(lambda r: None)
+        middleware.process_request(request)
+        self.assertIsNotNone(getattr(request, "store", None))
+        self.assertEqual(request.store.id, self.default_store.id)
     
     def test_subdomain_isolation_maintained(self):
         """Test that subdomains still resolve independently."""
@@ -122,14 +133,14 @@ class TestRootDomainDefaultStoreResolution(TestCase):
         # Should return 503 Service Unavailable, not 404
         self.assertEqual(response.status_code, 503)
         self.assertIn("Service Unavailable", str(response.content))
-        self.assertIn("Default store not configured", str(response.content))
+        self.assertIn("default store", str(response.content).lower())
     
     def test_resolve_store_by_slug_function(self):
         """Test resolve_store_by_slug helper function."""
         # Should find default store
-        store = resolve_store_by_slug("store1")
+        store = resolve_store_by_slug("platform")
         self.assertIsNotNone(store)
-        self.assertEqual(store.slug, "store1")
+        self.assertEqual(store.slug, "platform")
         
         # Should return None for non-existent
         store = resolve_store_by_slug("nonexistent")
@@ -142,8 +153,8 @@ class TestRootDomainDefaultStoreResolution(TestCase):
     def test_inactive_store_not_resolved(self):
         """Test that inactive default store is not resolved."""
         # Make default store inactive
-        self.default_store.is_active = False
-        self.default_store.save()
+        self.default_store.status = Store.STATUS_INACTIVE
+        self.default_store.save(update_fields=["status"])
         
         response = self.client.get(
             '/',
@@ -185,6 +196,11 @@ class TestRootDomainSecurityMiddleware(TestCase):
     def setUp(self):
         """Set up test data."""
         self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username="root-owner",
+            email="root-owner@example.com",
+            password="pass1234",
+        )
         
         self.default_tenant = Tenant.objects.create(
             slug="default",
@@ -194,9 +210,12 @@ class TestRootDomainSecurityMiddleware(TestCase):
         
         self.default_store = Store.objects.create(
             name="Default Store",
-            slug="store1",
+            slug="platform",
+            subdomain="platform",
             tenant=self.default_tenant,
-            is_active=True,
+            owner=self.user,
+            status=Store.STATUS_ACTIVE,
+            is_platform_default=True,
         )
     
     def test_root_domain_requests_allowed(self):
@@ -255,6 +274,11 @@ class TestRootDomainURLResolution(TestCase):
     def setUp(self):
         """Set up test data."""
         self.client = Client()
+        self.user = User.objects.create_user(
+            username="url-owner",
+            email="url-owner@example.com",
+            password="pass1234",
+        )
         
         self.default_tenant = Tenant.objects.create(
             slug="default",
@@ -264,9 +288,12 @@ class TestRootDomainURLResolution(TestCase):
         
         self.default_store = Store.objects.create(
             name="Default Store",
-            slug="store1",
+            slug="platform",
+            subdomain="platform",
             tenant=self.default_tenant,
-            is_active=True,
+            owner=self.user,
+            status=Store.STATUS_ACTIVE,
+            is_platform_default=True,
         )
     
     def test_home_page_accessible(self):

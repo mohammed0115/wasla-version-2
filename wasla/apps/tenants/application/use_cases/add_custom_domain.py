@@ -72,8 +72,15 @@ class AddCustomDomainUseCase:
 
         ensure_domain_not_taken(normalized, tenant_id=cmd.tenant.id)
 
+        store = None
+        try:
+            store = cmd.tenant.stores.order_by("id").first()
+        except Exception:
+            store = None
+
         store_domain = StoreDomain.objects.create(
             tenant=cmd.tenant,
+            store=store,
             domain=normalized,
             status=StoreDomain.STATUS_PENDING_VERIFICATION,
             verification_token=token_urlsafe(32),

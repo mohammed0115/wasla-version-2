@@ -236,7 +236,7 @@ python manage.py test apps.tenants.tests_isolation_security -v 2
 ```bash
 # With subdomain
 curl -H "Authorization: Bearer <token>" \
-     https://store1.w-sala.com/api/v1/orders/
+     https://platform.w-sala.com/api/v1/orders/
 
 # With header
 curl -H "X-Tenant-ID: 1" \

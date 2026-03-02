@@ -14,7 +14,7 @@ class FlowValidatorTests(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.tenant = Tenant.objects.create(
-            slug="store1",
+            slug="platform",
             name="Store 1",
             is_active=True,
             currency="SAR",
