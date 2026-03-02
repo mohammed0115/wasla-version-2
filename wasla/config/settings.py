@@ -396,6 +396,37 @@ if (os.getenv("DJANGO_ENABLE_EXTRA_DBS", "0") or "0") == "1":
         }
     )
 
+DB_PRIMARY_ALIAS = "default"
+DB_READ_REPLICA_ENABLED = _env_bool("DJANGO_READ_REPLICA_ENABLED", "0")
+DB_READ_REPLICA_ALIAS = os.getenv("DJANGO_DB_READ_ALIAS", "replica").strip() or "replica"
+DB_READ_ROUTER_EXCLUDED_APPS = _env_list(
+    "DJANGO_DB_READ_EXCLUDED_APPS",
+    ["auth", "admin", "contenttypes", "sessions"],
+)
+
+DB_READ_NAME = os.getenv("DB_READ_NAME", "").strip()
+DB_READ_USER = os.getenv("DB_READ_USER", "").strip()
+DB_READ_PASSWORD = os.getenv("DB_READ_PASSWORD", "").strip()
+DB_READ_HOST = os.getenv("DB_READ_HOST", "").strip()
+DB_READ_PORT = os.getenv("DB_READ_PORT", "").strip()
+
+if DB_READ_REPLICA_ENABLED:
+    READ_DB = dict(DEFAULT_DB)
+    if DB_READ_NAME:
+        READ_DB["NAME"] = DB_READ_NAME
+    if DB_READ_USER:
+        READ_DB["USER"] = DB_READ_USER
+    if DB_READ_PASSWORD:
+        READ_DB["PASSWORD"] = DB_READ_PASSWORD
+    if DB_READ_HOST:
+        READ_DB["HOST"] = DB_READ_HOST
+    if DB_READ_PORT:
+        READ_DB["PORT"] = DB_READ_PORT
+    DATABASES[DB_READ_REPLICA_ALIAS] = READ_DB
+
+DB_READ_ROUTER_ENABLED = DB_READ_REPLICA_ENABLED and DB_READ_REPLICA_ALIAS in DATABASES
+DATABASE_ROUTERS = ["config.db_routers.ReadWriteRouter"] if DB_READ_ROUTER_ENABLED else []
+
 
 # Cache configuration
 CACHE_TTL_DEFAULT = int(os.getenv("CACHE_TTL_DEFAULT", "300") or "300")
@@ -689,10 +720,15 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after N tasks
 # Celery Beat Configuration
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"  # Use DB for schedule persistence
 
+# Webhook processing
+WEBHOOK_ASYNC_ENABLED = _env_bool("WEBHOOK_ASYNC_ENABLED", "0")
+WEBHOOK_ASYNC_QUEUE = os.getenv("WEBHOOK_ASYNC_QUEUE", "webhooks")
+
 # Task Routes (optional - for task prioritization)
 CELERY_TASK_ROUTES = {
     "apps.settlements.tasks.*": {"queue": "settlements"},
     "apps.notifications.tasks.*": {"queue": "notifications"},
+    "apps.webhooks.tasks.*": {"queue": WEBHOOK_ASYNC_QUEUE},
 }
 
 # Task Priority Configuration (optional)

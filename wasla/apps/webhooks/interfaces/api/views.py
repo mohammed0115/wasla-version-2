@@ -4,10 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 
 from apps.cart.interfaces.api.responses import api_response
-from apps.payments.application.use_cases.handle_webhook_event import (
-    HandleWebhookEventCommand,
-    HandleWebhookEventUseCase,
-)
+from apps.webhooks.tasks import enqueue_webhook_event
 
 
 class WebhookReceiverAPI(APIView):
@@ -21,20 +18,22 @@ class WebhookReceiverAPI(APIView):
         payload = request.data if isinstance(request.data, dict) else {}
         headers = {k: v for k, v in request.headers.items()}
         try:
-            event = HandleWebhookEventUseCase.execute(
-                HandleWebhookEventCommand(
-                    provider_code=provider_code,
-                    headers=headers,
-                    payload=payload,
-                    raw_body=raw_body,
-                )
+            result = enqueue_webhook_event(
+                provider_code=provider_code,
+                headers=headers,
+                payload=payload,
+                raw_body=raw_body,
             )
         except ValueError as exc:
             return api_response(success=False, errors=[str(exc)], status_code=status.HTTP_400_BAD_REQUEST)
+
+        status_code = status.HTTP_202_ACCEPTED if result.queued else status.HTTP_200_OK
         return api_response(
             success=True,
             data={
-                "event_id": event.event_id,
-                "status": event.processing_status,
+                "event_id": result.event_id,
+                "status": result.status,
+                "queued": result.queued,
             },
+            status_code=status_code,
         )
