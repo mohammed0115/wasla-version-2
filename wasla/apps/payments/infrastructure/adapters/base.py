@@ -84,6 +84,10 @@ class HostedPaymentAdapter:
             provider_reference=provider_reference,
         )
 
+    # Compatibility aliases for gateway interface
+    def create_payment(self, *, order, amount, currency, return_url: str) -> PaymentRedirect:
+        return self.initiate_payment(order=order, amount=amount, currency=currency, return_url=return_url)
+
     def verify_callback(self, *, payload: dict, headers: dict, raw_body: str | None = None) -> VerifiedEvent:
         raw = raw_body or json.dumps(payload, separators=(",", ":"), sort_keys=True)
         signature = self._get_header(headers, self.signature_header)
@@ -106,6 +110,9 @@ class HostedPaymentAdapter:
             intent_reference=str(intent_reference),
             status=status,
         )
+
+    def verify_payment(self, *, payload: dict, headers: dict, raw_body: str | None = None) -> VerifiedEvent:
+        return self.verify_callback(payload=payload, headers=headers, raw_body=raw_body)
 
     def refund(self, *, payment_reference: str, amount: Decimal | None = None, reason: str | None = None) -> str:
         payload: dict[str, Any] = {"payment_reference": payment_reference}

@@ -10,7 +10,9 @@ from apps.payments.infrastructure.adapters import (
     VisaGatewayAdapter,
 )
 from apps.payments.infrastructure.gateways.dummy_gateway import DummyGateway
+from apps.payments.infrastructure.gateways.manual_gateway import ManualGateway
 from apps.payments.infrastructure.gateways.sandbox_stub import SandboxStubGateway
+from apps.payments.infrastructure.gateways.stripe_gateway import StripeProvider
 from apps.payments.models import PaymentProviderSettings
 from apps.tenants.models import StorePaymentSettings
 
@@ -19,6 +21,8 @@ class PaymentGatewayFacade:
     _registry: dict[str, type[PaymentGatewayPort]] = {
         DummyGateway.code: DummyGateway,
         SandboxStubGateway.code: SandboxStubGateway,
+        ManualGateway.code: ManualGateway,
+        StripeProvider.code: StripeProvider,
         MadaGatewayAdapter.code: MadaGatewayAdapter,
         VisaGatewayAdapter.code: VisaGatewayAdapter,
         MastercardGatewayAdapter.code: MastercardGatewayAdapter,
@@ -62,6 +66,8 @@ class PaymentGatewayFacade:
         allowed_codes = set(cls._registry.keys())
         if store_settings.mode == StorePaymentSettings.MODE_DUMMY:
             allowed_codes = {"dummy", "sandbox"}
+        elif store_settings.mode == StorePaymentSettings.MODE_MANUAL:
+            allowed_codes = {"manual"}
         elif store_settings.mode != StorePaymentSettings.MODE_GATEWAY:
             return []
 
@@ -126,6 +132,8 @@ class PaymentGatewayFacade:
             return False
         if settings.mode == StorePaymentSettings.MODE_GATEWAY:
             return True
+        if settings.mode == StorePaymentSettings.MODE_MANUAL:
+            return provider_code == "manual"
         if settings.mode == StorePaymentSettings.MODE_DUMMY:
             return provider_code in {"dummy", "sandbox"}
         return False

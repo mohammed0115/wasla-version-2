@@ -77,11 +77,15 @@ class PaymentAttempt(models.Model):
     PROVIDER_TAP = "tap"
     PROVIDER_STRIPE = "stripe"
     PROVIDER_PAYPAL = "paypal"
+    PROVIDER_TABBY = "tabby"
+    PROVIDER_MANUAL = "manual"
 
     PROVIDER_CHOICES = [
         (PROVIDER_TAP, "Tap"),
         (PROVIDER_STRIPE, "Stripe"),
         (PROVIDER_PAYPAL, "PayPal"),
+        (PROVIDER_TABBY, "Tabby"),
+        (PROVIDER_MANUAL, "Manual"),
     ]
 
     STATUS_INITIATED = "initiated"
@@ -304,6 +308,8 @@ class PaymentProviderSettings(models.Model):
         ("tap", "Tap"),
         ("stripe", "Stripe"),
         ("paypal", "PayPal"),
+        ("tabby", "Tabby"),
+        ("manual", "Manual"),
     ]
     MODE_CHOICES = [
         ("sandbox", "Sandbox"),
