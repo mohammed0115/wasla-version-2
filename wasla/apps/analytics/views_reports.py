@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 from apps.analytics.models_reports import ScheduledReport, ReportLog, ReportService
+from apps.analytics.utils import resolve_store_id
 
 
 class ScheduledReportViewSet(viewsets.ModelViewSet):
@@ -26,7 +27,10 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return ScheduledReport.objects.all()
         # Filter by store_id for merchants
-        return ScheduledReport.objects.filter(store_id=user.store_id)
+        store_id = resolve_store_id(self.request)
+        if not store_id:
+            return ScheduledReport.objects.none()
+        return ScheduledReport.objects.filter(store_id=store_id)
 
     @action(detail=False, methods=['post'])
     def create_report(self, request):
@@ -37,7 +41,7 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
                 report_type=data.get('report_type'),
                 frequency=data.get('frequency'),
                 email_recipients=data.get('email_recipients', []),
-                store_id=data.get('store_id') if request.user.is_staff else request.user.store_id,
+                store_id=data.get('store_id') if request.user.is_staff else resolve_store_id(request),
                 is_admin=request.user.is_staff and data.get('is_admin', False),
                 delivery_format=data.get('delivery_format', 'html_email'),
             )
@@ -124,8 +128,9 @@ def api_scheduled_reports(request):
     """API endpoint for scheduled reports list."""
     if request.method == 'GET':
         # List scheduled reports
+        store_id = resolve_store_id(request)
         queryset = ScheduledReport.objects.filter(
-            store_id=request.user.store_id if not request.user.is_staff else None
+            store_id=store_id if not request.user.is_staff else None
         )
         if request.user.is_staff:
             queryset = ScheduledReport.objects.all()
@@ -152,7 +157,7 @@ def api_scheduled_reports(request):
                 report_type=data.get('report_type'),
                 frequency=data.get('frequency'),
                 email_recipients=data.getlist('email_recipients'),
-                store_id=request.user.store_id if not request.user.is_staff else None,
+                store_id=resolve_store_id(request) if not request.user.is_staff else None,
                 is_admin=request.user.is_staff and data.get('is_admin') == 'on',
                 delivery_format=data.get('delivery_format', 'html_email'),
             )
@@ -172,7 +177,7 @@ def api_scheduled_report_detail(request, report_id):
         report = ScheduledReport.objects.get(id=report_id)
 
         # Check permissions
-        if not request.user.is_staff and report.store_id != request.user.store_id:
+        if not request.user.is_staff and report.store_id != resolve_store_id(request):
             return JsonResponse({'error': 'Permission denied'}, status=403)
 
         if request.method == 'GET':
@@ -212,7 +217,7 @@ def api_test_report(request, report_id):
         report = ScheduledReport.objects.get(id=report_id)
 
         # Check permissions
-        if not request.user.is_staff and report.store_id != request.user.store_id:
+        if not request.user.is_staff and report.store_id != resolve_store_id(request):
             return JsonResponse({'error': 'Permission denied'}, status=403)
 
         # Generate and send
@@ -243,7 +248,7 @@ def api_report_logs(request, report_id):
         report = ScheduledReport.objects.get(id=report_id)
 
         # Check permissions
-        if not request.user.is_staff and report.store_id != request.user.store_id:
+        if not request.user.is_staff and report.store_id != resolve_store_id(request):
             return JsonResponse({'error': 'Permission denied'}, status=403)
 
         logs = ReportLog.objects.filter(
