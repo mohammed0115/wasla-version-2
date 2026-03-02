@@ -105,7 +105,7 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f"✓ Created tenant {tenant.slug}"))
+                self.stdout.write(self.style.SUCCESS(f"OK Created tenant {tenant.slug}"))
             else:
                 changed = False
                 if not tenant.name:
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                     changed = True
                 if changed:
                     tenant.save(update_fields=["name", "subdomain", "is_active", "is_published"])
-                    self.stdout.write(self.style.SUCCESS(f"✓ Updated tenant {tenant.slug}"))
+                    self.stdout.write(self.style.SUCCESS(f"OK Updated tenant {tenant.slug}"))
 
             existing_store = Store.objects.filter(slug=slug).first()
             if existing_store:
@@ -162,9 +162,8 @@ class Command(BaseCommand):
                         pass
 
                 store = Store.objects.create(**store_kwargs)
-                self.stdout.write(self.style.SUCCESS(f"✓ Created store {store.slug} (id={store.id})"))
+                self.stdout.write(self.style.SUCCESS(f"OK Created store {store.slug} (id={store.id})"))
 
-            # Ensure tenant membership for owner if allowed.
             owner_membership = TenantMembership.objects.filter(
                 user=owner,
                 role=TenantMembership.ROLE_OWNER,
@@ -184,7 +183,6 @@ class Command(BaseCommand):
                     defaults={"role": TenantMembership.ROLE_OWNER, "is_active": True},
                 )
 
-            # Ensure store profile if possible (one per owner).
             existing_profile = StoreProfile.objects.filter(owner=owner).first()
             if existing_profile and existing_profile.tenant_id != tenant.id:
                 self.stdout.write(
