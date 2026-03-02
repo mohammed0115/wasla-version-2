@@ -94,22 +94,23 @@ class TenantSecurityMiddleware:
         tenant = getattr(request, 'tenant', None)
         
         # Check if this path requires a tenant
-        if self._path_requires_tenant(request.path):
+        requires_tenant = self._path_requires_tenant(request.path)
+        if requires_tenant:
             if not tenant:
                 return self._handle_missing_tenant(request)
-        
-        # Additional security checks
-        # SAFE: AuthenticationMiddleware guaranteed to have run before this middleware
-        user = getattr(request, 'user', None)
-        if tenant and user and user.is_authenticated:
-            # Verify user has access to this tenant
-            if not self._user_has_tenant_access(user, tenant):
-                user_id = getattr(user, 'id', 'UNKNOWN')
-                logger.warning(
-                    f"SECURITY: User {user_id} attempted to access tenant {tenant.id} "
-                    f"without permission. Path: {request.path}"
-                )
-                return HttpResponse("Access Denied", status=403)
+
+            # Additional security checks for tenant-required paths only
+            # SAFE: AuthenticationMiddleware guaranteed to have run before this middleware
+            user = getattr(request, 'user', None)
+            if user and user.is_authenticated:
+                # Verify user has access to this tenant
+                if not self._user_has_tenant_access(user, tenant):
+                    user_id = getattr(user, 'id', 'UNKNOWN')
+                    logger.warning(
+                        f"SECURITY: User {user_id} attempted to access tenant {tenant.id} "
+                        f"without permission. Path: {request.path}"
+                    )
+                    return HttpResponse("Access Denied", status=403)
         
         return None
     
