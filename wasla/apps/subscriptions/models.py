@@ -24,6 +24,12 @@ class SubscriptionPlan(models.Model):
         ("yearly", "Yearly"),
     ]
 
+    code = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Stable plan code (e.g., free/basic/pro/enterprise).",
+    )
     name = models.CharField(max_length=100, unique=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     billing_cycle = models.CharField(
@@ -46,19 +52,58 @@ class SubscriptionPlan(models.Model):
         help_text="Max staff users allowed for a store. Leave empty for unlimited.",
     )
     is_active = models.BooleanField(default=True)
+    is_public = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
 
     def __str__(self) -> str:
         return self.name
+
+
+class PlanFeature(models.Model):
+    """Feature flags or limits attached to a plan."""
+
+    plan = models.ForeignKey(
+        SubscriptionPlan, on_delete=models.CASCADE, related_name="plan_features"
+    )
+    code = models.CharField(max_length=100)
+    name = models.CharField(max_length=150)
+    is_enabled = models.BooleanField(default=True)
+    limit_value = models.IntegerField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("plan", "code"), name="uq_plan_feature_code"),
+        ]
+        indexes = [
+            models.Index(fields=["plan", "code"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.plan_id}:{self.code}"
 
 
 class StoreSubscription(models.Model):
     """Subscription instance for a store."""
     objects = TenantManager()
 
+    STATUS_ACTIVE = "active"
+    STATUS_TRIAL = "trial"
+    STATUS_PAST_DUE = "past_due"
+    STATUS_CANCELED = "canceled"
+
+    STATUS_EXPIRED = "expired"  # Legacy
+    STATUS_CANCELLED = "cancelled"  # Legacy
+
     STATUS_CHOICES = [
-        ("active", "Active"),
-        ("expired", "Expired"),
-        ("cancelled", "Cancelled"),
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_TRIAL, "Trial"),
+        (STATUS_PAST_DUE, "Past Due"),
+        (STATUS_CANCELED, "Canceled"),
+        (STATUS_EXPIRED, "Expired (Legacy)"),
+        (STATUS_CANCELLED, "Cancelled (Legacy)"),
     ]
 
     store_id = models.IntegerField()
@@ -67,8 +112,13 @@ class StoreSubscription(models.Model):
     )
     start_date = models.DateField()
     end_date = models.DateField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    trial_ends_at = models.DateField(null=True, blank=True)
+    current_period_end = models.DateField(null=True, blank=True)
+    grace_until = models.DateField(null=True, blank=True)
+    canceled_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
         return f"Store {self.store_id} - {self.plan}"
