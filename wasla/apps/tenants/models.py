@@ -170,6 +170,16 @@ class StoreDomain(models.Model):
         import secrets
         return secrets.token_urlsafe(32)
 
+    def save(self, *args, **kwargs):
+        if not self.verification_token:
+            self.verification_token = self.generate_verification_token()
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                update_set = set(update_fields)
+                update_set.add("verification_token")
+                kwargs["update_fields"] = list(update_set)
+        super().save(*args, **kwargs)
+
     def can_transition_to(self, new_status: str) -> bool:
         """Validate state transitions."""
         valid_transitions = {

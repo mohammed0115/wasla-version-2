@@ -279,6 +279,7 @@ def _ensure_store_domain_mapping(*, host: str, store: Store) -> StoreDomain | No
                 "store": store,
                 "status": getattr(StoreDomain, "STATUS_ACTIVE", "active"),
                 "is_primary": True,
+                "verification_token": StoreDomain.generate_verification_token(),
             },
         )
         if not created:
@@ -287,6 +288,8 @@ def _ensure_store_domain_mapping(*, host: str, store: Store) -> StoreDomain | No
                 updates["store_id"] = store.id
             if domain.tenant_id is None and store.tenant_id:
                 updates["tenant_id"] = store.tenant_id
+            if not domain.verification_token:
+                updates["verification_token"] = StoreDomain.generate_verification_token()
             if updates:
                 StoreDomain.objects.filter(id=domain.id).update(**updates)
         return domain

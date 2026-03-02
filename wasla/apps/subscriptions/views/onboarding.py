@@ -81,6 +81,7 @@ def _create_onboarding_store(request, plan: SubscriptionPlan, subdomain: str, *,
                 "store": store,
                 "status": StoreDomain.STATUS_ACTIVE if plan.is_free else StoreDomain.STATUS_PENDING_VERIFICATION,
                 "is_primary": True,
+                "verification_token": StoreDomain.generate_verification_token(),
             },
         )
         return store

@@ -123,6 +123,7 @@ class Command(BaseCommand):
                         "store": store,
                         "status": StoreDomain.STATUS_ACTIVE,
                         "is_primary": True,
+                        "verification_token": StoreDomain.generate_verification_token(),
                     },
                 )
                 if created:
@@ -133,6 +134,8 @@ class Command(BaseCommand):
                         updates["store_id"] = store.id
                     if domain.tenant_id is None and store.tenant_id:
                         updates["tenant_id"] = store.tenant_id
+                    if not domain.verification_token:
+                        updates["verification_token"] = StoreDomain.generate_verification_token()
                     if updates:
                         StoreDomain.objects.filter(id=domain.id).update(**updates)
                         actions.append(f"Updated domain mapping {host}")
