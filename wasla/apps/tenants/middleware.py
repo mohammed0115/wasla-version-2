@@ -109,18 +109,7 @@ class TenantResolverMiddleware(MiddlewareMixin):
 
             return None
 
-        store_qs = Store.objects.select_related("tenant").filter(slug=subdomain)
-        try:
-            Store._meta.get_field("is_active")
-            store_qs = store_qs.filter(is_active=True)
-        except Exception:
-            try:
-                Store._meta.get_field("status")
-                store_qs = store_qs.filter(status=Store.STATUS_ACTIVE)
-            except Exception:
-                pass
-
-        store = store_qs.first()
+        store = resolve_store_by_slug(subdomain)
         if not store:
             if self._is_platform_subdomain_host(host) and not request.path.startswith("/api/"):
                 return render(

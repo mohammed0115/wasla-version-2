@@ -13,6 +13,10 @@ def _cache_key(host: str) -> str:
     return f"tenant_by_host:{host}"
 
 
+def _store_cache_key(slug: str) -> str:
+    return f"store_by_slug:{slug}"
+
+
 def resolve_tenant_by_host(host: str) -> Tenant | None:
     normalized = normalize_domain(host)
     if not normalized:
@@ -37,11 +41,37 @@ def invalidate_domain_cache(host: str) -> None:
     cache.delete(_cache_key(normalized))
 
 
-def resolve_store_by_slug(slug: str) -> 'Store | None':
-    """Resolve a store by its slug."""
+def resolve_store_by_slug(slug: str) -> "Store | None":
+    """Resolve a store by its slug with caching."""
+    normalized = (slug or "").strip().lower()
+    if not normalized:
+        return None
+
+    cache_timeout = int(
+        getattr(settings, "STORE_SLUG_CACHE_SECONDS", getattr(settings, "CACHE_TTL_DEFAULT", 300) or 300)
+    )
+    cached = cache.get(_store_cache_key(normalized))
+    if cached is not None:
+        if cached == 0:
+            return None
+        return Store.objects.select_related("tenant").filter(id=cached).first()
+
+    store = _resolve_store_by_slug_uncached(normalized)
+    cache.set(_store_cache_key(normalized), store.id if store else 0, cache_timeout)
+    return store
+
+
+def invalidate_store_slug_cache(slug: str) -> None:
+    normalized = (slug or "").strip().lower()
+    if not normalized:
+        return
+    cache.delete(_store_cache_key(normalized))
+
+
+def _resolve_store_by_slug_uncached(slug: str) -> "Store | None":
     if not slug:
         return None
-    
+
     try:
         store_qs = Store.objects.select_related("tenant").filter(slug=slug)
         try:
