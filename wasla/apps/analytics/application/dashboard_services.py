@@ -181,14 +181,14 @@ class MerchantDashboardService:
         # Low stock products (< 10 units)
         low_stock = ProductVariant.objects.filter(
             product__store_id=store_id,
-            stock__lt=10
-        ).values('product__id', 'product__name', 'stock').order_by('stock')[:10]
+            stock_quantity__lt=10
+        ).values('product__id', 'product__name', 'stock_quantity').order_by('stock_quantity')[:10]
 
         low_stock_products = [
             {
                 'product_id': item['product__id'],
                 'name': item['product__name'],
-                'stock': item['stock']
+                'stock': item['stock_quantity']
             }
             for item in low_stock
         ]
