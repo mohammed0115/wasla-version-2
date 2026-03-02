@@ -1,4 +1,4 @@
-{% load i18n %}<!DOCTYPE html>
+{% load i18n static %}<!DOCTYPE html>
 <html dir="{% if request.LANGUAGE_CODE == 'ar' %}rtl{% else %}ltr{% endif %}" lang="{{ request.LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
@@ -15,14 +15,14 @@
     <!-- OpenGraph Tags -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    <meta property="og:title" content="{% block og_title %}{% block title %}Welcome to Wasla Storefront{% endblock %}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}Welcome to Wasla Storefront{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Online shopping platform powered by Wasla{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{% static 'img/og-image.png' %}{% endblock %}">
     <meta property="og:locale" content="{% if request.LANGUAGE_CODE == 'ar' %}ar_SA{% else %}en_US{% endif %}">
     
     <!-- Social Tags -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="{% block twitter_title %}{% block title %}Welcome to Wasla Storefront{% endblock %}{% endblock %}">
+    <meta property="twitter:title" content="{% block twitter_title %}Welcome to Wasla Storefront{% endblock %}">
     <meta property="twitter:description" content="{% block twitter_description %}Online shopping platform powered by Wasla{% endblock %}">
     
     <!-- Canonical URL -->
@@ -40,7 +40,6 @@
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    {% load static %}
     <link href="{% static 'css/storefront.css' %}" rel="stylesheet">
     {% if request.LANGUAGE_CODE == 'ar' %}<link href="{% static 'css/storefront-ar.css' %}" rel="stylesheet">{% endif %}
     
