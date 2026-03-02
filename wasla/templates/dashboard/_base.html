@@ -4,7 +4,7 @@
 {% block title %}{% trans "Dashboard" %} | {% trans "Wasla" %}{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260302-01">
+  {% include "dashboard/_inline_css.html" %}
 {% endblock %}
 
 {% block global_lang_switcher %}{% endblock %}
