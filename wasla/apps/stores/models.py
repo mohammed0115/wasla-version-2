@@ -150,6 +150,7 @@ class Store(models.Model):
     # Storefront publishing state
     is_default_published = models.BooleanField(
         default=False,
+        db_default=False,
         help_text="Whether the default storefront has been published.",
     )
     default_published_at = models.DateTimeField(
