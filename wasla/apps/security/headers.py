@@ -8,6 +8,7 @@ def build_security_headers() -> dict[str, str]:
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "same-origin",
+        "X-XSS-Protection": "0",
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     }
 

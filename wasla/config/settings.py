@@ -76,6 +76,14 @@ SECURITY_RATE_LIMITS = [
         "message_key": "admin_login_rate_limited",
     },
     {
+        "key": "login_django_admin",
+        "pattern": r"^/admin/login/$",
+        "methods": ["POST"],
+        "limit": int(os.getenv("RL_ADMIN_LOGIN_LIMIT", "8") or "8"),
+        "window": int(os.getenv("RL_ADMIN_LOGIN_WINDOW", "300") or "300"),
+        "message_key": "admin_login_rate_limited",
+    },
+    {
         "key": "otp_verify",
         "pattern": r"^/auth/(verify|resend)/$",
         "methods": ["POST"],
@@ -648,6 +656,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAIN
 SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", "1" if ENVIRONMENT == "production" else "0")
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 
 # ==============================================================================
