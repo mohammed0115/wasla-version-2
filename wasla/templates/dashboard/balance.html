@@ -1,6 +1,6 @@
 {% extends "dashboard/_base.html" %}
 {% block page_title %}الرصيد{% endblock %}
-{% block body %}
+{% block content %}
 <div class="card" style="padding:18px;">
   <h3 style="margin:0 0 10px;">ملخص الرصيد</h3>
   <div class="muted">الرصيد المتاح: {{ balance.available|default:"—" }}</div>
