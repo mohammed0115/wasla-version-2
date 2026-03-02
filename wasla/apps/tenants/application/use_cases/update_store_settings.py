@@ -75,7 +75,7 @@ class UpdateStoreSettingsUseCase:
         cmd.tenant.save()
 
         if new_slug != old_slug:
-                store = Store.objects.filter(tenant=cmd.tenant).order_by("id").first()
+            store = Store.objects.filter(tenant=cmd.tenant).order_by("id").first()
             if store:
                 store_slug = (store.slug or "").strip().lower()
                 store_subdomain = (store.subdomain or "").strip().lower()
