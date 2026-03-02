@@ -20,6 +20,7 @@ from django.http import Http404, HttpResponse, HttpRequest
 from django.db.utils import OperationalError, ProgrammingError
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
+from django.shortcuts import redirect
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,11 @@ class TenantSecurityMiddleware:
             if user and user.is_authenticated:
                 # Verify user has access to this tenant
                 if not self._user_has_tenant_access(user, tenant):
+                    # If user is on root domain, redirect them to their own store subdomain
+                    redirect_response = self._redirect_to_user_store(request, user)
+                    if redirect_response is not None:
+                        return redirect_response
+
                     user_id = getattr(user, 'id', 'UNKNOWN')
                     logger.warning(
                         f"SECURITY: User {user_id} attempted to access tenant {tenant.id} "
@@ -169,6 +175,49 @@ class TenantSecurityMiddleware:
             pass
         
         return False
+
+    def _redirect_to_user_store(self, request: HttpRequest, user: Any) -> Optional[HttpResponse]:
+        """If user has a store and is browsing root domain, redirect to their subdomain."""
+        host = (request.get_host() or "").split(":", 1)[0].strip().lower()
+        base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
+        if not host or host not in {base_domain, f"www.{base_domain}"}:
+            return None
+
+        try:
+            from apps.stores.models import Store
+            store = Store.objects.select_related("tenant").filter(owner=user).order_by("id").first()
+            if not store:
+                from apps.tenants.models import TenantMembership, StoreProfile
+                membership = (
+                    TenantMembership.objects.select_related("tenant")
+                    .filter(user=user, is_active=True, tenant__is_active=True)
+                    .order_by("tenant_id")
+                    .first()
+                )
+                if membership:
+                    store = Store.objects.filter(tenant=membership.tenant).order_by("id").first()
+                if not store:
+                    profile = (
+                        StoreProfile.objects.select_related("tenant")
+                        .filter(owner=user, tenant__is_active=True)
+                        .order_by("tenant_id")
+                        .first()
+                    )
+                    if profile:
+                        store = Store.objects.filter(tenant=profile.tenant).order_by("id").first()
+        except Exception:
+            store = None
+
+        if not store:
+            return None
+
+        subdomain = (getattr(store, "subdomain", "") or getattr(store, "slug", "") or "").strip().lower()
+        if not subdomain:
+            return None
+
+        scheme = "https" if request.is_secure() else "http"
+        target = f"{scheme}://{subdomain}.{base_domain}{request.get_full_path()}"
+        return redirect(target)
     
     def _handle_missing_tenant(self, request: HttpRequest) -> HttpResponse:
         """
