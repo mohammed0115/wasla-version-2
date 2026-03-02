@@ -6,12 +6,15 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
+from django.utils.text import slugify
 import datetime
 from django.views.decorators.http import require_http_methods
 
 from apps.stores.models import Plan
 from apps.tenants.models import Tenant, TenantMembership, StoreProfile
 from apps.tenants.application.use_cases.store_setup_wizard import StoreSetupWizardUseCase
+from apps.tenants.domain.policies import validate_tenant_slug
+from apps.tenants.services.domain_resolution import normalize_subdomain_label
 from apps.tenants.services.provisioning import provision_store_after_payment
 from apps.subscriptions.models import SubscriptionPlan, StoreSubscription
 from apps.catalog.services.category_service import ensure_global_categories, get_global_categories
@@ -83,9 +86,35 @@ def ensure_tenant_for_user(user) -> Tenant:
     if existing:
         return existing.tenant
 
-    # slug from user (safe)
-    base_slug = (user.username or user.email.split("@")[0] or "store").lower()
-    base_slug = "".join([c for c in base_slug if c.isalnum() or c in "-_ "]).strip().replace(" ", "-")[:30] or "store"
+    # slug from user (avoid emails)
+    def _candidate_slug(raw_value: str) -> str:
+        value = (raw_value or "").strip()
+        if not value or "@" in value:
+            return ""
+        return normalize_subdomain_label(slugify(value))
+
+    full_name = ""
+    try:
+        full_name = (user.get_full_name() or "").strip()
+    except Exception:
+        full_name = ""
+
+    base_slug = (
+        _candidate_slug(full_name)
+        or _candidate_slug(getattr(user, "first_name", "") or "")
+        or _candidate_slug(getattr(user, "username", "") or "")
+    )
+    if not base_slug:
+        base_slug = f"store-{getattr(user, 'id', '')}".strip("-") or "storefront"
+    try:
+        base_slug = validate_tenant_slug(base_slug)
+    except Exception:
+        fallback = f"merchant-{getattr(user, 'id', '')}".strip("-") or "storefront"
+        try:
+            base_slug = validate_tenant_slug(fallback)
+        except Exception:
+            base_slug = "storefront"
+
     slug = base_slug
     i = 1
     while Tenant.objects.filter(slug=slug).exists():
