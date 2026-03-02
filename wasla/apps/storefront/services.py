@@ -3,7 +3,6 @@ Storefront services for publishing and managing store displays.
 """
 
 from django.utils import timezone
-from django.core.exceptions import FieldDoesNotExist
 from apps.stores.models import Store
 
 
@@ -27,34 +26,13 @@ def publish_default_storefront(store: Store) -> bool:
         - Creates/activates default theme/branding if needed
     """
     
-    has_default_published = False
-    has_published_at = False
-    try:
-        store._meta.get_field("is_default_published")
-        has_default_published = True
-    except FieldDoesNotExist:
-        has_default_published = False
-    try:
-        store._meta.get_field("default_published_at")
-        has_published_at = True
-    except FieldDoesNotExist:
-        has_published_at = False
-
     # Idempotency check: if already published, return early
-    if has_default_published and getattr(store, "is_default_published", False):
+    if getattr(store, "is_default_published", False):
         return False
-
-    update_fields = []
-    if has_default_published:
-        store.is_default_published = True
-        update_fields.append("is_default_published")
-    if has_published_at:
-        store.default_published_at = timezone.now()
-        update_fields.append("default_published_at")
-
-    if update_fields:
-        update_fields.append("updated_at")
-        store.save(update_fields=update_fields)
+    
+    store.is_default_published = True
+    store.default_published_at = timezone.now()
+    store.save(update_fields=["is_default_published", "default_published_at", "updated_at"])
     
     # Create default StoreBranding if not exists (assign first active theme)
     try:
