@@ -45,6 +45,7 @@ from .views.onboarding import (
     onboarding_success,
     onboarding_payment_callback,
     onboarding_dashboard_redirect,
+    go_to_dashboard,
 )
 
 app_name = 'subscriptions'
@@ -101,6 +102,11 @@ urlpatterns = [
         'onboarding/dashboard/<int:store_id>/',
         onboarding_dashboard_redirect,
         name='onboarding_dashboard'
+    ),
+    path(
+        'go-to-dashboard/',
+        go_to_dashboard,
+        name='go_to_dashboard'
     ),
     
     # Subscription Management

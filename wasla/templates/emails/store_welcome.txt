@@ -1,8 +1,15 @@
 مرحباً بك في وصلة
 
+{% if merchant_name %}أهلاً {{ merchant_name }}،{% endif %}
+
 تم إنشاء متجرك "{{ store_name }}" بنجاح.
 لوحة التحكم:
 {{ dashboard_url }}
+
+{% if storefront_url %}
+رابط المتجر:
+{{ storefront_url }}
+{% endif %}
 
 للدعم والمساعدة:
 {{ support_email }}
@@ -10,9 +17,16 @@
 ---
 Welcome to Wasla
 
+{% if merchant_name %}Hi {{ merchant_name }},{% endif %}
+
 Your store "{{ store_name }}" is ready.
 Dashboard:
 {{ dashboard_url }}
+
+{% if storefront_url %}
+Storefront:
+{{ storefront_url }}
+{% endif %}
 
 Support:
 {{ support_email }}

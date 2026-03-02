@@ -24,6 +24,7 @@ class OnboardingFlowEmailTests(TestCase):
             username="merchant",
             email="merchant@example.com",
             password="testpass123",
+            first_name="Ahmed",
         )
         self.plan = SubscriptionPlan.objects.create(
             name=f"Free-{uuid.uuid4().hex[:6]}",
@@ -50,6 +51,7 @@ class OnboardingFlowEmailTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         self.assertIn("https://mystore.example.com/dashboard/", email.body)
+        self.assertIn("Ahmed", email.body)
         self.assertTrue(any("mystore.example.com/dashboard" in alt[0] for alt in email.alternatives))
 
 
@@ -90,13 +92,9 @@ class OnboardingPaymentCallbackTests(TestCase):
             total_amount=0,
         )
 
-    def test_payment_callback_redirects_to_dashboard(self):
+    def test_go_to_dashboard_redirects_to_dashboard(self):
         self.client.force_login(self.user)
-        session = self.client.session
-        session["payment_order_id"] = self.order.id
-        session.save()
-
-        response = self.client.get(reverse("subscriptions_web:onboarding_payment_callback"))
+        response = self.client.get(reverse("subscriptions_web:go_to_dashboard"))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "https://demo-store.example.com/dashboard/")
 
@@ -105,4 +103,4 @@ class SubdomainValidationTests(TestCase):
     def test_subdomain_rejects_invalid_characters(self):
         form = SubdomainSelectForm(data={"subdomain": "bad.email@example.com"})
         self.assertFalse(form.is_valid())
-        self.assertIn("Use only letters, numbers, hyphen", form.errors["subdomain"][0])
+        self.assertIn("اختر اسم نطاق فرعي بدون نقاط أو بريد إلكتروني — حروف/أرقام/شرطة فقط", form.errors["subdomain"][0])

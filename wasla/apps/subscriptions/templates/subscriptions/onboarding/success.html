@@ -71,8 +71,8 @@
                                     Visit Your Store
                                 </a>
                             {% endif %}
-                            <a href="{% url 'subscriptions_web:onboarding_dashboard' store.id %}" class="btn btn-outline-primary btn-lg">
-                                Go to Dashboard
+                            <a href="{% url 'subscriptions_web:go_to_dashboard' %}" class="btn btn-outline-primary btn-lg">
+                                الذهاب إلى لوحة التحكم
                             </a>
                         {% else %}
                             <a href="{% url 'subscriptions_web:onboarding_plan' %}" class="btn btn-primary btn-lg">

@@ -564,3 +564,38 @@ def onboarding_dashboard_redirect(request, store_id: int):
 
     ensure_store_domain_mapping(store)
     return redirect(build_store_dashboard_url(store.subdomain))
+
+
+@login_required
+def go_to_dashboard(request):
+    store = Store.objects.filter(owner=request.user).order_by("-created_at").first()
+    if not store:
+        try:
+            from apps.tenants.models import TenantMembership, StoreProfile
+
+            membership = (
+                TenantMembership.objects.select_related("tenant")
+                .filter(user=request.user, is_active=True, tenant__is_active=True)
+                .order_by("-tenant_id")
+                .first()
+            )
+            if membership:
+                store = Store.objects.filter(tenant=membership.tenant).order_by("-created_at").first()
+            if not store:
+                profile = (
+                    StoreProfile.objects.select_related("tenant")
+                    .filter(owner=request.user, tenant__is_active=True)
+                    .order_by("-tenant_id")
+                    .first()
+                )
+                if profile:
+                    store = Store.objects.filter(tenant=profile.tenant).order_by("-created_at").first()
+        except Exception:
+            store = None
+
+    if not store:
+        messages.error(request, "Store not found. Please start onboarding again.")
+        return redirect('subscriptions_web:onboarding_plan')
+
+    ensure_store_domain_mapping(store)
+    return redirect(build_store_dashboard_url(store.subdomain))

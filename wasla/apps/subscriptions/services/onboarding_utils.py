@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_base_domain() -> str:
-    return (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
+    root_domain = (getattr(settings, "WASLA_ROOT_DOMAIN", "") or "").strip().lower()
+    base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "") or "").strip().lower()
+    return root_domain or base_domain or "w-sala.com"
 
 
 def build_store_host(subdomain: str) -> str:
@@ -35,6 +37,13 @@ def build_store_dashboard_url(subdomain: str) -> str:
     if not host:
         return ""
     return f"https://{host}/dashboard/"
+
+
+def build_storefront_url(subdomain: str) -> str:
+    host = build_store_host(subdomain)
+    if not host:
+        return ""
+    return f"https://{host}/"
 
 
 def ensure_store_domain_mapping(store: Store) -> StoreDomain | None:
@@ -86,10 +95,19 @@ def send_store_welcome_email(*, store: Store, to_email: str) -> None:
 
     support_email = (getattr(settings, "WASSLA_SUPPORT_EMAIL", "info@w-sala.com") or "info@w-sala.com").strip()
     dashboard_url = build_store_dashboard_url(store.subdomain)
+    storefront_url = build_storefront_url(store.subdomain)
+    merchant_name = ""
+    if store.owner_id:
+        owner = store.owner
+        merchant_name = (owner.get_full_name() or getattr(owner, "first_name", "") or "").strip()
+        if not merchant_name:
+            merchant_name = (getattr(owner, "username", "") or getattr(owner, "email", "") or "").strip()
 
     context = {
+        "merchant_name": merchant_name,
         "store_name": store.name,
         "dashboard_url": dashboard_url,
+        "storefront_url": storefront_url,
         "support_email": support_email,
     }
 
@@ -163,4 +181,3 @@ def enqueue_store_welcome_email(*, store: Store, to_email: str) -> None:
             logger.exception("Failed to dispatch welcome email", exc_info=exc)
 
     transaction.on_commit(_dispatch)
-

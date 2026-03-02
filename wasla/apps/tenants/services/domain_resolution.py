@@ -28,7 +28,7 @@ def _store_host_cache_key(host: str) -> str:
     return f"store_by_host:{host}"
 
 
-_SUBDOMAIN_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_SUBDOMAIN_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$")
 
 
 def normalize_host(raw_host: str) -> str:
@@ -71,12 +71,14 @@ def validate_subdomain(raw: str) -> tuple[bool, str]:
     """Validate user-provided subdomain input for onboarding UI."""
     value = (raw or "").strip().lower()
     if not value:
-        return False, "Subdomain is required."
+        return False, "اختر اسم نطاق فرعي بدون نقاط أو بريد إلكتروني — حروف/أرقام/شرطة فقط"
     if "@" in value or "." in value:
-        return False, "Use only letters, numbers, hyphen"
+        return False, "اختر اسم نطاق فرعي بدون نقاط أو بريد إلكتروني — حروف/أرقام/شرطة فقط"
     normalized = normalize_subdomain_label(value)
     if not normalized or not _SUBDOMAIN_SLUG_RE.match(normalized):
-        return False, "Use only letters, numbers, hyphen"
+        return False, "اختر اسم نطاق فرعي بدون نقاط أو بريد إلكتروني — حروف/أرقام/شرطة فقط"
+    if len(normalized) < 3 or len(normalized) > 63:
+        return False, "اختر اسم نطاق فرعي بدون نقاط أو بريد إلكتروني — حروف/أرقام/شرطة فقط"
     if Store.objects.filter(subdomain=normalized).exists():
         return False, "This subdomain is already taken."
     if Store.objects.filter(slug=normalized).exists():

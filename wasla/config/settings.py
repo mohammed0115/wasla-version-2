@@ -120,7 +120,12 @@ SECURITY_RATE_LIMITS = [
     },
 ]
 
-WASSLA_BASE_DOMAIN = os.getenv("WASSLA_BASE_DOMAIN", "w-sala.com").strip().lower() or "w-sala.com"
+WASLA_ROOT_DOMAIN = os.getenv("WASLA_ROOT_DOMAIN", "").strip().lower()
+WASSLA_BASE_DOMAIN = (
+    os.getenv("WASSLA_BASE_DOMAIN", "").strip().lower()
+    or WASLA_ROOT_DOMAIN
+    or "w-sala.com"
+)
 
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",

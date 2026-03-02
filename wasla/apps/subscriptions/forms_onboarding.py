@@ -35,7 +35,7 @@ class SubdomainSelectForm(forms.Form):
     _base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
 
     subdomain = forms.CharField(
-        max_length=30,
+        max_length=63,
         min_length=3,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
