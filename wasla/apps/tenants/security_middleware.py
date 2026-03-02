@@ -168,7 +168,7 @@ class TenantSecurityMiddleware:
         Handle missing tenant based on request type.
         
         - API requests: 403 Forbidden
-        - Root domain without default store: 503 Service Unavailable with friendly template
+        - Root domain without default store: 404 Not Found with friendly template
         - Other web requests: 404 Not Found
         - Health checks: Allow through
         """
@@ -193,7 +193,7 @@ class TenantSecurityMiddleware:
                 content_type='application/json'
             )
         
-        # For root domain without default store, return friendly 503
+        # For root domain without default store, return friendly 404
         if is_root_domain_no_default:
             logger.warning(
                 f"SECURITY: Root domain request without default store configured. "
@@ -207,15 +207,15 @@ class TenantSecurityMiddleware:
                     {
                         'default_store_slug': getattr(settings, 'DEFAULT_STORE_SLUG', 'store1'),
                     },
-                    status=503,
+                    status=404,
                 )
             except Exception:
                 # Fallback if template doesn't exist
                 return HttpResponse(
-                    f'<html><head><title>Service Unavailable</title></head>'
-                    f'<body><h1>503 Service Unavailable</h1>'
+                    f'<html><head><title>Not Found</title></head>'
+                    f'<body><h1>404 Not Found</h1>'
                     f'<p>Default store not configured. Please contact the administrator.</p></body></html>',
-                    status=503,
+                    status=404,
                     content_type='text/html'
                 )
         
