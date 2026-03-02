@@ -10,6 +10,7 @@ from django.http import HttpResponseForbidden
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from django.utils.text import slugify
 
 from ..models import (
     Plugin,
@@ -38,13 +39,22 @@ def admin_required(view_func):
 @admin_required
 def plugins_dashboard_view(request):
     """Display plugin management dashboard."""
+    recent_installs = list(
+        InstalledPlugin.objects.select_related("plugin").order_by("-installed_at")[:5]
+    )
+    store_ids = {inst.store_id for inst in recent_installs if inst.store_id}
+    store_map = {store.id: store.name for store in Store.objects.filter(id__in=store_ids)}
+    for inst in recent_installs:
+        inst.store_name = store_map.get(inst.store_id, str(inst.store_id) if inst.store_id else "-")
+        inst.is_enabled = inst.status == "active"
+
     context = {
-        'page': 'plugins',
-        'total_plugins': Plugin.objects.count(),
-        'total_registrations': PluginRegistration.objects.filter(verified=True).count(),
-        'total_installed': InstalledPlugin.objects.filter(is_enabled=True).count(),
-        'recent_registrations': PluginRegistration.objects.order_by('-created_at')[:5],
-        'recent_installs': InstalledPlugin.objects.order_by('-created_at')[:5],
+        "page": "plugins",
+        "total_plugins": Plugin.objects.count(),
+        "total_registrations": PluginRegistration.objects.filter(verified=True).count(),
+        "total_installed": InstalledPlugin.objects.filter(status="active").count(),
+        "recent_registrations": PluginRegistration.objects.order_by("-created_at")[:5],
+        "recent_installs": recent_installs,
     }
     return render(request, 'admin_portal/plugins/dashboard.html', context)
 
@@ -72,8 +82,8 @@ def plugin_registry_list_view(request):
     
     # Annotate with scope and subscription counts
     registrations = registrations.annotate(
-        scope_count=Count('pluginpermissionscope'),
-        subscription_count=Count('plugineventsubscription')
+        scope_count=Count('plugin__permission_scopes', distinct=True),
+        subscription_count=Count('plugin__installedplugin__event_subscriptions', distinct=True)
     )
     
     context = {
@@ -102,13 +112,18 @@ def plugin_registry_create_view(request):
                 return redirect('admin_portal:plugin_registry_detail', registration_id=existing.id)
             
             # Create registration
+            plugin_key = (request.POST.get('plugin_key') or slugify(plugin.name)).strip()
+            isolation_mode = request.POST.get('isolation_mode', PluginRegistration.ISOLATION_SANDBOX)
+            if isolation_mode not in {PluginRegistration.ISOLATION_PROCESS, PluginRegistration.ISOLATION_SANDBOX}:
+                isolation_mode = PluginRegistration.ISOLATION_SANDBOX
+
             registration = PluginRegistration.objects.create(
                 plugin=plugin,
-                plugin_key=request.POST.get('plugin_key', plugin.key),
+                plugin_key=plugin_key,
                 entrypoint=request.POST.get('entrypoint', 'apps.plugins.builtins'),
                 min_core_version=request.POST.get('min_core_version', '1.0.0'),
                 max_core_version=request.POST.get('max_core_version', ''),
-                isolation_mode=request.POST.get('isolation_mode', 'STANDARD'),
+                isolation_mode=isolation_mode,
                 verified=False,
             )
             
@@ -139,14 +154,11 @@ def plugin_registry_detail_view(request, registration_id):
         
         if action == 'verify':
             registration.verified = True
-            registration.verified_at = timezone.now()
-            registration.verified_by = request.user
             registration.save()
             messages.success(request, f"Registration verified for {registration.plugin.name}.")
         
         elif action == 'reject':
             registration.verified = False
-            registration.verified_by = None
             registration.save()
             messages.success(request, "Registration rejected.")
         
@@ -165,8 +177,8 @@ def plugin_registry_detail_view(request, registration_id):
         return redirect('admin_portal:plugin_registry_detail', registration_id=registration.id)
     
     # Get scopes and subscriptions
-    scopes = PluginPermissionScope.objects.filter(registration=registration)
-    subscriptions = PluginEventSubscription.objects.filter(registration=registration)
+    scopes = PluginPermissionScope.objects.filter(plugin=registration.plugin)
+    subscriptions = PluginEventSubscription.objects.filter(installed_plugin__plugin=registration.plugin)
     
     context = {
         'page': 'plugins',
@@ -174,9 +186,8 @@ def plugin_registry_detail_view(request, registration_id):
         'scopes': scopes,
         'subscriptions': subscriptions,
         'isolation_modes': [
-            ('STANDARD', 'Standard'),
-            ('ISOLATED', 'Isolated'),
-            ('PRIVILEGED', 'Privileged'),
+            (PluginRegistration.ISOLATION_SANDBOX, 'Sandbox'),
+            (PluginRegistration.ISOLATION_PROCESS, 'Process'),
         ],
     }
     return render(request, 'admin_portal/plugins/registry_detail.html', context)
@@ -200,7 +211,7 @@ def plugin_scopes_view(request, registration_id):
                 messages.error(request, "Scope code is required.")
             else:
                 scope, created = PluginPermissionScope.objects.get_or_create(
-                    registration=registration,
+                    plugin=registration.plugin,
                     scope_code=scope_code,
                     defaults={'description': description}
                 )
@@ -211,13 +222,13 @@ def plugin_scopes_view(request, registration_id):
         
         elif action == 'delete_scope':
             scope_id = request.POST.get('scope_id')
-            scope = get_object_or_404(PluginPermissionScope, id=scope_id, registration=registration)
+            scope = get_object_or_404(PluginPermissionScope, id=scope_id, plugin=registration.plugin)
             scope.delete()
             messages.success(request, f"Scope '{scope.scope_code}' deleted.")
         
         return redirect('admin_portal:plugin_scopes', registration_id=registration.id)
     
-    scopes = PluginPermissionScope.objects.filter(registration=registration).order_by('scope_code')
+    scopes = PluginPermissionScope.objects.filter(plugin=registration.plugin).order_by('scope_code')
     
     context = {
         'page': 'plugins',
@@ -241,36 +252,51 @@ def plugin_scopes_view(request, registration_id):
 def plugin_subscriptions_view(request):
     """View event subscriptions across tenants."""
     subscriptions = PluginEventSubscription.objects.select_related(
-        'registration', 'tenant', 'store'
-    ).order_by('-created_at')
-    
+        "installed_plugin__plugin"
+    ).order_by("-created_at")
+
     # Filtering
-    registration_id = request.GET.get('registration', '').strip()
-    if registration_id:
-        subscriptions = subscriptions.filter(registration_id=registration_id)
-    
-    tenant_id = request.GET.get('tenant', '').strip()
+    plugin_id = request.GET.get("plugin", "").strip()
+    if plugin_id:
+        subscriptions = subscriptions.filter(installed_plugin__plugin_id=plugin_id)
+
+    tenant_id = request.GET.get("tenant", "").strip()
     if tenant_id:
         subscriptions = subscriptions.filter(tenant_id=tenant_id)
-    
-    store_id = request.GET.get('store', '').strip()
+
+    store_id = request.GET.get("store", "").strip()
     if store_id:
-        subscriptions = subscriptions.filter(store_id=store_id)
-    
+        subscriptions = subscriptions.filter(installed_plugin__store_id=store_id)
+
+    subscriptions = list(subscriptions)
+    store_ids = {sub.installed_plugin.store_id for sub in subscriptions if sub.installed_plugin}
+    tenant_ids = {sub.tenant_id for sub in subscriptions if sub.tenant_id}
+    store_map = {store.id: store.name for store in Store.objects.filter(id__in=store_ids)}
+    tenant_map = {tenant.id: tenant.name for tenant in Tenant.objects.filter(id__in=tenant_ids)}
+    for sub in subscriptions:
+        store_id = sub.installed_plugin.store_id if sub.installed_plugin else None
+        sub.store_name = store_map.get(store_id, str(store_id) if store_id else "-")
+        sub.tenant_name = tenant_map.get(sub.tenant_id, str(sub.tenant_id) if sub.tenant_id else "-")
+        sub.plugin_name = (
+            sub.installed_plugin.plugin.name
+            if sub.installed_plugin and sub.installed_plugin.plugin
+            else "-"
+        )
+
     # Get filter options
-    registrations = PluginRegistration.objects.filter(verified=True).order_by('plugin__name')
-    tenants = Tenant.objects.order_by('name')
-    stores = Store.objects.order_by('name')
-    
+    plugins = Plugin.objects.order_by("name")
+    tenants = Tenant.objects.order_by("name")
+    stores = Store.objects.order_by("name")
+
     context = {
-        'page': 'plugins',
-        'subscriptions': subscriptions,
-        'registrations': registrations,
-        'tenants': tenants,
-        'stores': stores,
-        'selected_registration': registration_id,
-        'selected_tenant': tenant_id,
-        'selected_store': store_id,
+        "page": "plugins",
+        "subscriptions": subscriptions,
+        "plugins": plugins,
+        "tenants": tenants,
+        "stores": stores,
+        "selected_plugin": plugin_id,
+        "selected_tenant": tenant_id,
+        "selected_store": store_id,
     }
     return render(request, 'admin_portal/plugins/subscriptions.html', context)
 
@@ -280,22 +306,31 @@ def plugin_subscriptions_view(request):
 def plugin_event_deliveries_view(request, registration_id=None):
     """View event delivery history."""
     deliveries = PluginEventDelivery.objects.select_related(
-        'event_subscription__registration',
-        'event_subscription__tenant',
-        'event_subscription__store'
-    ).order_by('-created_at')
-    
+        "plugin", "installed_plugin"
+    ).order_by("-created_at")
+
     # Filtering
-    if registration_id:
-        deliveries = deliveries.filter(event_subscription__registration_id=registration_id)
-    
-    status_filter = request.GET.get('status', '').strip()
+    status_filter = request.GET.get("status", "").strip()
     if status_filter:
-        deliveries = deliveries.filter(status=status_filter.upper())
-    
-    event_key = request.GET.get('event_key', '').strip()
+        deliveries = deliveries.filter(status=status_filter.lower())
+
+    event_key = request.GET.get("event_key", "").strip()
     if event_key:
         deliveries = deliveries.filter(event_key__icontains=event_key)
+
+    deliveries = list(deliveries)
+    tenant_ids = {delivery.tenant_id for delivery in deliveries if delivery.tenant_id}
+    store_ids = {delivery.installed_plugin.store_id for delivery in deliveries if delivery.installed_plugin}
+    tenant_map = {tenant.id: tenant.name for tenant in Tenant.objects.filter(id__in=tenant_ids)}
+    store_map = {store.id: store.name for store in Store.objects.filter(id__in=store_ids)}
+    for delivery in deliveries:
+        delivery.plugin_name = delivery.plugin.name if delivery.plugin else "-"
+        delivery.tenant_name = tenant_map.get(
+            delivery.tenant_id,
+            str(delivery.tenant_id) if delivery.tenant_id else "-",
+        )
+        store_id = delivery.installed_plugin.store_id if delivery.installed_plugin else None
+        delivery.store_name = store_map.get(store_id, str(store_id) if store_id else "-")
     
     # Pagination
     from django.core.paginator import Paginator
@@ -310,10 +345,10 @@ def plugin_event_deliveries_view(request, registration_id=None):
         'event_key': event_key,
         'registration_id': registration_id,
         'status_choices': [
-            ('QUEUED', 'Queued'),
-            ('DELIVERED', 'Delivered'),
-            ('SKIPPED', 'Skipped'),
-            ('FAILED', 'Failed'),
+            ('queued', 'Queued'),
+            ('delivered', 'Delivered'),
+            ('skipped', 'Skipped'),
+            ('failed', 'Failed'),
         ],
     }
     return render(request, 'admin_portal/plugins/event_deliveries.html', context)
@@ -324,8 +359,8 @@ def plugin_event_deliveries_view(request, registration_id=None):
 def installed_plugins_view(request):
     """List installed plugins across stores."""
     installed = InstalledPlugin.objects.select_related(
-        'store', 'plugin'
-    ).order_by('-created_at')
+        "plugin"
+    ).order_by("-installed_at")
     
     # Filtering
     store_id = request.GET.get('store', '').strip()
@@ -334,10 +369,17 @@ def installed_plugins_view(request):
     
     enabled_filter = request.GET.get('enabled', '').strip()
     if enabled_filter == 'yes':
-        installed = installed.filter(is_enabled=True)
+        installed = installed.filter(status="active")
     elif enabled_filter == 'no':
-        installed = installed.filter(is_enabled=False)
+        installed = installed.exclude(status="active")
     
+    installed = list(installed)
+    store_ids = {inst.store_id for inst in installed if inst.store_id}
+    store_map = {store.id: store.name for store in Store.objects.filter(id__in=store_ids)}
+    for inst in installed:
+        inst.store_name = store_map.get(inst.store_id, str(inst.store_id) if inst.store_id else "-")
+        inst.is_enabled = inst.status == "active"
+
     # Get filter options
     stores = Store.objects.order_by('name')
     

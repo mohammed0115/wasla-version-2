@@ -23,7 +23,7 @@
                             <option value="">-- Select Plugin --</option>
                             {% for plugin in available_plugins %}
                             <option value="{{ plugin.id }}">
-                                {{ plugin.name }} ({{ plugin.key }})
+                                {{ plugin.name }}
                                 {% if plugin.description %} - {{ plugin.description|truncatewords:5 }}{% endif %}
                             </option>
                             {% endfor %}
@@ -74,9 +74,8 @@
                     <div class="mb-3">
                         <label for="isolation_mode" class="form-label">Isolation Mode</label>
                         <select class="form-select" id="isolation_mode" name="isolation_mode">
-                            <option value="STANDARD">Standard (Default)</option>
-                            <option value="ISOLATED">Isolated (Sandboxed)</option>
-                            <option value="PRIVILEGED">Privileged (Full Access)</option>
+                            <option value="sandbox">Sandbox (Default)</option>
+                            <option value="process">Process</option>
                         </select>
                         <small class="form-text text-muted">
                             <strong>Standard:</strong> Normal plugin with scope-based access<br>
@@ -116,10 +115,16 @@
 // Auto-populate plugin_key from selected plugin name
 document.getElementById('plugin_id').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
-    const text = selectedOption.text;
-    const key = text.match(/\(([^)]+)\)/)?.[1];
-    if (key) {
-        document.getElementById('plugin_key').value = key;
+    const name = selectedOption.text.split(' - ')[0].trim();
+    if (!name) {
+        return;
+    }
+    const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    if (slug) {
+        document.getElementById('plugin_key').value = slug;
     }
 });
 </script>

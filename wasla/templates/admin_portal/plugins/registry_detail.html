@@ -54,12 +54,10 @@
                     <div class="col-md-6">
                         <label class="form-label text-muted">Isolation Mode</label>
                         <p class="mb-0">
-                            {% if registration.isolation_mode == 'ISOLATED' %}
-                                <span class="badge bg-info">Isolated</span>
-                            {% elif registration.isolation_mode == 'PRIVILEGED' %}
-                                <span class="badge bg-danger">Privileged</span>
+                            {% if registration.isolation_mode == 'process' %}
+                                <span class="badge bg-info">Process</span>
                             {% else %}
-                                <span class="badge bg-secondary">Standard</span>
+                                <span class="badge bg-secondary">Sandbox</span>
                             {% endif %}
                         </p>
                     </div>
@@ -85,8 +83,7 @@
                         <label class="form-label text-muted">Verified</label>
                         <p class="mb-0">
                             {% if registration.verified %}
-                                <span class="badge bg-success">Yes</span> on {{ registration.verified_at|date:"M d, Y" }}
-                                {% if registration.verified_by %}by {{ registration.verified_by.username }}{% endif %}
+                                <span class="badge bg-success">Yes</span>
                             {% else %}
                                 <span class="badge bg-secondary">No</span>
                             {% endif %}
@@ -221,7 +218,7 @@
                     <p class="text-muted mb-2">
                         <small>Active across <strong>{{ subscriptions|length }}</strong> stores/tenants.</small>
                     </p>
-                    <a href="{% url 'admin_portal:plugin_subscriptions' %}?registration={{ registration.id }}" 
+                    <a href="{% url 'admin_portal:plugin_subscriptions' %}?plugin={{ registration.plugin.id }}" 
                        class="btn btn-sm btn-outline-primary w-100">
                         <i class="bi bi-bell"></i> View Subscriptions
                     </a>

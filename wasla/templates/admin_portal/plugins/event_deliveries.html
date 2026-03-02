@@ -48,7 +48,6 @@
                 <th>Tenant</th>
                 <th>Status</th>
                 <th>Created</th>
-                <th>Updated</th>
             </tr>
         </thead>
         <tbody>
@@ -58,27 +57,24 @@
                     <code class="bg-light px-2 py-1 small">{{ delivery.event_key }}</code>
                 </td>
                 <td>
-                    <small>{{ delivery.event_subscription.registration.plugin.name }}</small>
+                    <small>{{ delivery.plugin_name }}</small>
                 </td>
                 <td>
-                    <small>{{ delivery.event_subscription.tenant.name }}</small>
+                    <small>{{ delivery.tenant_name }}</small>
                 </td>
                 <td>
-                    {% if delivery.status == 'QUEUED' %}
+                    {% if delivery.status == 'queued' %}
                         <span class="badge bg-info">Queued</span>
-                    {% elif delivery.status == 'DELIVERED' %}
+                    {% elif delivery.status == 'delivered' %}
                         <span class="badge bg-success">Delivered</span>
-                    {% elif delivery.status == 'SKIPPED' %}
+                    {% elif delivery.status == 'skipped' %}
                         <span class="badge bg-warning">Skipped</span>
-                    {% elif delivery.status == 'FAILED' %}
+                    {% elif delivery.status == 'failed' %}
                         <span class="badge bg-danger">Failed</span>
                     {% endif %}
                 </td>
                 <td>
                     <small class="text-muted">{{ delivery.created_at|date:"M d H:i" }}</small>
-                </td>
-                <td>
-                    <small class="text-muted">{{ delivery.updated_at|date:"M d H:i" }}</small>
                 </td>
             </tr>
             {% endfor %}

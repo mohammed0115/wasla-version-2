@@ -14,12 +14,12 @@
     <div class="card-body">
         <form method="get" class="row g-3">
             <div class="col-md-4">
-                <label for="registration" class="form-label">Plugin</label>
-                <select class="form-select" id="registration" name="registration">
+                <label for="plugin" class="form-label">Plugin</label>
+                <select class="form-select" id="plugin" name="plugin">
                     <option value="">All Plugins</option>
-                    {% for reg in registrations %}
-                    <option value="{{ reg.id }}" {% if selected_registration|stringformat:"s" == reg.id|stringformat:"s" %}selected{% endif %}>
-                        {{ reg.plugin.name }}
+                    {% for plugin in plugins %}
+                    <option value="{{ plugin.id }}" {% if selected_plugin|stringformat:"s" == plugin.id|stringformat:"s" %}selected{% endif %}>
+                        {{ plugin.name }}
                     </option>
                     {% endfor %}
                 </select>
@@ -61,29 +61,16 @@
             {% for sub in subscriptions %}
             <tr>
                 <td>
-                    <strong>{{ sub.registration.plugin.name }}</strong>
+                    <strong>{{ sub.plugin_name }}</strong>
                 </td>
                 <td>
-                    <small>{{ sub.tenant.name }}</small>
+                    <small>{{ sub.tenant_name }}</small>
                 </td>
                 <td>
-                    {% if sub.store %}
-                        <small>{{ sub.store.name }}</small>
-                    {% else %}
-                        <em class="text-muted">Tenant-wide</em>
-                    {% endif %}
+                    <small>{{ sub.store_name }}</small>
                 </td>
                 <td>
-                    {% if sub.event_keys %}
-                        {% for key in sub.event_keys|slice:":3" %}
-                            <span class="badge bg-light text-dark">{{ key }}</span>
-                        {% endfor %}
-                        {% if sub.event_keys|length > 3 %}
-                            <span class="badge bg-light text-dark">+{{ sub.event_keys|length|add:"-3" }} more</span>
-                        {% endif %}
-                    {% else %}
-                        <em class="text-muted">-</em>
-                    {% endif %}
+                    <span class="badge bg-light text-dark">{{ sub.event_key }}</span>
                 </td>
                 <td>
                     {% if sub.is_active %}

@@ -64,13 +64,13 @@
                     {% endif %}
                 </td>
                 <td>
-                    <small>{{ install.store.name }}</small>
+                    <small>{{ install.store_name }}</small>
                 </td>
                 <td>
-                    <code class="bg-light px-2 py-1">{{ install.version }}</code>
+                    <code class="bg-light px-2 py-1">{{ install.plugin.version }}</code>
                 </td>
                 <td>
-                    {% if install.is_enabled %}
+                    {% if install.status == "active" %}
                         <span class="badge bg-success">
                             <i class="bi bi-check-circle"></i> Enabled
                         </span>
@@ -81,11 +81,11 @@
                     {% endif %}
                 </td>
                 <td>
-                    <small class="text-muted">{{ install.created_at|date:"M d, Y" }}</small>
+                    <small class="text-muted">{{ install.installed_at|date:"M d, Y" }}</small>
                 </td>
                 <td>
-                    {% if install.enabled_at %}
-                        <small class="text-muted">{{ install.enabled_at|date:"M d, Y" }}</small>
+                    {% if install.status == "active" %}
+                        <small class="text-muted">{{ install.installed_at|date:"M d, Y" }}</small>
                     {% else %}
                         <em class="text-muted">-</em>
                     {% endif %}
