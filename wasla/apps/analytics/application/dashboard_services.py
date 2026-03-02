@@ -204,11 +204,15 @@ class MerchantDashboardService:
             created_at__gte=seven_days_ago
         ).count()
 
-        carts_converted = Cart.objects.filter(
-            store_id=store_id,
-            created_at__gte=seven_days_ago,
-            converted_at__isnull=False
-        ).count()
+        carts_converted = (
+            Cart.objects.filter(
+                store_id=store_id,
+                created_at__gte=seven_days_ago,
+                checkout_sessions__order__isnull=False,
+            )
+            .distinct()
+            .count()
+        )
 
         cart_abandonment_rate = (
             ((carts_total - carts_converted) / carts_total * 100)
