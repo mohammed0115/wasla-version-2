@@ -128,17 +128,35 @@ def has_permission(request, permission_code: str) -> bool:
     return permission_code in permission_codes
 
 
-def require_permission(permission_code: str) -> Callable:
-    def decorator(view_func: Callable) -> Callable:
-        @wraps(view_func)
-        def _wrapped(*args, **kwargs):
-            request = _resolve_request_object(args, kwargs)
-            if request is None:
-                raise PermissionDenied("Invalid request context")
-            if not has_permission(request, permission_code):
-                raise PermissionDenied(f"Missing permission: {permission_code}")
-            return view_func(*args, **kwargs)
+def require_permission(*args) -> Callable | bool:
+    """
+    Dual-use permission gate:
+    - As decorator: @require_permission("perm.code")
+    - As inline check: require_permission(request, "perm.code")
+    """
+    if len(args) == 1 and isinstance(args[0], str):
+        permission_code = args[0]
 
-        return _wrapped
+        def decorator(view_func: Callable) -> Callable:
+            @wraps(view_func)
+            def _wrapped(*view_args, **view_kwargs):
+                request = _resolve_request_object(view_args, view_kwargs)
+                if request is None:
+                    raise PermissionDenied("Invalid request context")
+                if not has_permission(request, permission_code):
+                    raise PermissionDenied(f"Missing permission: {permission_code}")
+                return view_func(*view_args, **view_kwargs)
 
-    return decorator
+            return _wrapped
+
+        return decorator
+
+    if len(args) == 2:
+        request, permission_code = args
+        if not isinstance(permission_code, str):
+            raise TypeError("permission_code must be a string")
+        if not has_permission(request, permission_code):
+            raise PermissionDenied(f"Missing permission: {permission_code}")
+        return True
+
+    raise TypeError("require_permission expects (permission_code) or (request, permission_code)")
