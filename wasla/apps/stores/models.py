@@ -146,6 +146,17 @@ class Store(models.Model):
         help_text="Marks the platform landing store for the root domain.",
     )
     is_featured = models.BooleanField(default=False, help_text="Featured in discover")
+
+    # Storefront publishing state
+    is_default_published = models.BooleanField(
+        default=False,
+        help_text="Whether the default storefront has been published.",
+    )
+    default_published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the default storefront was published.",
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -158,6 +169,7 @@ class Store(models.Model):
             models.Index(fields=["status", "created_at"]),
             models.Index(fields=["slug"]),
             models.Index(fields=["subdomain"]),
+            models.Index(fields=["is_default_published", "created_at"]),
         ]
         unique_together = [
             ("owner", "slug"),  # Each user's stores must have unique slugs
