@@ -18,7 +18,10 @@ class Command(BaseCommand):
     ROLE_DEFINITIONS = [
         {"name": "SUPERADMIN", "description": "Full access to the admin portal."},
         {"name": "SUPPORT", "description": "Support operations for users, tenants, and stores."},
+        {"name": "PLATFORM_SUPPORT", "description": "Platform support operations for tenants and stores."},
+        {"name": "MERCHANT_SUPPORT", "description": "Merchant support operations for tenants and stores."},
         {"name": "FINANCE", "description": "Finance operations for payments and settlements."},
+        {"name": "FINANCE_MANAGER", "description": "Finance manager operations for payments and settlements."},
         {"name": "READONLY", "description": "Read-only access to admin portal data."},
     ]
 
@@ -83,26 +86,39 @@ class Command(BaseCommand):
             all_permission_codes = [perm["code"] for perm in self.PERMISSIONS]
             view_permission_codes = [code for code in all_permission_codes if code.endswith(".view")]
 
+            support_permissions = [
+                "portal.access",
+                "portal.users.view",
+                "portal.users.manage",
+                "portal.tenants.view",
+                "portal.tenants.manage",
+                "portal.stores.view",
+                "portal.stores.manage",
+                "portal.audit.view",
+            ]
+            finance_permissions = [
+                "portal.access",
+                "portal.payments.view",
+                "portal.payments.manage",
+                "portal.settlements.view",
+                "portal.settlements.approve",
+                "portal.audit.view",
+            ]
+            merchant_support_permissions = [
+                "portal.access",
+                "portal.tenants.view",
+                "portal.stores.view",
+                "portal.subscriptions.view",
+                "portal.audit.view",
+            ]
+
             role_permission_mapping = {
                 "SUPERADMIN": all_permission_codes,
-                "SUPPORT": [
-                    "portal.access",
-                    "portal.users.view",
-                    "portal.users.manage",
-                    "portal.tenants.view",
-                    "portal.tenants.manage",
-                    "portal.stores.view",
-                    "portal.stores.manage",
-                    "portal.audit.view",
-                ],
-                "FINANCE": [
-                    "portal.access",
-                    "portal.payments.view",
-                    "portal.payments.manage",
-                    "portal.settlements.view",
-                    "portal.settlements.approve",
-                    "portal.audit.view",
-                ],
+                "SUPPORT": support_permissions,
+                "PLATFORM_SUPPORT": support_permissions,
+                "MERCHANT_SUPPORT": merchant_support_permissions,
+                "FINANCE": finance_permissions,
+                "FINANCE_MANAGER": finance_permissions,
                 "READONLY": ["portal.access", *view_permission_codes],
             }
 

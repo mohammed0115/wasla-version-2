@@ -22,9 +22,9 @@ class AdminPortalRbacSeedTests(TestCase):
         self.assertEqual(AdminRole.objects.count(), roles_count)
         self.assertEqual(AdminPermission.objects.count(), permissions_count)
         self.assertEqual(AdminRolePermission.objects.count(), links_count)
-        self.assertEqual(roles_count, 4)
+        self.assertEqual(roles_count, 7)
         self.assertEqual(permissions_count, 15)
-        self.assertEqual(links_count, 37)
+        self.assertEqual(links_count, 56)
 
     def test_superuser_gets_superadmin_role(self):
         User = get_user_model()
