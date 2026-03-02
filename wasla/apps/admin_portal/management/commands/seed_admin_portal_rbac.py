@@ -106,6 +106,18 @@ class Command(BaseCommand):
                 "READONLY": ["portal.access", *view_permission_codes],
             }
 
+            # Ensure all mapped roles exist (defensive against missing definitions).
+            for role_name in role_permission_mapping:
+                if role_name in roles_by_name:
+                    continue
+                role, created = AdminRole.objects.get_or_create(
+                    name=role_name,
+                    defaults={"description": f"{role_name} role"},
+                )
+                if created:
+                    created_roles += 1
+                roles_by_name[role_name] = role
+
             for role_name, permission_codes in role_permission_mapping.items():
                 role = roles_by_name[role_name]
                 for code in permission_codes:

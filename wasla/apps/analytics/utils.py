@@ -5,6 +5,26 @@ from typing import Any
 from apps.stores.models import Store
 
 
+def _bind_store_context(request: Any, store: Store | None) -> None:
+    if not store:
+        return
+    request.store = store
+    if getattr(request, "tenant", None) is None and getattr(store, "tenant", None) is not None:
+        request.tenant = store.tenant
+    user = getattr(request, "user", None)
+    if user and getattr(user, "is_authenticated", False):
+        if not hasattr(user, "store_id"):
+            try:
+                user.store_id = store.id
+            except Exception:
+                pass
+        if getattr(store, "tenant_id", None) and not hasattr(user, "tenant_id"):
+            try:
+                user.tenant_id = store.tenant_id
+            except Exception:
+                pass
+
+
 def resolve_store_id(request: Any) -> int | None:
     """
     Resolve the current store ID from request context.
@@ -17,13 +37,14 @@ def resolve_store_id(request: Any) -> int | None:
     """
     store = getattr(request, "store", None)
     if store and getattr(store, "id", None):
+        _bind_store_context(request, store)
         return store.id
 
     tenant = getattr(request, "tenant", None)
     if tenant:
         store = Store.objects.filter(tenant=tenant).order_by("id").first()
         if store:
-            request.store = store
+            _bind_store_context(request, store)
             return store.id
 
     store_id = None
@@ -37,21 +58,18 @@ def resolve_store_id(request: Any) -> int | None:
     if store_id:
         store = Store.objects.filter(id=store_id).order_by("id").first()
         if store:
-            request.store = store
-            request.tenant = store.tenant
+            _bind_store_context(request, store)
             return store.id
         store = Store.objects.filter(tenant_id=store_id).order_by("id").first()
         if store:
-            request.store = store
-            request.tenant = store.tenant
+            _bind_store_context(request, store)
             return store.id
 
     user = getattr(request, "user", None)
     if user and getattr(user, "is_authenticated", False):
         store = Store.objects.filter(owner=user).order_by("id").first()
         if store:
-            request.store = store
-            request.tenant = store.tenant
+            _bind_store_context(request, store)
             return store.id
 
     return None

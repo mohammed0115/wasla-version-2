@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core.exceptions import FieldDoesNotExist
 
 from apps.tenants.domain.policies import normalize_domain
 from apps.tenants.models import StoreDomain, Tenant
@@ -42,11 +43,18 @@ def resolve_store_by_slug(slug: str) -> 'Store | None':
         return None
     
     try:
-        store = (
-            Store.objects.select_related("tenant")
-            .filter(slug=slug, is_active=True)
-            .first()
-        )
+        store_qs = Store.objects.select_related("tenant").filter(slug=slug)
+        try:
+            Store._meta.get_field("is_active")
+            store_qs = store_qs.filter(is_active=True)
+        except FieldDoesNotExist:
+            try:
+                Store._meta.get_field("status")
+                store_qs = store_qs.filter(status=Store.STATUS_ACTIVE)
+            except Exception:
+                pass
+
+        store = store_qs.first()
         return store
     except Exception:
         return None
