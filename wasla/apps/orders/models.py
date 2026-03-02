@@ -35,22 +35,33 @@ class Order(models.Model):
     """Store-scoped order with production commerce lifecycle."""
     objects = TenantManager()
 
+    STATUS_PENDING = "pending"
+    STATUS_PAID = "paid"
+    STATUS_PROCESSING = "processing"
+    STATUS_SHIPPED = "shipped"
+    STATUS_DELIVERED = "delivered"
+    STATUS_COMPLETED = "completed"
+    STATUS_RETURNED = "returned"
+    STATUS_PARTIALLY_REFUNDED = "partially_refunded"
+    STATUS_REFUNDED = "refunded"
+    STATUS_CANCELLED = "cancelled"
+
     STATUS_CHOICES = [
         # Core fulfillment flow
-        ("pending", "Pending"),
-        ("paid", "Paid"),
-        ("processing", "Processing"),
-        ("shipped", "Shipped"),
-        ("delivered", "Delivered"),
-        ("completed", "Completed"),
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PAID, "Paid"),
+        (STATUS_PROCESSING, "Processing"),
+        (STATUS_SHIPPED, "Shipped"),
+        (STATUS_DELIVERED, "Delivered"),
+        (STATUS_COMPLETED, "Completed"),
         
         # Return & refund flow
-        ("returned", "Returned"),
-        ("partially_refunded", "Partially Refunded"),
-        ("refunded", "Refunded"),
+        (STATUS_RETURNED, "Returned"),
+        (STATUS_PARTIALLY_REFUNDED, "Partially Refunded"),
+        (STATUS_REFUNDED, "Refunded"),
         
         # Terminal state
-        ("cancelled", "Cancelled"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
 
     store_id = models.IntegerField(default=1, db_index=True)
