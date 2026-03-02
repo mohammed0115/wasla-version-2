@@ -93,8 +93,10 @@ def merchant_dashboard_view(request):
     kpi = MerchantDashboardService.get_merchant_kpis(store_id)
     revenue_chart = RevenueChartService.get_revenue_chart(store_id, days=7)
     funnel = FunnelAnalysisService.get_conversion_funnel(store_id, days=7)
+    tenant = getattr(request, "tenant", None)
 
     context = {
+        'tenant': tenant,
         'kpi': kpi,
         'revenue_chart': revenue_chart,
         'funnel': funnel,

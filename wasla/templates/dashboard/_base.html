@@ -11,6 +11,7 @@
 
 {% block body %}
 <div class="dash">
+{% with dash_tenant=request.tenant %}
   <aside class="dash__sidebar">
     <a class="dash__brand" href="{% url 'tenants:dashboard_home' %}">
       <span class="dash__logo">W</span>
@@ -22,9 +23,9 @@
 
     <div class="dash__store-card">
       <div class="dash__store-label">{% trans "Store" %}</div>
-      <div class="dash__store-name">{{ tenant.name|default:tenant.slug|default:"-" }}</div>
+      <div class="dash__store-name">{{ dash_tenant.name|default:dash_tenant.slug|default:"-" }}</div>
       <div class="dash__store-meta">
-        <span class="dash__pill">{{ tenant.slug|default:"-" }}</span>
+        <span class="dash__pill">{{ dash_tenant.slug|default:"-" }}</span>
         {% if merchant_plan %}
           <span class="dash__pill">{% trans "Plan" %}: {{ merchant_plan.name }}</span>
         {% endif %}
@@ -132,7 +133,7 @@
   <main class="dash__main">
     <header class="dash__topbar">
       <div class="dash__title-wrap">
-        <span class="dash__tenant">{{ tenant.slug|default:"-" }}</span>
+        <span class="dash__tenant">{{ dash_tenant.slug|default:"-" }}</span>
         <h1 class="dash__title">{% block page_title %}{% endblock %}</h1>
         <p class="dash__subtitle">{% block page_subtitle %}{% endblock %}</p>
       </div>
@@ -153,5 +154,6 @@
       {% block content %}{% endblock %}
     </section>
   </main>
+{% endwith %}
 </div>
 {% endblock %}
