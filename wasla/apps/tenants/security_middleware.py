@@ -41,6 +41,7 @@ class TenantSecurityMiddleware:
     TENANT_OPTIONAL_PATHS = {
         '/api/auth/',           # Authentication endpoints
         '/onboarding/',         # Persona/onboarding flow (no tenant yet)
+        '/billing/onboarding/', # Billing onboarding flow (no tenant yet)
         '/api/health/',         # Health checks
         '/healthz',             # Readiness/liveness probes
         '/readyz',

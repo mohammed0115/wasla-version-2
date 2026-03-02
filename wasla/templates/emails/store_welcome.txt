@@ -1,0 +1,18 @@
+مرحباً بك في وصلة
+
+تم إنشاء متجرك "{{ store_name }}" بنجاح.
+لوحة التحكم:
+{{ dashboard_url }}
+
+للدعم والمساعدة:
+{{ support_email }}
+
+---
+Welcome to Wasla
+
+Your store "{{ store_name }}" is ready.
+Dashboard:
+{{ dashboard_url }}
+
+Support:
+{{ support_email }}

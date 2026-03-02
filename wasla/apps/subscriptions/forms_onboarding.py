@@ -3,6 +3,7 @@ Onboarding flow forms for plan selection, subdomain, and payment method.
 """
 
 from django import forms
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from apps.subscriptions.models import SubscriptionPlan
 from apps.tenants.services.domain_resolution import validate_subdomain
@@ -21,16 +22,18 @@ class PlanSelectForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Order plans: free first, then by price
+        # Order plans by configured sort order, then price
         self.fields['plan_id'].queryset = (
             SubscriptionPlan.objects.filter(is_active=True)
-            .order_by('is_free', 'price')
+            .order_by('sort_order', 'price')
         )
 
 
 class SubdomainSelectForm(forms.Form):
     """Form for selecting a subdomain during onboarding."""
-    
+
+    _base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
+
     subdomain = forms.CharField(
         max_length=30,
         min_length=3,
@@ -38,9 +41,12 @@ class SubdomainSelectForm(forms.Form):
             'class': 'form-control',
             'placeholder': 'mystore',
             'autocomplete': 'off',
+            'pattern': '[a-z0-9-]+',
+            'title': 'Use only letters, numbers, hyphen',
+            'inputmode': 'latin',
         }),
         label="Store Subdomain",
-        help_text="Your store will be at: subdomain.w-sala.com"
+        help_text=f"Your store will be at: subdomain.{_base_domain}"
     )
     
     def clean_subdomain(self):

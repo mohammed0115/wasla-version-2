@@ -34,7 +34,7 @@
                     <div class="order-summary mb-4">
                         <div class="summary-row">
                             <div class="summary-label">Store Subdomain:</div>
-                            <div class="summary-value">{{ subdomain }}.w-sala.com</div>
+                            <div class="summary-value">{{ subdomain }}.{{ base_domain }}</div>
                         </div>
                         <div class="summary-row">
                             <div class="summary-label">Plan:</div>
@@ -43,7 +43,7 @@
                         {% if not is_free %}
                             <div class="summary-row">
                                 <div class="summary-label">Amount:</div>
-                                <div class="summary-value"><strong>SAR {{ plan.price }}</strong></div>
+                                <div class="summary-value"><strong>SAR {{ plan_price }}</strong></div>
                             </div>
                         {% endif %}
                         {% if payment_method %}

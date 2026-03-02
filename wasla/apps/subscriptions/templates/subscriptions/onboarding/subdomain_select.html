@@ -13,11 +13,11 @@
                     <span class="step-number">1</span>
                     <span class="step-label">Plan</span>
                 </div>
-                <div class="step">
+                <div class="step active">
                     <span class="step-number">2</span>
                     <span class="step-label">Subdomain</span>
                 </div>
-                <div class="step active">
+                <div class="step">
                     <span class="step-number">3</span>
                     <span class="step-label">Payment</span>
                 </div>
@@ -26,46 +26,46 @@
                     <span class="step-label">Done</span>
                 </div>
             </div>
-            
+
             <div class="card shadow-sm">
                 <div class="card-body p-5">
-                    <h1 class="h2 mb-4">{{ page_title }}</h1>
-                    
-                    <div class="alert alert-info mb-4">
-                        <strong>Store:</strong> {{ subdomain }}.{{ base_domain }}<br>
-                        <strong>Plan:</strong> {{ plan.name }} 
-                        {% if plan_price %}
-                            (SAR {{ plan_price }}/month)
-                        {% else %}
-                            (Free)
-                        {% endif %}
-                    </div>
-                    
+                    <h1 class="h2 mb-2">{{ page_title }}</h1>
+                    <p class="text-muted mb-4">
+                        Choose a unique subdomain for your store on {{ base_domain }}.
+                    </p>
+
                     <form method="post" class="form-onboarding">
                         {% csrf_token %}
-                        
-                        <div class="payment-methods mb-4">
-                            {% for method, label in form.payment_method.field.choices %}
-                                <div class="payment-option">
-                                    <input type="radio" name="payment_method" value="{{ method }}" 
-                                           id="method_{{ method }}" class="payment-radio">
-                                    <label for="method_{{ method }}" class="payment-label">
-                                        <div class="payment-name">{{ label }}</div>
-                                        <small class="text-muted">{{ method|capfirst }} payment option</small>
-                                    </label>
-                                </div>
-                            {% endfor %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.subdomain.id_for_label }}" class="form-label">
+                                {{ form.subdomain.label }}
+                            </label>
+                            <div class="input-group">
+                                {{ form.subdomain }}
+                                <span class="input-group-text">.{{ base_domain }}</span>
+                            </div>
+                            {% if form.subdomain.help_text %}
+                                <small class="form-text text-muted">{{ form.subdomain.help_text }}</small>
+                            {% endif %}
+                            <small class="form-text text-muted">Use only letters, numbers, hyphen</small>
                         </div>
-                        
+
+                        {% if form.subdomain.errors %}
+                            <div class="alert alert-danger">
+                                {{ form.subdomain.errors }}
+                            </div>
+                        {% endif %}
+
                         {% if form.non_field_errors %}
-                            <div class="alert alert-danger mb-4">
+                            <div class="alert alert-danger">
                                 {{ form.non_field_errors }}
                             </div>
                         {% endif %}
-                        
-                        <div class="row">
+
+                        <div class="row mt-4">
                             <div class="col-6">
-                                <a href="{% url 'subscriptions_web:onboarding_subdomain' %}" class="btn btn-outline-secondary w-100">
+                                <a href="{% url 'subscriptions_web:onboarding_plan' %}" class="btn btn-outline-secondary w-100">
                                     Back
                                 </a>
                             </div>
@@ -76,6 +76,13 @@
                             </div>
                         </div>
                     </form>
+
+                    <div class="subdomain-preview mt-4">
+                        <span class="text-muted">Preview:</span>
+                        <span class="preview-value">
+                            https://<span id="subdomain-preview">yourstore</span>.{{ base_domain }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -113,40 +120,29 @@
         background: #0d6efd;
         color: white;
     }
-    
-    .payment-methods {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
+    .subdomain-preview {
+        font-size: 0.9rem;
     }
-    .payment-option {
-        position: relative;
-    }
-    .payment-radio {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-    .payment-label {
-        display: block;
-        padding: 1.5rem;
-        border: 2px solid #e9ecef;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .payment-radio:checked + .payment-label {
-        border-color: #0d6efd;
-        background: rgba(13, 110, 253, 0.05);
-    }
-    .payment-label:hover {
-        border-color: #0d6efd;
-    }
-    .payment-name {
-        font-weight: 500;
-        font-size: 1rem;
-        margin-bottom: 0.25rem;
+    .preview-value {
+        font-weight: 600;
+        color: #111827;
+        margin-left: 0.35rem;
     }
 </style>
+
+<script>
+    (function () {
+        const input = document.getElementById("{{ form.subdomain.id_for_label }}");
+        const preview = document.getElementById("subdomain-preview");
+        if (!input || !preview) {
+            return;
+        }
+        const updatePreview = () => {
+            const value = (input.value || "").toLowerCase();
+            preview.textContent = value || "yourstore";
+        };
+        input.addEventListener("input", updatePreview);
+        updatePreview();
+    })();
+</script>
 {% endblock %}

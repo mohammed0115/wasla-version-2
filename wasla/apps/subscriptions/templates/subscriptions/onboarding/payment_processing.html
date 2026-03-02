@@ -32,7 +32,7 @@
                     {% if store %}
                     <div class="alert alert-light mt-4">
                         <strong>{% trans "Store:" %}</strong> {{ store.name }}<br>
-                        <strong>{% trans "Subdomain:" %}</strong> {{ store.subdomain }}.w-sala.com
+                        <strong>{% trans "Subdomain:" %}</strong> {{ store.subdomain }}.{{ base_domain }}
                     </div>
                     {% endif %}
                 </div>

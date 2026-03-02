@@ -10,14 +10,12 @@ Flow:
 """
 
 import logging
-from django.conf import settings
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 
 logger = logging.getLogger(__name__)
 from apps.subscriptions.models import SubscriptionPlan
@@ -28,18 +26,39 @@ from apps.subscriptions.forms_onboarding import (
     ManualPaymentUploadForm,
 )
 from apps.stores.models import Store
-from apps.tenants.models import Tenant, StoreDomain
-from apps.payments.models import ManualPayment
+from apps.tenants.models import Tenant
+from apps.subscriptions.services.onboarding_utils import (
+    build_store_dashboard_url,
+    build_store_host,
+    ensure_store_domain_mapping,
+    enqueue_store_welcome_email,
+    get_base_domain,
+)
+from apps.tenants.services.domain_resolution import normalize_subdomain_label, validate_subdomain
 
 
-def _build_store_host(subdomain: str) -> str:
-    base_domain = (getattr(settings, "WASSLA_BASE_DOMAIN", "w-sala.com") or "w-sala.com").strip().lower()
-    return f"{subdomain}.{base_domain}"
+def _resolve_store_plan(plan: SubscriptionPlan):
+    from apps.stores.models import Plan as StorePlan
+
+    if isinstance(plan, StorePlan):
+        return plan
+    if hasattr(plan, "name"):
+        return StorePlan.objects.filter(name=plan.name).first()
+    return None
 
 
-def _build_dashboard_url(request, subdomain: str) -> str:
-    scheme = "https" if request.is_secure() else "http"
-    return f"{scheme}://{_build_store_host(subdomain)}/dashboard/"
+def _plan_price(plan: object):
+    if hasattr(plan, "price") and getattr(plan, "price") is not None:
+        return getattr(plan, "price")
+    if hasattr(plan, "price_monthly") and getattr(plan, "price_monthly") is not None:
+        return getattr(plan, "price_monthly")
+    return 0
+
+
+def _plan_is_free(plan: object) -> bool:
+    if getattr(plan, "is_free", False):
+        return True
+    return _plan_price(plan) == 0
 
 
 def _get_onboarding_store(request, subdomain: str | None) -> Store | None:
@@ -54,36 +73,36 @@ def _get_onboarding_store(request, subdomain: str | None) -> Store | None:
 
 
 def _create_onboarding_store(request, plan: SubscriptionPlan, subdomain: str, *, status: str) -> Store:
+    is_valid, error_msg = validate_subdomain(subdomain)
+    if not is_valid:
+        raise ValidationError(error_msg)
+
+    normalized_subdomain = normalize_subdomain_label(subdomain)
+    if not normalized_subdomain:
+        raise ValidationError("Use only letters, numbers, hyphen")
+
+    store_plan = _resolve_store_plan(plan)
+
     with transaction.atomic():
         tenant = Tenant.objects.create(
             name=f"{request.user.get_full_name() or request.user.username}'s Store",
-            slug=subdomain,
-            subdomain=subdomain,
+            slug=normalized_subdomain,
+            subdomain=normalized_subdomain,
             is_active=True,
-            is_published=plan.is_free,
+            is_published=_plan_is_free(plan),
         )
 
         store = Store.objects.create(
             owner=request.user,
             tenant=tenant,
             name=f"{request.user.get_full_name() or request.user.username}'s Store",
-            slug=subdomain,
-            subdomain=subdomain,
-            plan=plan,
-            payment_method=None,
+            slug=normalized_subdomain,
+            subdomain=normalized_subdomain,
+            plan=store_plan,
             status=status,
         )
 
-        StoreDomain.objects.get_or_create(
-            domain=_build_store_host(subdomain),
-            defaults={
-                "tenant": tenant,
-                "store": store,
-                "status": StoreDomain.STATUS_ACTIVE if plan.is_free else StoreDomain.STATUS_PENDING_VERIFICATION,
-                "is_primary": True,
-                "verification_token": StoreDomain.generate_verification_token(),
-            },
-        )
+        ensure_store_domain_mapping(store)
         return store
 
 
@@ -104,6 +123,7 @@ def onboarding_plan_select(request):
     return render(request, 'subscriptions/onboarding/plan_select.html', {
         'form': form,
         'page_title': 'Choose Your Plan',
+        'base_domain': get_base_domain(),
     })
 
 
@@ -131,7 +151,7 @@ def onboarding_subdomain_select(request):
             request.session['onboarding_subdomain'] = subdomain
             
             # If FREE plan, skip payment and activate directly
-            if plan.is_free:
+            if _plan_is_free(plan):
                 store = _create_onboarding_store(
                     request,
                     plan,
@@ -139,13 +159,17 @@ def onboarding_subdomain_select(request):
                     status=Store.STATUS_ACTIVE,
                 )
                 from apps.storefront.services import publish_default_storefront
-                publish_default_storefront(store)
+                try:
+                    publish_default_storefront(store)
+                except Exception as exc:
+                    logger.warning("Default storefront publish skipped for store %s", store.id, exc_info=exc)
+                enqueue_store_welcome_email(store=store, to_email=request.user.email)
                 messages.success(request, f"Welcome {request.user.first_name}! Your store is ready!")
                 request.session.pop('onboarding_plan_id', None)
                 request.session.pop('onboarding_subdomain', None)
                 request.session.pop('onboarding_payment_method', None)
                 request.session.pop('onboarding_store_id', None)
-                return redirect(_build_dashboard_url(request, subdomain))
+                return redirect(build_store_dashboard_url(store.subdomain))
             
             # If PAID plan, go to payment method selection
             store = _get_onboarding_store(request, subdomain)
@@ -165,6 +189,7 @@ def onboarding_subdomain_select(request):
         'form': form,
         'plan': plan,
         'page_title': 'Choose Your Store Subdomain',
+        'base_domain': get_base_domain(),
     })
 
 
@@ -185,7 +210,7 @@ def onboarding_payment_method(request):
         return redirect('subscriptions_web:onboarding_plan')
     
     # FREE plans should not reach here
-    if plan.is_free:
+    if _plan_is_free(plan):
         return redirect('subscriptions_web:onboarding_checkout')
     
     if request.method == "POST":
@@ -200,8 +225,10 @@ def onboarding_payment_method(request):
     return render(request, 'subscriptions/onboarding/payment_method_select.html', {
         'form': form,
         'plan': plan,
+        'plan_price': _plan_price(plan),
         'subdomain': subdomain,
         'page_title': 'Choose Payment Method',
+        'base_domain': get_base_domain(),
     })
 
 
@@ -234,9 +261,11 @@ def onboarding_checkout(request):
     return render(request, 'subscriptions/onboarding/checkout.html', {
         'plan': plan,
         'subdomain': subdomain,
-        'payment_method': payment_method if not plan.is_free else None,
-        'is_free': plan.is_free,
+        'payment_method': payment_method if not _plan_is_free(plan) else None,
+        'is_free': _plan_is_free(plan),
+        'plan_price': _plan_price(plan),
         'page_title': 'Complete Your Order',
+        'base_domain': get_base_domain(),
     })
 
 
@@ -293,7 +322,7 @@ def _initiate_stripe_payment(request, store, plan):
             store=store,
             customer_email=request.user.email,
             status='pending_payment',
-            total_amount=plan.price,
+            total_amount=_plan_price(plan),
             currency='SAR',
             notes=f"Store activation payment - {store.subdomain}",
             payment_method='stripe'
@@ -346,7 +375,7 @@ def _initiate_tap_payment(request, store, plan):
             store=store,
             customer_email=request.user.email,
             status='pending_payment',
-            total_amount=plan.price,
+            total_amount=_plan_price(plan),
             currency='SAR',
             notes=f"Store activation payment - {store.subdomain}",
             payment_method='tap'
@@ -407,17 +436,21 @@ def onboarding_manual_payment(request):
         return redirect('subscriptions_web:onboarding_plan')
     
     plan = store.plan
-    if plan.is_free:
+    if plan_id:
+        plan = SubscriptionPlan.objects.filter(id=plan_id).first() or plan
+    if _plan_is_free(plan):
         return redirect('subscriptions_web:onboarding_success')
     
     if request.method == "POST":
         form = ManualPaymentUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            from apps.payments.models import ManualPayment
+
             # Create ManualPayment record
             manual_payment = ManualPayment.objects.create(
                 store=store,
                 plan=plan,
-                amount=plan.price,
+                amount=_plan_price(plan),
                 currency='SAR',
                 reference=form.cleaned_data['reference'],
                 receipt_file=form.cleaned_data.get('receipt_file'),
@@ -440,8 +473,10 @@ def onboarding_manual_payment(request):
         'form': form,
         'store': store,
         'plan': plan,
+        'plan_price': _plan_price(plan),
         'subdomain': subdomain,
         'page_title': 'Submit Manual Payment',
+        'base_domain': get_base_domain(),
         'bank_details': {
             'account_name': 'Wasla Commerce',
             'account_number': 'SA0000000000000000000000',  # Placeholder
@@ -456,11 +491,25 @@ def onboarding_success(request):
     """Success page after onboarding completion."""
     
     # Get user's most recent store
-    store = Store.objects.filter(owner=request.user).order_by('-created_at').first()
+    store_id = request.session.get("onboarding_store_id")
+    store = None
+    if store_id:
+        store = Store.objects.filter(id=store_id, owner=request.user).first()
+    if not store:
+        store = Store.objects.filter(owner=request.user).order_by('-created_at').first()
+
+    base_domain = get_base_domain()
+    store_host = build_store_host(store.subdomain) if store else ""
+    store_dashboard_url = build_store_dashboard_url(store.subdomain) if store else ""
+    store_front_url = f"https://{store_host}" if store_host else ""
     
     return render(request, 'subscriptions/onboarding/success.html', {
         'store': store,
         'page_title': 'Onboarding Complete',
+        'base_domain': base_domain,
+        'store_host': store_host,
+        'store_dashboard_url': store_dashboard_url,
+        'store_front_url': store_front_url,
     })
 
 @login_required
@@ -486,7 +535,8 @@ def onboarding_payment_callback(request):
         # Check if store already activated (webhook processed)
         if store.status == Store.STATUS_ACTIVE:
             messages.success(request, "Store activated! Redirecting...")
-            return redirect('subscriptions_web:onboarding_success')
+            ensure_store_domain_mapping(store)
+            return redirect(build_store_dashboard_url(store.subdomain))
         
         # Still pending - webhook might still be processing
         if store.status == Store.STATUS_PENDING_PAYMENT:
@@ -494,6 +544,7 @@ def onboarding_payment_callback(request):
             return render(request, 'subscriptions/onboarding/payment_processing.html', {
                 'store': store,
                 'page_title': 'Processing Payment',
+                'base_domain': get_base_domain(),
             })
         
         messages.success(request, "Setup complete!")
@@ -502,3 +553,14 @@ def onboarding_payment_callback(request):
     except Order.DoesNotExist:
         messages.error(request, "Payment not found")
         return redirect('subscriptions_web:onboarding_plan')
+
+
+@login_required
+def onboarding_dashboard_redirect(request, store_id: int):
+    store = Store.objects.filter(id=store_id, owner=request.user).first()
+    if not store:
+        messages.error(request, "Store not found.")
+        return redirect('subscriptions_web:onboarding_plan')
+
+    ensure_store_domain_mapping(store)
+    return redirect(build_store_dashboard_url(store.subdomain))

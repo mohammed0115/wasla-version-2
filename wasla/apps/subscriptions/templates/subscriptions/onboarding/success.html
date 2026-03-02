@@ -16,7 +16,7 @@
                     <h1 class="h1 mb-2">{{ page_title }}</h1>
                     {% if store %}
                         <p class="lead text-muted mb-4">
-                            Welcome to Wasla! Your store <strong>{{ store.subdomain }}.w-sala.com</strong> is ready.
+                            Welcome to Wasla! Your store <strong>{{ store.subdomain }}.{{ base_domain }}</strong> is ready.
                         </p>
                         
                         <div class="store-info card mb-4" style="text-align: left;">
@@ -28,8 +28,16 @@
                                 <div class="info-row mb-2">
                                     <span class="label">Store URL:</span>
                                     <span class="value">
-                                        <a href="https://{{ store.subdomain }}.w-sala.com" target="_blank">
-                                            {{ store.subdomain }}.w-sala.com
+                                        <a href="{{ store_front_url }}" target="_blank">
+                                            {{ store_host }}
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="info-row mb-2">
+                                    <span class="label">Dashboard:</span>
+                                    <span class="value">
+                                        <a href="{{ store_dashboard_url }}" target="_blank">
+                                            {{ store_dashboard_url }}
                                         </a>
                                     </span>
                                 </div>
@@ -59,11 +67,11 @@
                     <div class="action-buttons">
                         {% if store %}
                             {% if store.status != 'pending_payment' %}
-                                <a href="https://{{ store.subdomain }}.w-sala.com" target="_blank" class="btn btn-primary btn-lg me-2">
+                                <a href="{{ store_front_url }}" target="_blank" class="btn btn-primary btn-lg me-2">
                                     Visit Your Store
                                 </a>
                             {% endif %}
-                            <a href="{% url 'subscriptions_web:dashboard' %}" class="btn btn-outline-primary btn-lg">
+                            <a href="{% url 'subscriptions_web:onboarding_dashboard' store.id %}" class="btn btn-outline-primary btn-lg">
                                 Go to Dashboard
                             </a>
                         {% else %}

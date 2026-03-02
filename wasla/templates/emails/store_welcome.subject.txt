@@ -1,0 +1,1 @@
+مرحباً بك في وصلة - لوحة تحكم {{ store_name }} جاهزة | Welcome to Wasla

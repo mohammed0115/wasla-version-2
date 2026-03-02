@@ -625,6 +625,8 @@ USE_TZ = True
 # STATIC_URL = "static/"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Wasla <info@w-sala.com>")
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", "info@w-sala.com")
+WASSLA_SUPPORT_EMAIL = os.getenv("WASSLA_SUPPORT_EMAIL", "info@w-sala.com").strip() or "info@w-sala.com"
+WASSLA_EMAIL_ASYNC_ENABLED = _env_bool("WASSLA_EMAIL_ASYNC_ENABLED", "1")
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.hostinger.com")

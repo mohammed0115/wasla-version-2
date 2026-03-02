@@ -12,9 +12,9 @@
                     <h1 class="h2 mb-4">{{ page_title }}</h1>
                     
                     <div class="alert alert-info mb-4">
-                        <strong>Store:</strong> {{ subdomain }}.w-sala.com<br>
+                        <strong>Store:</strong> {{ subdomain }}.{{ base_domain }}<br>
                         <strong>Plan:</strong> {{ plan.name }}<br>
-                        <strong>Amount Due:</strong> SAR {{ plan.price }}
+                        <strong>Amount Due:</strong> SAR {{ plan_price }}
                     </div>
                     
                     <h3 class="mb-3">Bank Transfer Details</h3>
@@ -34,7 +34,7 @@
                             </div>
                             <div class="detail-row">
                                 <span class="label">Amount:</span>
-                                <span class="value"><strong>SAR {{ plan.price }}</strong></span>
+                                <span class="value"><strong>SAR {{ plan_price }}</strong></span>
                             </div>
                         </div>
                     </div>

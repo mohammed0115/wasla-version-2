@@ -36,6 +36,16 @@ from .views_web import (
     # Webhooks
     payment_webhook,
 )
+from .views.onboarding import (
+    onboarding_plan_select,
+    onboarding_subdomain_select,
+    onboarding_payment_method,
+    onboarding_checkout,
+    onboarding_manual_payment,
+    onboarding_success,
+    onboarding_payment_callback,
+    onboarding_dashboard_redirect,
+)
 
 app_name = 'subscriptions'
 
@@ -49,6 +59,48 @@ urlpatterns = [
         'dashboard/',
         billing_dashboard,
         name='dashboard'
+    ),
+
+    # Onboarding flow
+    path(
+        'onboarding/plan/',
+        onboarding_plan_select,
+        name='onboarding_plan'
+    ),
+    path(
+        'onboarding/subdomain/',
+        onboarding_subdomain_select,
+        name='onboarding_subdomain'
+    ),
+    path(
+        'onboarding/payment-method/',
+        onboarding_payment_method,
+        name='onboarding_payment_method'
+    ),
+    path(
+        'onboarding/checkout/',
+        onboarding_checkout,
+        name='onboarding_checkout'
+    ),
+    path(
+        'onboarding/manual-payment/',
+        onboarding_manual_payment,
+        name='onboarding_manual_payment'
+    ),
+    path(
+        'onboarding/success/',
+        onboarding_success,
+        name='onboarding_success'
+    ),
+    path(
+        'onboarding/payment/callback/',
+        onboarding_payment_callback,
+        name='onboarding_payment_callback'
+    ),
+    path(
+        'onboarding/dashboard/<int:store_id>/',
+        onboarding_dashboard_redirect,
+        name='onboarding_dashboard'
     ),
     
     # Subscription Management
