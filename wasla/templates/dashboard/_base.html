@@ -13,25 +13,77 @@
 <div class="dash">
   <aside class="dash__sidebar">
     <a class="dash__brand" href="{% url 'tenants:dashboard_home' %}">
-      <div>
+      <span class="dash__logo">W</span>
+      <div class="dash__brand-text">
         <strong>{% trans "Wasla" %}</strong>
         <small>{% trans "Merchant Dashboard" %}</small>
       </div>
     </a>
 
+    <div class="dash__store-card">
+      <div class="dash__store-label">{% trans "Store" %}</div>
+      <div class="dash__store-name">{{ tenant.name|default:tenant.slug|default:"-" }}</div>
+      <div class="dash__store-meta">
+        <span class="dash__pill">{{ tenant.slug|default:"-" }}</span>
+        {% if merchant_plan %}
+          <span class="dash__pill">{% trans "Plan" %}: {{ merchant_plan.name }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% with current=request.resolver_match.url_name %}
     <nav class="dash__nav">
-      <a class="dash__link" href="{% url 'tenants:dashboard_home' %}">{% trans "Overview" %}</a>
-      <a class="dash__link" href="{% url 'tenants:dashboard_orders' %}">{% trans "Orders" %}</a>
-      <a class="dash__link" href="{% url 'catalog:product_list' %}">{% trans "Products" %}</a>
-      <a class="dash__link" href="{% url 'catalog:product_create' %}">{% trans "Add Product" %}</a>
-      <a class="dash__link" href="{% url 'ai_web:dashboard_ai_tools' %}">{% trans "AI Tools" %}</a>
-      <a class="dash__link" href="{% url 'settlements_web:dashboard_settlements_list' %}">{% trans "Settlements" %}</a>
-      <a class="dash__link" href="{% url 'themes_web:dashboard_themes' %}">{% trans "Themes" %}</a>
-      <a class="dash__link" href="{% url 'tenants:dashboard_domains' %}">{% trans "Domains" %}</a>
-      <a class="dash__link" href="{% url 'tenants:dashboard_setup_store' %}">{% trans "Store Setup" %}</a>
-      <a class="dash__link" href="{% url 'tenants:store_settings_update' %}">{% trans "Store Settings" %}</a>
-      <a class="dash__link" href="{% url 'tenants:dashboard_users_roles' %}">{% trans "Users & Roles" %}</a>
+      <div class="dash__nav-title">{% trans "Core" %}</div>
+      <a class="dash__link {% if current == 'dashboard_home' %}is-active{% endif %}" href="{% url 'tenants:dashboard_home' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Overview" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'dashboard_orders' %}is-active{% endif %}" href="{% url 'tenants:dashboard_orders' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Orders" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'product_list' %}is-active{% endif %}" href="{% url 'catalog:product_list' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Products" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'product_create' %}is-active{% endif %}" href="{% url 'catalog:product_create' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Add Product" %}</span>
+      </a>
+
+      <div class="dash__nav-title">{% trans "Operations" %}</div>
+      <a class="dash__link {% if current == 'dashboard_ai_tools' %}is-active{% endif %}" href="{% url 'ai_web:dashboard_ai_tools' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "AI Tools" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'dashboard_settlements_list' %}is-active{% endif %}" href="{% url 'settlements_web:dashboard_settlements_list' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Settlements" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'dashboard_themes' %}is-active{% endif %}" href="{% url 'themes_web:dashboard_themes' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Themes" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'dashboard_domains' %}is-active{% endif %}" href="{% url 'tenants:dashboard_domains' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Domains" %}</span>
+      </a>
+
+      <div class="dash__nav-title">{% trans "Settings" %}</div>
+      <a class="dash__link {% if current == 'dashboard_setup_store' %}is-active{% endif %}" href="{% url 'tenants:dashboard_setup_store' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Store Setup" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'store_settings_update' %}is-active{% endif %}" href="{% url 'tenants:store_settings_update' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Store Settings" %}</span>
+      </a>
+      <a class="dash__link {% if current == 'dashboard_users_roles' %}is-active{% endif %}" href="{% url 'tenants:dashboard_users_roles' %}">
+        <span class="dash__link-dot"></span>
+        <span>{% trans "Users & Roles" %}</span>
+      </a>
     </nav>
+    {% endwith %}
 
     {% if merchant_subscription %}
       <div class="card dash__sidebar-panel dash__plan-panel">
@@ -80,7 +132,7 @@
   <main class="dash__main">
     <header class="dash__topbar">
       <div class="dash__title-wrap">
-        <span class="dash__tenant">{{ tenant.slug|default:"—" }}</span>
+        <span class="dash__tenant">{{ tenant.slug|default:"-" }}</span>
         <h1 class="dash__title">{% block page_title %}{% endblock %}</h1>
         <p class="dash__subtitle">{% block page_subtitle %}{% endblock %}</p>
       </div>

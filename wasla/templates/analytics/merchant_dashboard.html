@@ -1,4 +1,4 @@
-{% extends 'dashboard/_base.html' %}
+﻿{% extends 'dashboard/_base.html' %}
 {% load static %}
 
 {% block title %}Merchant Dashboard - KPI Analytics{% endblock %}
@@ -8,233 +8,10 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
-<style>
-    .dashboard-container {
-        padding: 24px;
-        background: #f5f5f5;
-        min-height: 100vh;
-    }
-
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
-    .kpi-card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        border-left: 4px solid #007bff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .kpi-card.revenue {
-        border-left-color: #28a745;
-    }
-
-    .kpi-card.orders {
-        border-left-color: #ffc107;
-    }
-
-    .kpi-card.conversion {
-        border-left-color: #dc3545;
-    }
-
-    .kpi-label {
-        font-size: 12px;
-        color: #666;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .kpi-value {
-        font-size: 28px;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 8px;
-    }
-
-    .kpi-subtext {
-        font-size: 12px;
-        color: #999;
-    }
-
-    .chart-container {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 30px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .chart-title {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 20px;
-        color: #333;
-    }
-
-    .funnel-container {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .funnel-stage {
-        display: flex;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-
-    .funnel-bar {
-        flex: 1;
-        background: linear-gradient(90deg, #007bff, #0056b3);
-        height: 40px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        color: white;
-        font-weight: 500;
-        margin-right: 12px;
-    }
-
-    .funnel-stats {
-        display: flex;
-        gap: 12px;
-        font-size: 13px;
-    }
-
-    .funnel-count {
-        color: #666;
-        min-width: 50px;
-    }
-
-    .funnel-rate {
-        color: #0056b3;
-        font-weight: bold;
-        min-width: 60px;
-    }
-
-    .low-stock-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .low-stock-table th {
-        background: #f5f5f5;
-        padding: 12px;
-        text-align: left;
-        font-weight: bold;
-        border-bottom: 2px solid #ddd;
-    }
-
-    .low-stock-table td {
-        padding: 12px;
-        border-bottom: 1px solid #eee;
-    }
-
-    .low-stock-table tr:hover {
-        background: #f9f9f9;
-    }
-
-    .stock-badge {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .stock-badge.critical {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .stock-badge.low {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .button-group {
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
-    }
-
-    .btn-export {
-        padding: 8px 16px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-export:hover {
-        background: #0056b3;
-    }
-
-    .header {
-        margin-bottom: 30px;
-    }
-
-    .header h1 {
-        font-size: 28px;
-        margin-bottom: 8px;
-    }
-
-    .header p {
-        color: #666;
-        font-size: 14px;
-    }
-
-    .tabs {
-        display: flex;
-        gap: 0;
-        margin-bottom: 20px;
-        border-bottom: 2px solid #ddd;
-    }
-
-    .tab-button {
-        padding: 12px 20px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-size: 14px;
-        color: #666;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
-    }
-
-    .tab-button.active {
-        color: #007bff;
-        border-bottom-color: #007bff;
-    }
-
-    .tab-content {
-        display: none;
-    }
-
-    .tab-content.active {
-        display: block;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
-    <div class="header">
-        <h1>📊 Merchant Dashboard</h1>
-        <p>Real-time KPI analytics and conversion insights</p>
-    </div>
-
     <!-- Main KPI Cards -->
     <div class="kpi-grid">
         <div class="kpi-card revenue">
@@ -252,7 +29,7 @@
         <div class="kpi-card conversion">
             <div class="kpi-label">Conversion Rate</div>
             <div class="kpi-value">{{ kpi.conversion_rate|floatformat:2 }}%</div>
-            <div class="kpi-subtext">Checkout → Purchase</div>
+            <div class="kpi-subtext">Checkout to Purchase</div>
         </div>
 
         <div class="kpi-card">
@@ -284,21 +61,21 @@
     <!-- Overview Tab -->
     <div id="overview" class="tab-content active">
         <div class="chart-container">
-            <h3 class="chart-title">📈 Revenue (Last 7 Days)</h3>
+            <h3 class="chart-title">Revenue (Last 7 Days)</h3>
             <canvas id="revenueChart"></canvas>
         </div>
 
         <div class="button-group">
-            <a href="{% url 'analytics_web:export_kpi_csv' %}" class="btn-export">📥 Export KPIs (CSV)</a>
-            <a href="{% url 'analytics_web:export_revenue_csv' %}?days=7" class="btn-export">📥 Export Revenue (CSV)</a>
-            <a href="{% url 'analytics_web:export_funnel_csv' %}?days=7" class="btn-export">📥 Export Funnel (CSV)</a>
+            <a href="{% url 'analytics_web:export_kpi_csv' %}" class="btn-export">Export KPIs (CSV)</a>
+            <a href="{% url 'analytics_web:export_revenue_csv' %}?days=7" class="btn-export">Export Revenue (CSV)</a>
+            <a href="{% url 'analytics_web:export_funnel_csv' %}?days=7" class="btn-export">Export Funnel (CSV)</a>
         </div>
     </div>
 
     <!-- Low Stock Tab -->
     <div id="products" class="tab-content">
         <div class="funnel-container">
-            <h3 class="chart-title">⚠️ Low Stock Products (< 10 units)</h3>
+            <h3 class="chart-title">Low Stock Products (&lt; 10 units)</h3>
             {% if kpi.low_stock_products %}
                 <table class="low-stock-table">
                     <thead>
@@ -325,7 +102,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p style="color: #666; padding: 20px; text-align: center;">✓ All products well-stocked</p>
+                <p class="empty-state">All products well-stocked</p>
             {% endif %}
         </div>
     </div>
@@ -333,11 +110,11 @@
     <!-- Funnel Tab -->
     <div id="funnel" class="tab-content">
         <div class="funnel-container">
-            <h3 class="chart-title">🔥 Conversion Funnel (Last 7 Days)</h3>
+            <h3 class="chart-title">Conversion Funnel (Last 7 Days)</h3>
 
             <div class="funnel-stage">
                 <div class="funnel-bar" style="width: 100%;">
-                    👁️ Product Views
+                    Product Views
                 </div>
                 <div class="funnel-stats">
                     <span class="funnel-count">{{ funnel.product_views }}</span>
@@ -346,7 +123,7 @@
 
             <div class="funnel-stage">
                 <div class="funnel-bar" style="width: {{ funnel.view_to_cart_rate }}%;">
-                    🛒 Add to Cart
+                    Add to Cart
                 </div>
                 <div class="funnel-stats">
                     <span class="funnel-count">{{ funnel.add_to_cart }}</span>
@@ -356,7 +133,7 @@
 
             <div class="funnel-stage">
                 <div class="funnel-bar" style="width: {{ funnel.cart_to_checkout_rate }}%;">
-                    💳 Checkout Started
+                    Checkout Started
                 </div>
                 <div class="funnel-stats">
                     <span class="funnel-count">{{ funnel.checkout_started }}</span>
@@ -366,7 +143,7 @@
 
             <div class="funnel-stage">
                 <div class="funnel-bar" style="width: {{ funnel.checkout_to_purchase_rate }}%;">
-                    ✅ Purchase Completed
+                    Purchase Completed
                 </div>
                 <div class="funnel-stats">
                     <span class="funnel-count">{{ funnel.purchase_completed }}</span>
@@ -374,9 +151,9 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <div class="funnel-summary">
                 <strong>Overall Conversion:</strong> {{ funnel.overall_conversion_rate|floatformat:2 }}%
-                <span style="color: #999; font-size: 12px;">(Views → Purchase)</span>
+                <span>(Views to Purchase)</span>
             </div>
         </div>
     </div>
@@ -411,8 +188,8 @@ fetch('{% url "analytics_web:revenue_chart" %}?days=7')
                     {
                         label: 'Revenue',
                         data: data.points.map(p => parseFloat(p.revenue)),
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        borderColor: '#2c8a76',
+                        backgroundColor: 'rgba(44, 138, 118, 0.16)',
                         tension: 0.3,
                         fill: true,
                         yAxisID: 'y'
@@ -420,8 +197,8 @@ fetch('{% url "analytics_web:revenue_chart" %}?days=7')
                     {
                         label: 'Orders',
                         data: data.points.map(p => p.orders),
-                        borderColor: '#ffc107',
-                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        borderColor: '#d7953b',
+                        backgroundColor: 'rgba(215, 149, 59, 0.16)',
                         tension: 0.3,
                         yAxisID: 'y1'
                     }
