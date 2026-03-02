@@ -14,6 +14,7 @@ from apps.tenants.domain.errors import StoreAccessDeniedError, StoreInactiveErro
 from apps.tenants.models import StoreProfile, Tenant, TenantMembership
 from apps.subscriptions.models import StoreSubscription
 from apps.subscriptions.models import PaymentTransaction
+from apps.subscriptions.services.subscription_service import SubscriptionService
 from apps.tenants.services.provisioning import merchant_has_active_store
 
 
@@ -97,23 +98,8 @@ def _latest_subscription(tenant_id: int) -> StoreSubscription | None:
     )
 
 
-def _ensure_active_subscription_for_published(tenant: Tenant, subscription: StoreSubscription | None) -> StoreSubscription | None:
-    if subscription is None:
-        return None
-    if subscription.status == "active":
-        return subscription
-    if not getattr(tenant, "is_published", False):
-        return subscription
-
-    subscription.status = "active"
-    today = timezone.now().date()
-    if subscription.end_date and subscription.end_date < today:
-        cycle = getattr(subscription.plan, "billing_cycle", "monthly")
-        subscription.end_date = today + timedelta(days=365 if cycle == "yearly" else 30)
-        subscription.save(update_fields=["status", "end_date"])
-    else:
-        subscription.save(update_fields=["status"])
-    return subscription
+def _is_subscription_entitled(subscription: StoreSubscription | None) -> bool:
+    return SubscriptionService.is_subscription_entitled(subscription)
 
 
 def _has_submitted_payment(tenant_id: int) -> bool:
@@ -159,8 +145,7 @@ def merchant_dashboard_required(view_func):
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
             return _billing_redirect_for_tenant(tenant.id)
-        subscription = _ensure_active_subscription_for_published(tenant, subscription)
-        if subscription.status != "active":
+        if not _is_subscription_entitled(subscription):
             return _billing_redirect_for_tenant(tenant.id)
         if not getattr(tenant, "is_published", False):
             return redirect("tenants:billing_pending_activation")
@@ -198,8 +183,7 @@ def merchant_subscription_required(view_func):
         subscription = _latest_subscription(tenant.id)
         if subscription is None:
             return _billing_redirect_for_tenant(tenant.id)
-        subscription = _ensure_active_subscription_for_published(tenant, subscription)
-        if subscription.status != "active":
+        if not _is_subscription_entitled(subscription):
             return _billing_redirect_for_tenant(tenant.id)
 
         return view_func(request, *args, **kwargs)

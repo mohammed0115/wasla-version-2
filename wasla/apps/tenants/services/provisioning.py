@@ -170,9 +170,10 @@ def provision_store_after_payment(merchant, plan=None, payment=None) -> Store:
         store_id=tenant.id,
         defaults={
             "plan": selected_plan,
-            "status": "active",
+            "status": StoreSubscription.STATUS_ACTIVE,
             "start_date": start_date,
             "end_date": end_date,
+            "current_period_end": end_date,
         },
     )
 

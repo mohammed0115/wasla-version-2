@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 
 from apps.catalog.models import Product
 from apps.subscriptions.models import StoreSubscription
+from apps.subscriptions.services.subscription_service import SubscriptionService
 from core.infrastructure.store_cache import StoreCacheService
 from apps.tenants.application.policies.ownership import EnsureTenantOwnershipPolicy
 from apps.tenants.domain.errors import StoreAccessDeniedError, StoreInactiveError
@@ -58,11 +59,7 @@ def storefront_home(request: HttpRequest) -> HttpResponse:
         return list(queryset.order_by("-id").only("id", "name", "price", "image", "sku")[:24])
 
     def _load_store_config():
-        active_subscription = (
-            StoreSubscription.objects.select_related("plan")
-            .filter(store_id=tenant.id, status="active")
-            .first()
-        )
+        active_subscription = SubscriptionService.get_active_subscription(tenant.id)
         plan = getattr(active_subscription, "plan", None)
         return {
             "theme": {

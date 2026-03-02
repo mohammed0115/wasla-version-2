@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.db.models import Count, Q
 
 from apps.subscriptions.models import StoreSubscription
+from apps.subscriptions.services.subscription_service import SubscriptionService
 from apps.catalog.models import Product
 from apps.accounts.models import User  # or your staff user model
 from apps.orders.models import Order
@@ -66,10 +67,7 @@ class SubscriptionLimitService:
     
     def get_active_subscription(self, store_id: int) -> Optional[StoreSubscription]:
         """Get active subscription for store."""
-        return StoreSubscription.objects.filter(
-            store_id=store_id,
-            status=StoreSubscription.STATUS_ACTIVE,
-        ).first()
+        return SubscriptionService.get_active_subscription(store_id)
     
     def get_plan_limits(self, store_id: int) -> Dict[str, Optional[int]]:
         """Get all limits for store's plan."""
