@@ -159,13 +159,17 @@
                     <p class="mb-0">&copy; {% now "Y" %} {{ store.name|default:"Wasla Store" }}. {% trans "All rights reserved." %}</p>
                 </div>
                 <div class="col-md-6 text-end">
-                    <a href="{% url 'django.views.i18n.set_language' %}" class="text-light text-decoration-none">
+                    <form action="{% url 'set_language' %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input name="next" type="hidden" value="{{ request.get_full_path }}">
                         {% if request.LANGUAGE_CODE == 'ar' %}
-                            English
+                            <input type="hidden" name="language" value="en">
+                            <button type="submit" class="btn btn-link text-light text-decoration-none p-0">English</button>
                         {% else %}
-                            العربية
+                            <input type="hidden" name="language" value="ar">
+                            <button type="submit" class="btn btn-link text-light text-decoration-none p-0">العربية</button>
                         {% endif %}
-                    </a>
+                    </form>
                 </div>
             </div>
         </div>
