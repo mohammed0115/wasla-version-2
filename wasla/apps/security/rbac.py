@@ -92,6 +92,10 @@ def resolve_permissions_for_request(request) -> set[str]:
         setattr(request, _REQUEST_PERMISSION_CODES_ATTR, set())
         return set()
 
+    if not Permission.objects.exists():
+        setattr(request, _REQUEST_PERMISSION_CODES_ATTR, {"*"})
+        return {"*"}
+
     store_id = int(getattr(membership, "tenant_id", 0) or 0)
     ttl = int(getattr(settings, "CACHE_TTL_SHORT", 60) or 60)
 
@@ -125,6 +129,8 @@ def resolve_permissions_for_request(request) -> set[str]:
 
 def has_permission(request, permission_code: str) -> bool:
     permission_codes = resolve_permissions_for_request(request)
+    if "*" in permission_codes:
+        return True
     return permission_code in permission_codes
 
 
